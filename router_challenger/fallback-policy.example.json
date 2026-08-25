@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "policy_id": "google-ai-pro-safe-fallback",
+  "provider": {
+    "id": "google-ai-pro",
+    "kind": "google_ai_pro",
+    "display_name": "Google AI Pro"
+  },
+  "account_label": "google-pro-1",
+  "observed_at": "2026-08-25T12:00:00Z",
+  "manual_only": false,
+  "allowlist": {
+    "account_ids": ["google-pro-1"],
+    "model_ids": ["gemini-pro", "claude-sonnet"]
+  },
+  "usage_groups": {
+    "gemini_models": {
+      "weekly": {
+        "status": "available",
+        "remaining_percent": 87,
+        "reset_at": "2026-08-30T12:00:00Z"
+      },
+      "five_hour": {
+        "status": "available",
+        "remaining_percent": 100,
+        "reset_at": "2026-08-25T17:00:00Z"
+      }
+    },
+    "claude_gpt_models": {
+      "weekly": {
+        "status": "available",
+        "remaining_percent": 17,
+        "reset_at": "2026-08-28T08:00:00Z"
+      },
+      "five_hour": {
+        "status": "unknown",
+        "remaining_percent": null,
+        "reset_at": null,
+        "reason": "The provider did not expose this window."
+      }
+    }
+  },
+  "routes": [
+    {
+      "id": "gemini-primary",
+      "account_id": "google-pro-1",
+      "model_id": "gemini-pro",
+      "usage_group": "gemini_models",
+      "enabled": true,
+      "priority": 1
+    },
+    {
+      "id": "gemini-secondary",
+      "account_id": "google-pro-1",
+      "model_id": "gemini-pro",
+      "usage_group": "gemini_models",
+      "enabled": true,
+      "priority": 3
+    },
+    {
+      "id": "claude-gpt-primary",
+      "account_id": "google-pro-1",
+      "model_id": "claude-sonnet",
+      "usage_group": "claude_gpt_models",
+      "enabled": true,
+      "priority": 2
+    }
+  ],
+  "fallback": {
+    "enabled": true,
+    "session_affinity": true,
+    "max_attempts": 2,
+    "before_upstream_output_only": true,
+    "after_output": "stop",
+    "after_tool_side_effect": "stop",
+    "unknown_five_hour_mode": "reactive_only",
+    "reactive_signals": ["quota_exhausted", "rate_limited"],
+    "respect_provider_limits": true,
+    "no_quota_bypass": true,
+    "chain": [
+      {
+        "route_id": "gemini-primary",
+        "fallback_route_ids": ["gemini-secondary"]
+      },
+      {
+        "route_id": "gemini-secondary",
+        "fallback_route_ids": []
+      },
+      {
+        "route_id": "claude-gpt-primary",
+        "fallback_route_ids": []
+      }
+    ]
+  },
+  "extensions": {
+    "source_label": "owner-supplied non-secret usage snapshot",
+    "notes": "Example only. Replace observations without adding credentials."
+  }
+}
