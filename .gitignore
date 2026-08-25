@@ -22,6 +22,9 @@
 # Reviewable router source is its own fork/repository and is pushed separately
 /claude-code-router_proxy/
 
+# Source-only CLIProxyAPI challenger is a separate nested repository
+/cli-proxy-api_core/
+
 # Local scratch/temp/runtime data
 /.tmp/
 /.runtime/

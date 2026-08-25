@@ -29,6 +29,7 @@ AUDIT_IGNORED_DIRS = {
     "node_modules",
     "runtime",
     "claude-code-router_proxy",
+    "cli-proxy-api_core",
 }
 
 

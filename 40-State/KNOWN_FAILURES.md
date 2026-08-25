@@ -1,10 +1,31 @@
 ---
-last_verified: 2026-08-24
-verified_by: claude-code-router-integration
+last_verified: 2026-08-25
+verified_by: cli-proxy-api-phase-0-source-audit
 status: active
 ---
 
 # Known Failures
+
+## foundation.candidate-source-readme-triggered-secret-scan — fixed 2026-08-25
+
+- Symptom: the first post-intake cumulative run failed
+  `foundation.memory-routing` with a possible embedded secret in
+  `cli-proxy-api_core/examples/realtime-openai-go/README.md`.
+- Impact: Phase 0 could not be promoted despite the other nine gates passing.
+- Reproduction: keep the ignored CLIProxyAPI source checkout present and run
+  the smoke tier before adding its exact directory name to the memory auditor's
+  source-checkout exclusions.
+- Raw evidence: run `20260825T133535Z-7097f80b` retained only the relative README
+  path and gate result. The example value was not copied into tracked evidence.
+- Cause: the auditor excluded the older ignored CCR source checkout but did not
+  yet know the equivalent new CLIProxyAPI checkout, so it scanned third-party
+  example documentation as project memory.
+- Failed approach: none; the first cumulative run exposed the missing boundary.
+- Disposition: fixed. Only the exact independent checkout directory was added
+  to `AUDIT_IGNORED_DIRS`; tracked project Markdown remains scanned.
+- Regression gates: `foundation.memory-routing` and
+  `challenger.cli-proxy-source-pin`; all 10 gates passed in
+  `20260825T133632Z-91288459`.
 
 ## foundation.tracked-runtime-marker-invalidated-gate — fixed 2026-08-25
 

@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-25
-verified_by: router-candidate-research-and-git-baseline
+verified_by: cli-proxy-api-phase-0-source-audit
 status: active
 ---
 
@@ -133,10 +133,40 @@ status: active
   is adopted as authority. CLIProxyAPI core is the proposed bounded challenger;
   EasyCLIProxyAPI is a later UI candidate, while ZeroLimit and Quotio Desktop
   remain comparison candidates only.
+- CLIProxyAPI Phase 0 source intake is complete. The ignored independent
+  checkout is on local branch `claude` at tag `v7.2.141`, commit
+  `dc3c3b1ec3ed04bb0917e76451eaf98c6842674d` and tree
+  `320d4056873d7e8fd036c568db493acc0e565dc7`. Tracked
+  `router_challenger/SOURCE.json` and an offline verifier preserve the exact
+  review point; the source has not been built or run.
+- The candidate registers Anthropic `POST /v1/messages`, stores Codex
+  `plan_type`, uses different embedded Free/Plus model catalogs, and filters
+  candidate credentials by the requested model. Its current catalog includes
+  Terra/Luna for Free and Sol/Terra/Luna for Plus/Pro/Team.
+- Multi-account strategies are round-robin, weighted round-robin and
+  fill-first. Optional session affinity keeps a Claude session/model/provider
+  on one account and fails over when that auth becomes unavailable. Management
+  can disable individual auths, but a fixed-account user flow is not yet proved.
+- CLIProxyAPI is not safe to run unchanged for this project. Defaults bind all
+  interfaces and place JSON auth under `~/.cli-proxy-api`; `--local-model`
+  stops model-catalog updates but not the unconditional Antigravity version
+  request to Google Cloud Run. A source patch and absolute local paths are
+  required before an offline pilot.
+- Core quota surfaces are proxy-observed request/cooldown state, not proved
+  provider-reported 5-hour or weekly subscription limits. The core alone does
+  not meet the owner's quota-dashboard requirement.
+- The first post-intake run passed 9/10 gates and failed only because the memory
+  auditor scanned an example key string inside the ignored candidate README.
+  After adding the exact candidate checkout to the same exclusion set as the
+  existing CCR source checkout, all 10 enabled smoke gates passed in
+  `20260825T133632Z-91288459`.
 
 ## Blockers
 
-- No code blocker. Owner visual verification after reopening Codex App remains.
+- Phase 1 intentionally awaits owner approval. CLIProxyAPI requires Go 1.26.0,
+  and no `go` executable is currently available. Any toolchain must be staged
+  project-locally rather than installed into the system PATH.
+- Owner visual verification after reopening Codex App remains.
 
 ## Unknowns
 
@@ -149,9 +179,11 @@ status: active
 - API keys in ignored `setting.json` are plaintext by owner choice. Git protects
   against normal commit, but Windows-user access and backups remain an owner
   responsibility.
-- CLIProxyAPI/EasyCLIProxyAPI source paths, default data paths, auto-update
-  behavior, account selection semantics, quota provenance and Claude tool-loop
-  fidelity remain unproved locally. No candidate has been downloaded or run.
+- CLIProxyAPI real OAuth refresh, mixed Free/Plus routing, explicit account
+  selection, provider-reported quota and full Claude tool-loop fidelity remain
+  unproved. EasyCLIProxyAPI global-agent/update isolation remains unreviewed.
+- The source supports per-plan model catalogs, but actual Sol/Terra/Luna
+  entitlements remain provider-controlled and require a bounded owner-run test.
 - Filesystem/runtime independence does not remove provider dependencies:
   browser login and inference still use OpenAI/Google/other network services.
 
@@ -169,3 +201,5 @@ status: active
 - [Machine-readable gate events](../50-Evidence/events.jsonl)
 - [Current decision](../60-Decisions/ADR-2026-08-24-folder-local-codex-login-homes.md)
 - [Router candidate research](../50-Evidence/2026-08-25-router-candidate-research.md)
+- [CLIProxyAPI Phase 0 source audit](../50-Evidence/2026-08-25-cli-proxy-api-phase-0-source-audit.md)
+- [CLIProxyAPI challenger decision](../60-Decisions/ADR-2026-08-25-cli-proxy-api-challenger.md)

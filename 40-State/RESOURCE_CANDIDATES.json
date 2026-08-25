@@ -14,9 +14,9 @@
       "id": "external.cli-proxy-api",
       "name": "CLIProxyAPI",
       "source_url": "https://github.com/router-for-me/CLIProxyAPI",
-      "status": "proposed-bounded-pilot",
+      "status": "phase-0-source-audited",
       "fit": "cross-protocol loopback gateway with Codex/Claude OAuth, API-key providers and multi-account routing",
-      "constraints": "not adopted; must prove project-local paths, fixed-account selection, session affinity, protocol fidelity, update isolation and quota provenance before promotion"
+      "constraints": "not adopted; v7.2.141 is pinned locally; must patch unconditional Antigravity version refresh and prove project-local paths, fixed-account selection, session affinity, protocol fidelity, Windows ACL, startup time and quota provenance before promotion"
     },
     {
       "id": "external.easy-cli-proxy-api",

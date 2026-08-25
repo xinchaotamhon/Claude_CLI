@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "component": "CLIProxyAPI",
+  "status": "phase-0-source-audited-not-adopted",
+  "source_url": "https://github.com/router-for-me/CLIProxyAPI.git",
+  "source_tag": "v7.2.141",
+  "source_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
+  "source_tree": "320d4056873d7e8fd036c568db493acc0e565dc7",
+  "source_commit_date": "2026-08-24T16:35:18+08:00",
+  "local_checkout": "cli-proxy-api_core",
+  "local_branch": "claude",
+  "remote_name": "upstream",
+  "license": "MIT",
+  "required_go_version": "1.26.0",
+  "reviewed_at": "2026-08-25",
+  "anchor_sha256": {
+    "LICENSE": "93df585e5fa07ead6d47a3ab2dbdf0255782a39fe830022c0274a70394223cc8",
+    "go.mod": "99dc7f2ceb707e0138346e33beea00e828d4233ae25a02603048c32c2e67728b",
+    "AGENTS.md": "67f4952e3d0ac43dfba75085ec26a102c74bbf595ae3df9a7016a22f60ee2569",
+    "config.example.yaml": "29f19c2f08a3042270160927ffd652be0e17635f710eb38a7862f932f7e22660"
+  },
+  "policy": {
+    "checkout_is_ignored_nested_repository": true,
+    "runtime_is_active": false,
+    "oauth_was_run": false,
+    "provider_request_was_run": false,
+    "normal_launcher_changed": false
+  }
+}

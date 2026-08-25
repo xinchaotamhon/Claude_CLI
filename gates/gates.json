@@ -212,6 +212,23 @@
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_cli_proxy_source.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Pinned CLIProxyAPI Phase 0 metadata and optional ignored source checkout are independently reproducible",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "challenger.cli-proxy-source-pin",
+      "introduced_by": "cli-proxy-api-phase-0-source-audit",
+      "invariant": "The challenger remains an unexecuted ignored nested repository at the exact reviewed tag, commit and tree, with no credentials, provider calls or normal-launcher adoption",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30
     }
   ],
   "project": "Claude CLI Local",
