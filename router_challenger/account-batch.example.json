@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "manifest_type": "project_local_account_onboarding",
+  "automatic_fallback_default": false,
+  "slots": [
+    {
+      "id": "codex_free_1",
+      "provider": "openai_codex",
+      "expected_plan": "codex_free",
+      "label": "codex_free_1",
+      "login_order": 1,
+      "allowed_models": ["terra", "luna"]
+    },
+    {
+      "id": "codex_free_2",
+      "provider": "openai_codex",
+      "expected_plan": "codex_free",
+      "label": "codex_free_2",
+      "login_order": 2,
+      "allowed_models": ["terra", "luna"]
+    },
+    {
+      "id": "codex_free_3",
+      "provider": "openai_codex",
+      "expected_plan": "codex_free",
+      "label": "codex_free_3",
+      "login_order": 3,
+      "allowed_models": ["terra", "luna"]
+    },
+    {
+      "id": "codex_plus_1",
+      "provider": "openai_codex",
+      "expected_plan": "codex_plus",
+      "label": "codex_plus_1",
+      "login_order": 4,
+      "allowed_models": ["sol", "terra", "luna"]
+    },
+    {
+      "id": "google_pro_1",
+      "provider": "google_ai",
+      "expected_plan": "google_ai_pro",
+      "label": "Google AI Pro 1",
+      "login_order": 5,
+      "usage_groups": ["gemini_models", "claude_gpt_models"]
+    },
+    {
+      "id": "google_pro_2",
+      "provider": "google_ai",
+      "expected_plan": "google_ai_pro",
+      "label": "Google AI Pro 2",
+      "login_order": 6,
+      "usage_groups": ["gemini_models", "claude_gpt_models"]
+    },
+    {
+      "id": "google_pro_3",
+      "provider": "google_ai",
+      "expected_plan": "google_ai_pro",
+      "label": "Google AI Pro 3",
+      "login_order": 7,
+      "usage_groups": ["gemini_models", "claude_gpt_models"]
+    }
+  ],
+  "extensions": {
+    "purpose": "Secret-free onboarding contract only; it is not an account, token, session, quota, fallback, or authentication store."
+  }
+}

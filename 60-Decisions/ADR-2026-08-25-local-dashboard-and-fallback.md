@@ -1,7 +1,8 @@
 # ADR — Local dashboard owns accounts, quota and bounded fallback
 
 - Date: 2026-08-25
-- Status: architecture accepted; live implementation deferred to Phase 2
+- Status: architecture accepted; Phase 2 onboarding wrappers ready, live
+  accounts and dashboard promotion pending owner-interactive proof
 - Owner intent: manage provider accounts and quota visibly while keeping one
   Claude CLI harness and avoiding session interruption
 
@@ -70,8 +71,10 @@ over the project's usage/fallback contracts unless that blocker is resolved.
   no OAuth, no real provider traffic and no dashboard binary.
 - Phase 2A: source-only audit completed for EasyCLIProxyAPI and blocked it; now
   specify/build a minimal original project-local dashboard control plane.
-- Phase 2B: one owner-approved test account, explicit selection only, automatic
-  fallback disabled.
+- Phase 2B (current): seven-slot secret-free manifest, plan-aware Codex login,
+  three isolated Google login slots and loopback-only callback are implemented.
+  One owner-approved test account must be proved with explicit selection only;
+  automatic fallback remains disabled.
 - Phase 2C: two accounts, manual switch and quota display provenance.
 - Phase 2D: bounded automatic fallback after failure injection and duplicate
   output/tool-side-effect tests.
@@ -83,3 +86,7 @@ over the project's usage/fallback contracts unless that blocker is resolved.
 Stop/remove only the ignored dashboard/challenger runtime and account state.
 Continue through CCR. Never delete or import CCR/global Codex App auth as part
 of dashboard rollback.
+
+Codex App account switching, including switching because its five-hour quota
+is exhausted, is explicitly outside this architecture. This dashboard may only
+manage accounts routed through the project-local Claude CLI boundary.

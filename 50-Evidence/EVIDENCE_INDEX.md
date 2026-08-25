@@ -12,6 +12,10 @@
   pinned local patch/toolchain/binaries, current-user ACL, loopback-only
   non-stream/SSE/tool-loop checks, sub-second startup and split Google Pro
   weekly quota contract without OAuth or provider quota use.
+- [2026-08-25 Phase 2 account onboarding and warm start](2026-08-25-phase-2-account-onboarding-and-warm-start.md):
+  seven project-local account slots, Free/Plus model boundaries, loopback-only
+  Google OAuth wrapper, exact second challenger patch and verified RUN warmup;
+  no global Codex App switching or real OAuth/provider request.
 - [2026-08-25 router candidate research](2026-08-25-router-candidate-research.md):
   hash-recorded four owner-supplied reports, separated unsupported claims from
   primary evidence, and defined a no-credential CLIProxyAPI core pilot with CCR

@@ -76,8 +76,9 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 - `setting.json`: ignored local source of truth for API URL/key/model routes;
   it may contain plaintext secrets and must never be read into project memory.
 - `setting.example.json`: tracked secret-free schema/example.
-- `SIGN_ACCOUNT.bat`: opens a browser login into a new isolated project-local
-  Codex account home and imports it into CCR. It never opens CCR's agent UI.
+- `SIGN_ACCOUNT.bat`: opens the account menu. Codex Free/Plus login uses a new
+  isolated CCR account home; Google AI Pro login uses a separate ignored
+  challenger slot. It never opens CCR's agent UI or changes Codex App auth.
 - `tools/router_project_menu.ps1`: validates/synchronizes `setting.json` through
   CCR RPC, stores the generated client key with DPAPI and launches only Claude.
 - `tools/install_router_runtime.ps1`: explicit reconstruction of the pinned
@@ -103,19 +104,28 @@ preserves account/providers managed in the CCR UI and automatically protects
 the generated CCR client key with Windows DPAPI. The RUN menu never asks for a
 new API key, URL or profile.
 
-For a ChatGPT/Codex account, double-click `SIGN_ACCOUNT.bat` and choose `[1]`.
-Enter a local label, then complete OpenAI password/2FA in the official browser
+For a ChatGPT/Codex account, double-click `SIGN_ACCOUNT.bat`, choose `[1]` for
+Free or `[2]` for Plus, then complete password/2FA in the official browser
 page. The wrapper runs only the pinned local login helper with a fresh
 `CODEX_HOME` under `provider_router/.ccr-local/codex-accounts`, imports that
-account into CCR, creates its RUN route and removes temporary CCR staging. Run
-`[1]` again to sign in another account; no global Codex/App login is read or
-changed. Configure Gemini/DeepSeek/OpenRouter/custom API keys and endpoints only
-in ignored `setting.json`.
+account into CCR, creates its RUN routes and removes temporary CCR staging.
+Free candidates are Terra/Luna; Plus candidates are Sol/Terra/Luna, but actual
+entitlement is retained only after the bounded provider check. No global
+Codex/App login is read or changed.
 
-Before the profile's DPAPI client key is read, the launcher verifies that the
-router state belongs to the exact project-local Node/CCR process and that its
-loopback health endpoint succeeds. An unrelated process on the same port is
-rejected.
+Choose `[G]` for one of three Google AI Pro slots. Each slot stores its ignored
+OAuth result under `.runtime/challenger/accounts/google`, invokes only the
+hash-pinned local challenger binary, and binds its temporary OAuth callback to
+`127.0.0.1` on a fixed per-slot port. The wrapper never asks for or parses the
+password, 2FA or credential JSON. Configure DeepSeek/OpenRouter/custom API keys
+and endpoints only in ignored `setting.json`.
+
+After the route list appears, the launcher may warm the router in a hidden
+project-local process. Before the profile's DPAPI client key is read, route
+selection still verifies that router state belongs to the exact local Node/CCR
+process and that its loopback health endpoint succeeds. An unrelated process
+on the same port is rejected; warmup failure falls back to synchronous verified
+startup.
 
 Normal control flow:
 

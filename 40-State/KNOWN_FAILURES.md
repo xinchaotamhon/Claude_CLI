@@ -1,10 +1,48 @@
 ---
 last_verified: 2026-08-25
-verified_by: cli-proxy-api-phase-1-offline-pilot
+verified_by: phase-2-account-onboarding-and-warm-start
 status: active
 ---
 
 # Known Failures
+
+## phase2.wrapper-verifier-and-sandbox-dpapi — fixed/contained 2026-08-25
+
+- Symptom: cumulative run `20260825T163959Z-1811586c` passed 15/17 gates.
+  `claude.router-local-layout` rejected `& $GoogleMenu -Root $RootPath`, and the
+  menu self-test reported `Cryptography_DpApi_ProfileMayNotBeLoaded`.
+- Causes: the process allowlist had not yet named the new bounded local wrapper;
+  separately, the filesystem sandbox did not load the owner DPAPI profile.
+- Disposition: the verifier now permits only that exact wrapper command, while
+  the dedicated Google flow verifier proves its pinned path/hash/loopback
+  boundary. No wildcard process allowance was added. The complete 17-gate run
+  passed under the owner Windows profile in `20260825T164115Z-8fc5f438`.
+- Regression gates: `claude.router-local-layout`,
+  `claude.router-menu-selftest` and `challenger.google-account-flow`.
+
+## challenger.phase2-build-hash-rollover — fixed 2026-08-25
+
+- Symptom: the first reproducible rebuild after adding the loopback callback
+  patch rejected the output because `BUILD.json` still held the previous Phase
+  1 binary hash.
+- Cause: expected fail-closed identity rollover after a reviewed source change.
+- Disposition: the newly built binary was inspected, its exact source
+  commit/tree/version recorded, then the new hash was promoted and a second
+  reproducible build passed. No unverified binary was used for OAuth.
+- Regression gate: `challenger.cli-proxy-source-pin` plus the explicit build
+  script's binary-hash check.
+
+## phase2.account-slot-count-misread — fixed before promotion 2026-08-25
+
+- Symptom: the first delegated manifest draft modeled six slots because it
+  interpreted “two Codex Free accounts” as the total rather than two accounts
+  in addition to the already imported `codex_free_1`.
+- Cause: ambiguous conversational shorthand was not reconciled with verified
+  current state.
+- Disposition: corrected to seven exact slots before gate promotion: three
+  Free, one Plus and three Google Pro. The validator and 12 tests now reject any
+  other count/order.
+- Regression gate: `challenger.account-onboarding-contract`.
 
 ## challenger.concurrent-baseline-invalid — contained 2026-08-25
 

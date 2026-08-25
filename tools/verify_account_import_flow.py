@@ -69,8 +69,14 @@ def main() -> int:
         "Automatically selected the only available model",
         "Enter a listed number or the exact model ID",
         'Write-Host "  [R] Refresh/test model routes for an imported Codex account"',
-        '$CodexChatGptCandidateModels = @("gpt-5.6-terra", "gpt-5.6-luna")',
-        '$UnsupportedCodexChatGptModels = @("gpt-5-codex", "gpt-5.6-sol")',
+        '$CodexChatGptModelsByPlan = @{',
+        'codex_free = @("gpt-5.6-terra", "gpt-5.6-luna")',
+        'codex_plus = @("gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna")',
+        '$UnsupportedCodexChatGptModels = @("gpt-5-codex")',
+        'local_expected_plan = $ExpectedPlan',
+        'SignInAndImportCodexAccount -ExpectedPlan "codex_free"',
+        'SignInAndImportCodexAccount -ExpectedPlan "codex_plus"',
+        'function Invoke-GoogleAccountMenu',
         "Each verified model will appear as a separate choice in RUN_CLAUDE.bat.",
         "A Claude/router session is running",
         "Remove-Item -LiteralPath $LocalAuthPath -Force",
@@ -148,7 +154,7 @@ def main() -> int:
     print("PASS: provenance hash, Git exclusion and project-scoped repair installer are present")
     print("PASS: imported providers/plugins use unique identities and appear in RUN_CLAUDE")
     print("PASS: generated route IDs with slug-safe punctuation survive account-index reload")
-    print("PASS: rejected legacy fallback models are excluded and live account checks create one RUN route per supported model")
+    print("PASS: Free and Plus declared plans expose bounded candidate sets while rejected legacy fallback models stay excluded")
     print("PASS: imported account models can be refreshed from SIGN_ACCOUNT without another browser login")
     print("PASS: an unfinished folder-local login can resume without repeating browser/2FA")
     print("network: not used; real auth files and setting.json were not read")

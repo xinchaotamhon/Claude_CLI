@@ -1,0 +1,45 @@
+# Project-local OAuth command configuration. The account helper replaces only
+# the placeholders below in an ignored per-account copy.
+host: "127.0.0.1"
+port: 18317
+
+tls:
+  enable: false
+  cert: ""
+  key: ""
+
+remote-management:
+  allow-remote: false
+  secret-key: "__MANAGEMENT_KEY__"
+  disable-control-panel: true
+  disable-auto-update-panel: true
+
+auth-dir: "__AUTH_DIR__"
+api-keys:
+  - "__CLIENT_KEY__"
+
+debug: false
+pprof:
+  enable: false
+  addr: "127.0.0.1:18316"
+
+plugins:
+  enabled: false
+  dir: "plugins"
+  configs: {}
+
+commercial-mode: true
+logging-to-file: false
+logs-max-total-size-mb: 0
+error-logs-max-files: 0
+usage-statistics-enabled: false
+proxy-url: ""
+request-retry: 0
+max-retry-credentials: 1
+max-retry-interval: 0
+save-cooldown-status: false
+disable-claude-cloak-mode: true
+
+routing:
+  strategy: "fill-first"
+  session-affinity: false

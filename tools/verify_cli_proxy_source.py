@@ -59,8 +59,8 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         fail("SOURCE schema_version must be 1")
     if metadata.get("component") != "CLIProxyAPI":
         fail("unexpected source component")
-    if metadata.get("status") != "phase-1-isolation-patched-offline-built":
-        fail("source status must identify the bounded Phase 1 build")
+    if metadata.get("status") != "phase-2-oauth-callback-isolated-offline-built":
+        fail("source status must identify the callback-isolated Phase 2 build")
     if metadata.get("source_url") != EXPECTED_URL:
         fail("unexpected source URL")
     if not HEX40.fullmatch(str(metadata.get("source_commit", ""))):
@@ -71,8 +71,9 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         fail("invalid patched commit")
     if not HEX40.fullmatch(str(metadata.get("patched_tree", ""))):
         fail("invalid patched tree")
-    if not HEX64.fullmatch(str(metadata.get("patch_sha256", ""))):
-        fail("invalid patch hash")
+    patches = metadata.get("patches")
+    if not isinstance(patches, list) or len(patches) != 2:
+        fail("exactly two reviewed challenger patches are required")
     if metadata.get("local_branch") != "claude":
         fail("candidate branch must be claude")
     if metadata.get("remote_name") != "upstream":
@@ -96,6 +97,7 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         "normal_launcher_changed": False,
         "local_model_suppresses_remote_catalog_and_antigravity_updates": True,
         "offline_fixture_only": True,
+        "oauth_callback_loopback_only": True,
     }
     if policy != expected_policy:
         fail("Phase 0 source policy changed unexpectedly")
@@ -108,9 +110,16 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
             fail("invalid source anchor hash")
 
     checkout = ensure_child(root, str(metadata.get("local_checkout", "")))
-    patch_path = ensure_child(root, str(metadata.get("patch_file", "")))
-    if not patch_path.is_file() or sha256(patch_path) != metadata["patch_sha256"]:
-        fail("tracked Phase 1 patch is missing or mismatched")
+    for index, patch in enumerate(patches):
+        if not isinstance(patch, dict):
+            fail(f"patch {index} is not an object")
+        if not HEX40.fullmatch(str(patch.get("commit", ""))):
+            fail(f"patch {index} has an invalid commit")
+        if not HEX64.fullmatch(str(patch.get("sha256", ""))):
+            fail(f"patch {index} has an invalid hash")
+        patch_path = ensure_child(root, str(patch.get("file", "")))
+        if not patch_path.is_file() or sha256(patch_path) != patch["sha256"]:
+            fail(f"tracked challenger patch {index} is missing or mismatched")
     ignored = subprocess.run(
         ["git", "-C", str(root), "check-ignore", "-q", "--", checkout.name],
         check=False,
@@ -133,8 +142,18 @@ def verify_checkout(metadata: dict[str, object], checkout: Path) -> None:
         fail("candidate source checkout is dirty")
     if run_git(checkout, "rev-parse", "HEAD^{tree}") != metadata["patched_tree"]:
         fail("candidate tree differs from the pinned patched tree")
-    if run_git(checkout, "rev-parse", "HEAD^") != metadata["source_commit"]:
-        fail("candidate patch is not based directly on the audited upstream commit")
+    if run_git(checkout, "rev-parse", "HEAD") != metadata["patched_commit"]:
+        fail("candidate HEAD differs from the pinned patched commit")
+    patches = metadata["patches"]
+    assert isinstance(patches, list)
+    if run_git(checkout, "rev-list", "--count", f"{metadata['source_commit']}..HEAD") != str(len(patches)):
+        fail("candidate does not contain exactly the reviewed patch series")
+    observed_commits = run_git(checkout, "rev-list", "--reverse", f"{metadata['source_commit']}..HEAD").splitlines()
+    expected_commits = [str(patch["commit"]) for patch in patches]
+    if observed_commits != expected_commits:
+        fail("candidate patch commit order differs from SOURCE.json")
+    if run_git(checkout, "rev-list", "--merges", f"{metadata['source_commit']}..HEAD"):
+        fail("candidate patch series must not contain merge commits")
     if run_git(checkout, "branch", "--show-current") != metadata["local_branch"]:
         fail("candidate is not on the local claude branch")
     if metadata["source_tag"] not in run_git(

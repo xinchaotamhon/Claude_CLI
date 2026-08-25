@@ -8,7 +8,8 @@ $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $sourceMetadataPath = Join-Path $projectRoot 'router_challenger\SOURCE.json'
 $sourceMetadata = Get-Content -Raw -LiteralPath $sourceMetadataPath | ConvertFrom-Json
 $sourceRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot ([string]$sourceMetadata.local_checkout)))
-$patchPath = [System.IO.Path]::GetFullPath((Join-Path $projectRoot ([string]$sourceMetadata.patch_file)))
+$patches = @($sourceMetadata.patches)
+if ($patches.Count -eq 0) { throw 'SOURCE.json has no reviewed challenger patches.' }
 $toolchainArchive = Join-Path $projectRoot '.tmp\go1.26.7.windows-amd64.zip'
 $goRoot = Join-Path $projectRoot 'vendor\go'
 $goExe = Join-Path $goRoot 'bin\go.exe'
@@ -26,6 +27,11 @@ function Assert-ProjectChild {
 Assert-ProjectChild -Path $sourceRoot
 Assert-ProjectChild -Path $toolchainArchive
 Assert-ProjectChild -Path $goRoot
+foreach ($patch in $patches) {
+    $patchPath = [System.IO.Path]::GetFullPath((Join-Path $projectRoot ([string]$patch.file)))
+    Assert-ProjectChild -Path $patchPath
+    if (-not (Test-Path -LiteralPath $patchPath -PathType Leaf)) { throw "Reviewed challenger patch is missing: $patchPath" }
+}
 
 if (-not (Test-Path -LiteralPath $goExe -PathType Leaf)) {
     if (Test-Path -LiteralPath $goRoot) {
@@ -52,8 +58,11 @@ if (-not (Test-Path -LiteralPath $sourceRoot -PathType Container)) {
     if ($LASTEXITCODE -ne 0) { throw 'Could not checkout the audited upstream commit.' }
     & git.exe -C $sourceRoot switch -c ([string]$sourceMetadata.local_branch)
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the local challenger branch.' }
-    & git.exe -C $sourceRoot am $patchPath
-    if ($LASTEXITCODE -ne 0) { throw 'Could not apply the tracked isolation patch.' }
+    foreach ($patch in $patches) {
+        $patchPath = [System.IO.Path]::GetFullPath((Join-Path $projectRoot ([string]$patch.file)))
+        & git.exe -C $sourceRoot am $patchPath
+        if ($LASTEXITCODE -ne 0) { throw "Could not apply reviewed challenger patch: $($patch.file)" }
+    }
 }
 
 $tree = (& git.exe -C $sourceRoot rev-parse 'HEAD^{tree}').Trim()

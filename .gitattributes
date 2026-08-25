@@ -1,1 +1,1 @@
-router_challenger/patches/*.patch text eol=lf
+router_challenger/patches/*.patch text eol=lf whitespace=-blank-at-eof,-space-before-tab,-trailing-space

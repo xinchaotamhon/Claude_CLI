@@ -11,11 +11,11 @@
   "source": {
     "upstream_tag": "v7.2.141",
     "upstream_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
-    "patched_commit": "d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4"
+    "patched_commit": "3a3df12d068ac3a3bff2712db168ed1a7d31190a"
   },
   "binary": {
     "path": ".runtime/challenger/bin/cli-proxy-api.exe",
-    "sha256": "830e9ff8f4526ec5d7ca9f620dc26881dd854023edea1b33452fcc3de17ad17e",
+    "sha256": "40f05398a6abac44698c2ecfa1d748869f37b2950ee2b98a1a58c97b4d4105ea",
     "size_bytes": 65937920,
     "tracked": false
   },

@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-25
-verified_by: cli-proxy-api-phase-1-offline-pilot
+verified_by: phase-2-account-onboarding-and-warm-start
 status: active
 ---
 
@@ -196,14 +196,59 @@ status: active
   challenger source, split usage contract, account-aware fallback, offline
   protocol pilot and blocked dashboard-source boundary. The pilot left no PID
   or session directory and made no provider/OAuth request.
+- Owner authorized Phase 2 account onboarding but clarified that switching the
+  Codex App account because its five-hour quota is exhausted is outside this
+  project. No global Codex App account-switching surface was added.
+- The account contract now has exactly seven secret-free slots: the existing
+  `codex_free_1`, two additional Free accounts, one Plus account and three
+  Google AI Pro accounts. Codex Free candidates are Terra/Luna; Plus candidates
+  are Sol/Terra/Luna. Each Google account preserves separate `gemini_models`
+  and `claude_gpt_models` usage groups. Automatic fallback remains off by
+  default.
+- `SIGN_ACCOUNT.bat` now distinguishes Codex Free and Plus before browser
+  login. The declared plan selects a bounded candidate set and is stored only
+  as non-secret local metadata; actual entitlement still requires the existing
+  minimal route check. Existing accounts without this metadata remain Free for
+  backward compatibility.
+- The challenger nested branch now has two bounded commits above audited
+  upstream: updater isolation at `d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4`
+  and IPv4-loopback-only Antigravity OAuth callback binding at
+  `3a3df12d068ac3a3bff2712db168ed1a7d31190a`. Patched tree is
+  `37209cb0f5ba9a60e45a12742a8208fa7f49928d`; both patches are tracked and
+  hash-verified by the reconstruction path.
+- Rebuilt challenger version `7.2.141-local.2` has SHA-256
+  `40f05398a6abac44698c2ecfa1d748869f37b2950ee2b98a1a58c97b4d4105ea`.
+  `go test ./sdk/auth ./cmd/server` passed. No real OAuth/provider request was
+  made during build or focused verification.
+- The Google account menu has three fixed ignored slots, three fixed loopback
+  callback ports and current-user-only ACL checks. It verifies source policy
+  and binary hash before invoking the official provider browser flow, does not
+  parse auth JSON, and refuses to overwrite an occupied/incomplete slot.
+- RUN now renders routes first and starts a credential-free router warmup in a
+  hidden project-local PowerShell process. The already-running verified fast
+  path measured 987 ms. Selection remains fail-closed: exact process,
+  loopback and health verification still precede any DPAPI client-key read.
+- Focused offline verification passed: 12 account-contract tests, 7 warm-start
+  tests, Codex import-flow verification, Google account-flow verification and
+  exact two-patch challenger-source verification. JSON metadata also parsed.
+- The first 17-gate cumulative run `20260825T163959Z-1811586c` correctly
+  rejected an unlisted project-local wrapper invocation and encountered the
+  known sandbox-only DPAPI profile limitation. The verifier was narrowed to the
+  exact Google wrapper command; no process wildcard was added. Re-running all
+  17 gates under the owner Windows profile passed in
+  `20260825T164115Z-8fc5f438`; after updating state/evidence, all 17 passed
+  again in final cumulative run `20260825T164233Z-42021e6c`.
 
 ## Blockers
 
-- Phase 2 live-account work is not approved or proved. The challenger must not
-  open OAuth, read existing CCR accounts, call a real provider or replace the
-  normal launcher until explicit account selection, credential ACL/lifecycle
-  and provider-specific quota provenance have focused gates.
-- Owner visual verification after reopening Codex App remains.
+- The Phase 2 wrappers and offline gates are ready, but real Google OAuth has
+  not been completed. The owner must choose each slot and complete the official
+  browser password/2FA flow. This project must never request those secrets.
+- Google accounts are not yet promoted as Claude routes. After interactive
+  login, inspect only non-secret slot status and run one bounded account/model
+  route proof before wiring selection or fallback into normal Claude use.
+- Owner reported that Codex App operates normally again. Its separate account
+  rotation/quota workflow remains deliberately outside this project.
 
 ## Unknowns
 
@@ -238,5 +283,6 @@ status: active
 - [Machine-readable gate events](../50-Evidence/events.jsonl)
 - [Current decision](../60-Decisions/ADR-2026-08-24-folder-local-codex-login-homes.md)
 - [Router candidate research](../50-Evidence/2026-08-25-router-candidate-research.md)
+- [Phase 2 account onboarding and warm start](../50-Evidence/2026-08-25-phase-2-account-onboarding-and-warm-start.md)
 - [CLIProxyAPI Phase 0 source audit](../50-Evidence/2026-08-25-cli-proxy-api-phase-0-source-audit.md)
 - [CLIProxyAPI challenger decision](../60-Decisions/ADR-2026-08-25-cli-proxy-api-challenger.md)

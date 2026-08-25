@@ -1,15 +1,25 @@
 {
   "schema_version": 1,
   "component": "CLIProxyAPI",
-  "status": "phase-1-isolation-patched-offline-built",
+  "status": "phase-2-oauth-callback-isolated-offline-built",
   "source_url": "https://github.com/router-for-me/CLIProxyAPI.git",
   "source_tag": "v7.2.141",
   "source_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
   "source_tree": "320d4056873d7e8fd036c568db493acc0e565dc7",
-  "patched_commit": "d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4",
-  "patched_tree": "4e8c65286d56f3e03b0a39696a931d75db126fd9",
-  "patch_file": "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
-  "patch_sha256": "e45a879854608fdac862a418bdaa3b06d28252b7ca40aed5c2f58aef2601a209",
+  "patched_commit": "3a3df12d068ac3a3bff2712db168ed1a7d31190a",
+  "patched_tree": "37209cb0f5ba9a60e45a12742a8208fa7f49928d",
+  "patches": [
+    {
+      "file": "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
+      "commit": "d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4",
+      "sha256": "e45a879854608fdac862a418bdaa3b06d28252b7ca40aed5c2f58aef2601a209"
+    },
+    {
+      "file": "router_challenger/patches/0001-fix-bind-antigravity-oauth-callback-to-loopback.patch",
+      "commit": "3a3df12d068ac3a3bff2712db168ed1a7d31190a",
+      "sha256": "de4d6d83041cd36ea4162a248a4e5256c2a7473999b90668925ea13a46733bde"
+    }
+  ],
   "source_commit_date": "2026-08-24T16:35:18+08:00",
   "local_checkout": "cli-proxy-api_core",
   "local_branch": "claude",
@@ -32,6 +42,7 @@
     "provider_request_was_run": false,
     "normal_launcher_changed": false,
     "local_model_suppresses_remote_catalog_and_antigravity_updates": true,
-    "offline_fixture_only": true
+    "offline_fixture_only": true,
+    "oauth_callback_loopback_only": true
   }
 }

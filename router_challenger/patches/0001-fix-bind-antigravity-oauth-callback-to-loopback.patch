@@ -1,0 +1,54 @@
+From 3a3df12d068ac3a3bff2712db168ed1a7d31190a Mon Sep 17 00:00:00 2001
+From: hiSoft <xinchaotamhon@gmail.com>
+Date: Tue, 25 Aug 2026 23:21:32 +0700
+Subject: [PATCH] fix: bind antigravity oauth callback to loopback
+
+---
+ sdk/auth/antigravity.go      |  6 +++++-
+ sdk/auth/antigravity_test.go | 10 ++++++++++
+ 2 files changed, 15 insertions(+), 1 deletion(-)
+ create mode 100644 sdk/auth/antigravity_test.go
+
+diff --git a/sdk/auth/antigravity.go b/sdk/auth/antigravity.go
+index ee41cbdb..8de7401e 100644
+--- a/sdk/auth/antigravity.go
++++ b/sdk/auth/antigravity.go
+@@ -232,7 +232,7 @@ func startAntigravityCallbackServer(port int) (*http.Server, int, <-chan callbac
+ 	if port <= 0 {
+ 		port = antigravity.CallbackPort
+ 	}
+-	addr := fmt.Sprintf(":%d", port)
++	addr := antigravityCallbackAddress(port)
+ 	listener, err := net.Listen("tcp", addr)
+ 	if err != nil {
+ 		return nil, 0, nil, err
+@@ -266,6 +266,10 @@ func startAntigravityCallbackServer(port int) (*http.Server, int, <-chan callbac
+ 	return srv, port, resultCh, nil
+ }
+ 
++func antigravityCallbackAddress(port int) string {
++	return fmt.Sprintf("127.0.0.1:%d", port)
++}
++
+ // FetchAntigravityProjectID exposes project discovery for external callers.
+ func FetchAntigravityProjectID(ctx context.Context, accessToken string, httpClient *http.Client) (string, error) {
+ 	cfg := &config.Config{}
+diff --git a/sdk/auth/antigravity_test.go b/sdk/auth/antigravity_test.go
+new file mode 100644
+index 00000000..eaf82a83
+--- /dev/null
++++ b/sdk/auth/antigravity_test.go
+@@ -0,0 +1,10 @@
++package auth
++
++import "testing"
++
++func TestAntigravityCallbackAddressIsLoopbackOnly(t *testing.T) {
++	got := antigravityCallbackAddress(51121)
++	if got != "127.0.0.1:51121" {
++		t.Fatalf("callback address = %q, want loopback-only address", got)
++	}
++}
+-- 
+2.54.0.windows.1
+

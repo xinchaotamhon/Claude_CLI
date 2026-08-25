@@ -63,8 +63,9 @@ Read `START_HERE.md` and its complete local read order. Do not read ignored
 - Codex-Free-route cumulative result: all 9 enabled gates passed in
   `20260825T052438Z-21e21f26`, including owner-profile DPAPI and the separate
   Terra/Luna account-route regression.
-- CLIProxyAPI Phase 1 is an offline challenger only. Audited upstream
-  `v7.2.141` has one tracked local updater-isolation patch; official Go 1.26.7,
+- CLIProxyAPI Phase 1 remains the offline protocol baseline. Audited upstream
+  `v7.2.141` now has two tracked local patches: updater isolation and
+  IPv4-loopback-only Antigravity OAuth callback. Official Go 1.26.7,
   source checkout, module cache and binaries all remain inside ignored project
   paths. `RUN_CHALLENGER_PILOT.bat` performs only fixture self-test/status/stop;
   `RUN_CLAUDE.bat` and CCR remain normal operation.
@@ -82,15 +83,27 @@ Read `START_HERE.md` and its complete local read order. Do not read ignored
 - Final Phase 1 cumulative result: all 14 enabled smoke gates passed in
   `20260825T151944Z-d9df7999`. EasyCLIProxyAPI source remains ignored/unrun and
   blocked; the offline challenger leaves no running process.
+- Phase 2 wrappers define exactly three Codex Free slots, one Codex Plus slot
+  and three Google AI Pro slots. Free probes Terra/Luna; Plus probes
+  Sol/Terra/Luna; each Google account has separate Gemini and Claude/GPT usage
+  groups. Automatic fallback is disabled. No live Google OAuth has yet been
+  completed or promoted into normal RUN.
+- The Google wrapper uses fixed project-local ignored account directories,
+  current-user-only ACL, fixed loopback ports and the hash-pinned
+  `7.2.141-local.2` binary. It never parses auth JSON.
+- RUN renders routes before a credential-free background warmup. Exact local
+  process/loopback/health verification still occurs before DPAPI access.
+- Owner clarified that changing Codex App accounts because its five-hour quota
+  is exhausted is outside this repository. Do not add global App switching.
 
 ## Allowed Next Work
 
-1. Keep the challenger offline until the owner explicitly approves a Phase 2
-   real-account test. Do not share/import CCR or global Codex account files.
-2. Ask the owner to restart Codex App and confirm its normal label and Usage.
-3. Add a second account and verify explicit account switching after quota
-   exhaustion; do not claim automatic fallback unless separately implemented
-   and proved.
+1. Continue only from an owner-selected `SIGN_ACCOUNT.bat` slot. Password/2FA
+   stays in the official browser. Do not share/import CCR or global Codex files.
+2. After one Google slot completes, inspect non-secret status only and prove
+   one explicit account/model route before adding it to normal RUN.
+3. Add remaining accounts one at a time and verify explicit account switching;
+   do not claim automatic fallback unless separately implemented and proved.
 4. Use `[R]` only when account model entitlement changes; it sends bounded real
    connectivity requests and does not repeat OAuth login.
 5. Improve UX while preserving per-account homes, local binary pin/hash,
@@ -101,6 +114,8 @@ Read `START_HERE.md` and its complete local read order. Do not read ignored
 
 - Never reintroduce `C:\Users\...\.codex\auth.json`, user-profile discovery,
   a global `codex` command or Codex App shared auth.
+- Never implement Codex App account rotation or its five-hour quota handling in
+  this Claude CLI project.
 - Never expose CCR Connect agent UI or allow `System default` / `CLI & APP`;
   CCR is a provider gateway only in this project.
 - Never use Codex helper for `exec` or agent work; only exact local `login` is
@@ -119,6 +134,10 @@ Read `START_HERE.md` and its complete local read order. Do not read ignored
 - `tools/verify_account_import_flow.py .` passes without reading auth.
 - `tools/verify_external_app_isolation.py .` passes without reading external
   config/auth.
+- `tests/test_account_batch.py` and
+  `tests/test_router_startup_optimization.py` pass.
+- `tools/verify_challenger_account_flow.py .` passes without reading auth or
+  opening OAuth.
 - Menu `-SelfTest` passes under the owner Windows DPAPI profile.
 - All enabled smoke gates pass on the final artifact.
 - `RUN_CHALLENGER_PILOT.bat` self-test passes without provider/OAuth traffic and

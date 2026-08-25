@@ -1,23 +1,25 @@
 ---
 last_verified: 2026-08-25
-verified_by: cli-proxy-api-phase-1-offline-pilot
+verified_by: phase-2-account-onboarding-and-warm-start
 status: active
 ---
 
 # Next Actions
 
-1. **Keep Phase 1 offline and CCR active.** Use `RUN_CHALLENGER_PILOT.bat` only
-   for the deterministic fixture/status/stop surface. It does not sign in or
-   run real Claude work. Keep `RUN_CLAUDE.bat` unchanged.
-2. **Build an original minimal dashboard, not the blocked candidate.**
-   EasyCLIProxyAPI `v0.2.61` is source-pinned for feature comparison only; its
-   tagged tree has no license grant and contains unsafe integration surfaces.
-   Do not copy/patch/build it. Implement only project-owned account, quota,
-   explicit route and fallback controls against CLIProxyAPI management APIs.
-3. **Design Phase 2 before any real OAuth.** Require one isolated auth directory
-   per account, explicit selected-account routing, no round-robin/failover,
-   verified token-file ACL, bounded callback ports and a clean account removal
-   path. Obtain owner approval before opening a browser or provider endpoint.
+1. **Owner completes the remaining interactive logins.** Double-click
+   `SIGN_ACCOUNT.bat`: `[1]` adds each Codex Free account, `[2]` adds Codex Plus,
+   and `[G]` opens the three Google AI Pro slots. Enter passwords and 2FA only
+   on the official browser pages. Codex App/global account switching is outside
+   this project.
+2. **Verify every completed slot before route promotion.** List project-local
+   accounts from `SIGN_ACCOUNT.bat`; inspect only labels, declared plan, model
+   route results and credential-file counts. Never read or print `auth.json`.
+   Prove one bounded Claude-compatible request per candidate before retaining
+   it; Free must not acquire Sol merely from an owner-entered label.
+3. **Promote Google accounts incrementally.** Start with one Google slot and
+   explicit account/model selection. Keep automatic fallback disabled. Confirm
+   callback closure, account isolation and Claude tool-loop fidelity before
+   wiring the second or third slot into normal RUN.
 4. **Implement quota adapters only with proved provenance.** Google AI Pro must
    keep separate `gemini_models` and `claude_gpt_models` weekly branches;
    five-hour data is optional. If an official/provider surface cannot be
@@ -29,10 +31,10 @@ status: active
    `tools\install_challenger_pilot.ps1`; it downloads official Go into
    `vendor`, recreates the ignored pinned source/patch and builds hash-checked
    binaries. Normal startup never downloads or builds.
-7. **Fully close and restart Codex App, then verify its normal surface.** The
-   active global config on disk is restored, but the running App can cache its
-   previous provider. Confirm the lower-left label is no longer
-   `Claude Code Router` and Usage is visible again.
+7. **Keep Codex App separate.** Its account switching and five-hour quota are
+   not part of Claude CLI. Do not modify global `.codex`, App profiles or App
+   login to solve project routing. If the owner tests the App separately, only
+   record the result when it affects a proved project boundary.
 8. **Use the verified account routes.** Double-click `RUN_CLAUDE.bat` and pick
    the Terra or Luna line. Sol and legacy `gpt-5-codex` are intentionally hidden
    because direct requests from this Free account returned HTTP 400.

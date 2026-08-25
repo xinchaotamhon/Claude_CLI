@@ -310,12 +310,13 @@ def main() -> int:
     profile_body = start_profile.group("body")
     if profile_body.find("Ensure-Router") > profile_body.find("Read-ProtectedSecret"):
         return fail("Start-Profile reads a DPAPI client key before verifying the router")
-    # Local Node may run the reviewed router and Start-Process may open only
-    # the loopback management UI. Provider CLIs remain forbidden above.
+    # Local Node may run the reviewed router, Start-Process may open only the
+    # loopback management UI, and the account menu may hand off to the separately
+    # verified project-local Google wrapper. Provider CLIs remain forbidden above.
     for line in menu.splitlines():
         stripped = line.strip()
         if re.search(r"(?i)(?:^&\s+|\bStart-Process\b)", stripped):
-            if stripped == "& $SafeBinary login":
+            if stripped in ("& $SafeBinary login", "& $GoogleMenu -Root $RootPath"):
                 continue
             if not re.search(
                 r"(?i)(?:claude\.exe|bin[\\/]claude\.exe|\$ClaudeBinary|"

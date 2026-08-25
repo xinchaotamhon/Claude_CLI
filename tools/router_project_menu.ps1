@@ -8,6 +8,7 @@ param(
     [switch]$AccountMenu,
     [switch]$StopRouter,
     [switch]$SyncSettings,
+    [switch]$WarmRouter,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$ClaudeArguments
 )
@@ -53,14 +54,17 @@ $CodexAccountBaseUrl = "https://chatgpt.com/backend-api/codex"
 $ProviderNamePlaceholder = "__CCR_PROVIDER_NAME__"
 $ProviderNameSlugPlaceholder = "__CCR_PROVIDER_NAME_SLUG__"
 $ProviderInternalNamePlaceholder = "__CCR_PROVIDER_INTERNAL_NAME__"
-# Direct Claude-gateway probes on the project's ChatGPT Free account proved
-# Terra and Luna end to end. Sol and the legacy CCR fallback are rejected by
-# the upstream even though CCR's generic connectivity check can report Sol as
-# available. Keep the Free-account menu honest until a direct paid-account gate
-# proves a wider entitlement.
-$CodexChatGptCandidateModels = @("gpt-5.6-terra", "gpt-5.6-luna")
-$UnsupportedCodexChatGptModels = @("gpt-5-codex", "gpt-5.6-sol")
+# The owner declares the expected plan before browser login. This avoids
+# parsing credentials in the wrapper while keeping Free accounts away from Sol,
+# which CCR's generic probe can falsely accept. Provider checks still decide
+# which declared-plan candidates become routes.
+$CodexChatGptModelsByPlan = @{
+    codex_free = @("gpt-5.6-terra", "gpt-5.6-luna")
+    codex_plus = @("gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna")
+}
+$UnsupportedCodexChatGptModels = @("gpt-5-codex")
 $script:MenuExitCode = 0
+$script:WarmupProcess = $null
 
 # This wrapper authorizes CCR only as a project-local provider gateway. The
 # upstream CLI otherwise synchronizes Claude App/profile configuration outside
@@ -563,6 +567,21 @@ function Test-GatewayConfigAcceptanceTimeout {
 }
 
 function Ensure-Router {
+    # Fast path after background warmup (or when another project-local Claude
+    # session already owns the verified gateway). This performs the full
+    # process/loopback/health identity check and reads no DPAPI value.
+    try { [void](Assert-VerifiedRouterService); return } catch { }
+
+    if ($null -ne $script:WarmupProcess) {
+        try {
+            for ($WarmWait = 0; $WarmWait -lt 8 -and -not $script:WarmupProcess.HasExited; $WarmWait++) {
+                Start-Sleep -Milliseconds 125
+                try { [void](Assert-VerifiedRouterService); return } catch { }
+            }
+        }
+        catch { }
+    }
+
     $InitialFailure = $null
     try {
         [void](Invoke-CcrStartAndVerify `
@@ -604,6 +623,49 @@ function Ensure-Router {
         if (-not (Test-GatewayConfigAcceptanceTimeout -Status $Status)) { break }
     }
     throw "$InitialFailure $RetryFailure"
+}
+
+function Start-RouterWarmup {
+    # The menu must stay responsive: the child performs the same verified
+    # startup path as route selection, but it never reaches setting/auth/profile
+    # code. A failed child is deliberately non-fatal; route selection calls
+    # Ensure-Router again and remains the fail-closed authority.
+    if ($null -ne $script:WarmupProcess) {
+        try {
+            if (-not $script:WarmupProcess.HasExited) { return }
+            if ([int]$script:WarmupProcess.ExitCode -eq 0) { return }
+        }
+        catch { }
+        $script:WarmupProcess = $null
+    }
+
+    $PowerShellPath = if ($PSVersionTable.PSEdition -eq "Core") {
+        Join-Path $PSHOME "pwsh.exe"
+    }
+    else {
+        Join-Path $PSHOME "powershell.exe"
+    }
+    if (-not (Test-Path -LiteralPath $PowerShellPath -PathType Leaf)) {
+        Write-Host "  Router warmup unavailable; route selection will verify startup synchronously." -ForegroundColor DarkGray
+        return
+    }
+
+    $QuotedScriptPath = '"' + $PSCommandPath.Replace('"', '\"') + '"'
+    $QuotedRootPath = '"' + $RootPath.Replace('"', '\"') + '"'
+    $StartInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $StartInfo.FileName = $PowerShellPath
+    $StartInfo.Arguments = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File {0} -Root {1} -WarmRouter' -f $QuotedScriptPath, $QuotedRootPath
+    $StartInfo.WorkingDirectory = $RootPath
+    $StartInfo.UseShellExecute = $false
+    $StartInfo.CreateNoWindow = $true
+    try {
+        $script:WarmupProcess = [System.Diagnostics.Process]::Start($StartInfo)
+        if ($null -eq $script:WarmupProcess) { throw "PowerShell warmup process did not start." }
+    }
+    catch {
+        $script:WarmupProcess = $null
+        Write-Host "  Router warmup could not start; route selection will verify startup synchronously." -ForegroundColor DarkGray
+    }
 }
 
 function ConvertTo-CcrProvider {
@@ -753,12 +815,13 @@ function Show-RouterStatus {
 }
 
 function Get-UniqueCodexAccountName {
-    param([object[]]$Providers)
+    param([object[]]$Providers, [ValidateSet("codex_free", "codex_plus")][string]$ExpectedPlan = "codex_free")
     $Names = @{}
     foreach ($Provider in @($Providers)) { $Names[([string]$Provider.name).ToLowerInvariant()] = $true }
+    $BaseName = if ($ExpectedPlan -eq "codex_plus") { "codex_plus" } else { "codex_free" }
     $Index = 1
-    while ($Names.ContainsKey(("Codex Account $Index").ToLowerInvariant())) { $Index++ }
-    return "Codex Account $Index"
+    while ($Names.ContainsKey(("${BaseName}_$Index").ToLowerInvariant())) { $Index++ }
+    return "${BaseName}_$Index"
 }
 
 function Get-UniqueProviderId {
@@ -901,12 +964,16 @@ function Select-CodexAccountModel {
 }
 
 function Get-CodexAccountModelCandidates {
-    param([object[]]$ImportedModels = @())
+    param(
+        [object[]]$ImportedModels = @(),
+        [ValidateSet("codex_free", "codex_plus")][string]$ExpectedPlan = "codex_free"
+    )
     $Unsupported = @{}
     foreach ($Model in $UnsupportedCodexChatGptModels) { $Unsupported[[string]$Model] = $true }
+    if ($ExpectedPlan -eq "codex_free") { $Unsupported["gpt-5.6-sol"] = $true }
     $Seen = @{}
     $Candidates = @()
-    foreach ($RawModel in @($CodexChatGptCandidateModels) + @($ImportedModels)) {
+    foreach ($RawModel in @($CodexChatGptModelsByPlan[$ExpectedPlan]) + @($ImportedModels)) {
         $Model = ([string]$RawModel).Trim()
         if (-not $Model -or $Unsupported.ContainsKey($Model) -or $Seen.ContainsKey($Model)) { continue }
         $Seen[$Model] = $true
@@ -1010,6 +1077,7 @@ function Add-CodexAccountProfile {
 }
 
 function SignInAndImportCodexAccount {
+    param([ValidateSet("codex_free", "codex_plus")][string]$ExpectedPlan = "codex_free")
     try {
         [void](Assert-VerifiedRouterService)
         throw "A Claude/router session is running. Close it or stop the router before importing an account."
@@ -1029,7 +1097,7 @@ function SignInAndImportCodexAccount {
     try {
         $State = Ensure-ManagementService
         $CurrentConfig = Invoke-RouterRpc -State $State -Method "getConfig"
-        $DefaultName = Get-UniqueCodexAccountName -Providers @($CurrentConfig.Providers)
+        $DefaultName = Get-UniqueCodexAccountName -Providers @($CurrentConfig.Providers) -ExpectedPlan $ExpectedPlan
         $ProviderName = (Read-Host "Account name [$DefaultName]").Trim()
         if (-not $ProviderName) { $ProviderName = $DefaultName }
         if ($ProviderName.Length -gt 100 -or $ProviderName -match '[\r\n/,]') { throw "The account name is invalid." }
@@ -1077,7 +1145,7 @@ function SignInAndImportCodexAccount {
         }
 
         $Protocol = Get-StringProperty -Object $Imported.provider -Name "protocol" -Default "openai_responses"
-        $Models = @(Get-CodexAccountModelCandidates -ImportedModels @($Imported.provider.models))
+        $Models = @(Get-CodexAccountModelCandidates -ImportedModels @($Imported.provider.models) -ExpectedPlan $ExpectedPlan)
         $Provider = [PSCustomObject][ordered]@{
             id = $ProviderId
             name = $ProviderName
@@ -1086,6 +1154,7 @@ function SignInAndImportCodexAccount {
             models = $Models
             type = $Protocol
             protocolDetectionMode = "manual"
+            local_expected_plan = $ExpectedPlan
         }
         foreach ($OptionalName in @("account", "capabilities", "icon", "modelDescriptions", "modelDisplayNames", "modelMetadata")) {
             if ($null -ne $Imported.provider.PSObject.Properties[$OptionalName] -and $null -ne $Imported.provider.$OptionalName) {
@@ -1151,7 +1220,9 @@ function Refresh-CodexAccountModels {
         $ProviderId = Get-StringProperty -Object $Provider -Name "id"
         if (-not $ProviderName -or -not $ProviderId) { throw "The imported Codex provider has no stable name or ID." }
         $Plugins = @(Get-CodexAccountProviderPlugins -Plugins @($Config.providerPlugins) -ProviderName $ProviderName -ProviderId $ProviderId)
-        $Candidates = @(Get-CodexAccountModelCandidates -ImportedModels @($Provider.models))
+        $ExpectedPlan = Get-StringProperty -Object $Provider -Name "local_expected_plan" -Default "codex_free"
+        if ($ExpectedPlan -notin @("codex_free", "codex_plus")) { $ExpectedPlan = "codex_free" }
+        $Candidates = @(Get-CodexAccountModelCandidates -ImportedModels @($Provider.models) -ExpectedPlan $ExpectedPlan)
         $SupportedModels = @(Test-CodexAccountModels -State $State -Provider $Provider -ProviderPlugins $Plugins -Models $Candidates)
         if ($SupportedModels.Count -eq 0) { throw "No current Codex model is available for this ChatGPT account; the saved routes were left unchanged." }
         Set-JsonProperty -Object $Provider -Name "models" -Value $SupportedModels
@@ -1177,7 +1248,17 @@ function Show-ImportedCodexAccounts {
     Write-Host ""
     if ($Accounts.Count -eq 0) { Write-Host "No Codex account has been imported into this project." -ForegroundColor Yellow; return }
     Write-Host "Imported Codex accounts:" -ForegroundColor Cyan
-    foreach ($Account in $Accounts) { Write-Host ("  - {0}" -f $Account.name) }
+    foreach ($Account in $Accounts) {
+        $Plan = Get-StringProperty -Object $Account -Name "local_expected_plan" -Default "codex_free"
+        Write-Host ("  - {0} [{1}]" -f $Account.name, $Plan)
+    }
+}
+
+function Invoke-GoogleAccountMenu {
+    $GoogleMenu = Join-Path $RootPath "tools\challenger_account_menu.ps1"
+    if (-not (Test-Path -LiteralPath $GoogleMenu -PathType Leaf)) { throw "Google Pro project-local account menu is missing." }
+    & $GoogleMenu -Root $RootPath
+    if (-not $?) { throw "Google Pro account menu did not finish successfully." }
 }
 
 function Invoke-AccountMenu {
@@ -1186,16 +1267,20 @@ function Invoke-AccountMenu {
         Write-Host "==============================================================" -ForegroundColor Cyan
         Write-Host "  CLAUDE CLI - PROJECT-LOCAL ACCOUNT SETUP" -ForegroundColor Cyan
         Write-Host "==============================================================" -ForegroundColor Cyan
-        Write-Host "  [1] Sign in + add a Codex account (browser, project-local)"
+        Write-Host "  [1] Sign in + add a Codex Free account (Terra/Luna)"
+        Write-Host "  [2] Sign in + add a Codex Plus account (Sol/Terra/Luna)"
+        Write-Host "  [G] Google AI Pro accounts (Antigravity OAuth, project-local)"
         Write-Host "  [R] Refresh/test model routes for an imported Codex account"
         Write-Host "  [L] List imported Codex accounts"
         Write-Host "  [Q] Quit"
         Write-Host ""
-        Write-Host "  Run [1] again for each account. Every login gets its own" -ForegroundColor DarkGray
+        Write-Host "  Run [1]/[2] once per Codex account. Every login gets its own" -ForegroundColor DarkGray
         Write-Host "  private folder under provider_router\.ccr-local\codex-accounts." -ForegroundColor DarkGray
         $Choice = (Read-Host "Select an action").Trim().ToLowerInvariant()
         switch ($Choice) {
-            "1" { SignInAndImportCodexAccount }
+            "1" { SignInAndImportCodexAccount -ExpectedPlan "codex_free" }
+            "2" { SignInAndImportCodexAccount -ExpectedPlan "codex_plus" }
+            "g" { Invoke-GoogleAccountMenu }
             "r" { Refresh-CodexAccountModels }
             "l" { Show-ImportedCodexAccounts }
             "q" { return }
@@ -1232,6 +1317,7 @@ function Invoke-Menu {
             Write-Host ("  [{0}] {1}" -f ($Index + 1), $Profiles[$Index].name)
             Write-Host ("      {0}" -f (Get-ModelRoute -Profile $Profiles[$Index] -Tier "default")) -ForegroundColor DarkGray
         }
+        if ($Profiles.Count -gt 0) { Start-RouterWarmup }
         Write-Host ""
         Write-Host "  [S] Reload setting.json   [R] Router status"
         Write-Host "  [X] Stop router           [U] Check updates   [Q] Quit"
@@ -1335,8 +1421,10 @@ function Invoke-SelfTest {
         if ((Resolve-CodexModelChoice -Choices @("model-a", "model-b") -Choice "2") -ne "model-b") { throw "Numeric Codex model selection did not resolve." }
         if ((Resolve-CodexModelChoice -Choices @("model-a", "model-b") -Choice "MODEL-A") -ne "model-a") { throw "Exact Codex model ID selection was not case-insensitive." }
         if ($null -ne (Resolve-CodexModelChoice -Choices @("model-a", "model-b") -Choice "terra")) { throw "An unavailable Codex model alias was accepted." }
-        $CurrentCodexCandidates = @(Get-CodexAccountModelCandidates -ImportedModels @("gpt-5-codex", "gpt-custom-current"))
+        $CurrentCodexCandidates = @(Get-CodexAccountModelCandidates -ImportedModels @("gpt-5-codex", "gpt-custom-current") -ExpectedPlan "codex_free")
         if ($CurrentCodexCandidates.Count -ne 3 -or $CurrentCodexCandidates -contains "gpt-5-codex" -or $CurrentCodexCandidates -contains "gpt-5.6-sol" -or $CurrentCodexCandidates -notcontains "gpt-5.6-terra" -or $CurrentCodexCandidates -notcontains "gpt-5.6-luna" -or $CurrentCodexCandidates -notcontains "gpt-custom-current") { throw "Current Codex candidates did not replace rejected Free-account models safely." }
+        $PlusCodexCandidates = @(Get-CodexAccountModelCandidates -ImportedModels @("gpt-5-codex") -ExpectedPlan "codex_plus")
+        if ($PlusCodexCandidates.Count -ne 3 -or $PlusCodexCandidates -notcontains "gpt-5.6-sol" -or $PlusCodexCandidates -notcontains "gpt-5.6-terra" -or $PlusCodexCandidates -notcontains "gpt-5.6-luna") { throw "Codex Plus candidates did not expose the declared Sol/Terra/Luna entitlement set." }
         $MultiAccountProfilesPath = Join-Path $TestRoot "account-profiles-multi-model.json"
         Set-CodexAccountProfiles -ProviderName "Codex Multi" -ProviderId "codex-multi" -Models @("gpt-5.6-terra", "gpt-5.6-luna") -Path $MultiAccountProfilesPath
         $MultiAccountProfiles = @(Read-AccountProfiles -Path $MultiAccountProfilesPath)
@@ -1396,12 +1484,13 @@ function Invoke-SelfTest {
 
 try {
     Ensure-StateDirectories
+    if ($WarmRouter) { [void](Ensure-Router); exit 0 }
     if ($SelfTest) { Invoke-SelfTest; exit 0 }
     if ($StopRouter) { Stop-RouterService; exit 0 }
     if ($AccountMenu) { Invoke-AccountMenu; exit 0 }
     if ($SyncSettings) { [void](Ensure-SettingApplied -Force); exit 0 }
     if ($Launch) { Invoke-Menu; exit $script:MenuExitCode }
-    Write-Output "Use -Launch, -SelfTest, -AccountMenu, -StopRouter, or -SyncSettings."
+    Write-Output "Use -Launch, -SelfTest, -AccountMenu, -StopRouter, -SyncSettings, or -WarmRouter."
     exit 0
 }
 catch {
