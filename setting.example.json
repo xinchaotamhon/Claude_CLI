@@ -1,0 +1,49 @@
+{
+  "_instructions": [
+    "Edit setting.json, not this example file.",
+    "Paste provider API keys only into setting.json; setting.json is ignored by Git.",
+    "Set enabled=true only after base_url, protocol, API key and model IDs are correct.",
+    "A profile may reference a provider imported through SIGN_ACCOUNT.bat by using its exact CCR provider name."
+  ],
+  "schema_version": 1,
+  "providers": [
+    {
+      "id": "my-api",
+      "name": "My API",
+      "enabled": false,
+      "base_url": "https://api.example.com/v1",
+      "protocol": "openai_chat_completions",
+      "api_key": "",
+      "credentials": [],
+      "models": [
+        "replace-with-real-model-id"
+      ],
+      "extra_headers": {},
+      "extra_body": {}
+    }
+  ],
+  "profiles": [
+    {
+      "id": "my-api",
+      "name": "My API",
+      "enabled": false,
+      "provider": "My API",
+      "model": "replace-with-real-model-id",
+      "background_model": "replace-with-real-model-id",
+      "think_model": "replace-with-real-model-id",
+      "long_context_model": "replace-with-real-model-id"
+    }
+  ],
+  "claude_defaults": {
+    "effort_level": "xhigh",
+    "theme": "dark",
+    "permission_mode": "acceptEdits",
+    "allow": [
+      "Bash(*)",
+      "PowerShell(*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
+    ],
+    "telemetry": "0"
+  }
+}

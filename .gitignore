@@ -1,0 +1,64 @@
+# Claude CLI local binary and version archives (kept local; use Git LFS only by explicit decision)
+/bin/*
+!/bin/.gitkeep
+!/bin/README.md
+/versions/*
+!/versions/.gitkeep
+/vendor/*
+!/vendor/.gitkeep
+
+# Project-local Claude configuration, credentials, sessions, plugins and memory
+/.claude/
+/.mcp.json
+/.credentials.json
+**/.credentials.json
+
+# Project-local Claude Code Router runtime and sensitive state
+/provider_router/node_modules/
+/provider_router/.ccr-local/
+/provider_router/runtime/*
+/provider_router/codex-login-runtime/*
+
+# Reviewable router source is its own fork/repository and is pushed separately
+/claude-code-router_proxy/
+
+# Local scratch/temp/runtime data
+/.tmp/
+/.runtime/
+/.cache/
+/logs/
+/50-Evidence/raw/
+*.log
+*.tmp
+
+# Secrets and local environment files
+/setting.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*secret*
+*token*
+*credential*
+
+# Python cache and local tooling artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Windows/editor noise
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# Do not commit source-review clones or generated installer payloads
+*.zip
+*.7z
+*.tar
+*.tar.gz

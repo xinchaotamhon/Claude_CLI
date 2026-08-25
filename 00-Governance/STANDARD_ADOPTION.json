@@ -1,0 +1,23 @@
+{
+  "adopted_at": "2026-08-23",
+  "bootstrap": {
+    "copy_policy": "blank-destination-no-overwrite",
+    "source_validation": "passed-before-copy",
+    "tool": "standard_package.py bootstrap"
+  },
+  "routine_continuation_requires_vault": false,
+  "schema_version": 1,
+  "standard": {
+    "entry_sha256": "d6ab0f3a44f08e153684002f51827b3ceaf7928c63e59fbe2916a47bf11382bb",
+    "files_digest_sha256": "55a4150aca9a3a202960269a9c7851660c778d2fe20a4f212f0c22cc85acc4eb",
+    "manifest_sha256": "965bf2d1ec475698168c5fcad231433b9325988c9bb3e83962aa6baef55d5001",
+    "subpath": "20-First-Party/project-standard",
+    "version": "1.2.2"
+  },
+  "type": "project_standard_adoption",
+  "vault": {
+    "commit": "5fa63555b955fc1434dad74b0d40ba684cbb402e",
+    "remote": "none-local-only",
+    "version": "clover-closeout-ai-first-ergonomics-v25"
+  }
+}

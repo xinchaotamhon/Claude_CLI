@@ -1,0 +1,10 @@
+{
+  "name": "claude-cli-project-local-router",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned project-local runtime dependency for the Claude CLI multi-provider router.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@musistudio/claude-code-router": "3.0.21"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "resources": [
+    {
+      "id": "external.claude-code-router",
+      "name": "Claude Code Router",
+      "source_url": "https://github.com/musistudio/claude-code-router",
+      "version": "3.0.21",
+      "source_commit": "ffc823b683861ad3f86c8dd38c0dbe61eef62f6c",
+      "upstream_base_commit": "1347c868b493728a31c76098459584e0fcc23940",
+      "license": "MIT",
+      "local_integration": "provider_router plus ignored setting.json and per-account folder-local Codex browser login homes in SIGN_ACCOUNT.bat/tools/router_project_menu.ps1",
+      "reason": "multi-protocol provider gateway behind one Claude CLI harness",
+      "constraints": "loopback-only; project-local ignored state; provider-only fork patch prevents external Claude App/profile synchronization; pinned local Codex helper authorized for login only; no global auth/PATH discovery; no provider CLI harness; no automatic update",
+      "verification_gate": "claude.router-local-layout"
+    },
+    {
+      "id": "pattern.clover-portable-entry-router",
+      "name": "CLOVER portable START_HERE routing contract",
+      "source_locator": "D:/mydata/my-project/CLOVER/START_HERE.md",
+      "source_sha256": "08bfa3309451150e6580064b8ed2ffa9c8e447f10f8595e64233ad371aa8802",
+      "adopted_scope": "entry-relative path anchoring, exact missing-entry failure, navigation-versus-authority boundary, and one canonical front door per intended outcome",
+      "reason": "make AI handoff deterministic while preserving this folder as the complete routine operating boundary",
+      "constraints": "design-pattern adoption only; no runtime, state, permission or availability dependency on the CLOVER workspace",
+      "verification_gate": "foundation.memory-routing"
+    }
+  ]
+}

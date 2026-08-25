@@ -1,0 +1,219 @@
+{
+  "gates": [
+    {
+      "command": [
+        "{python}",
+        "-c",
+        "from pathlib import Path; assert Path('START_HERE.md').is_file()"
+      ],
+      "cwd": ".",
+      "description": "Stable project entry point exists",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "foundation.start-here-exists",
+      "introduced_by": "project-bootstrap",
+      "invariant": "Every new session has one stable entry point",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/audit_project_memory.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Local START_HERE links and memory placement are auditable without Vault access",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "foundation.memory-routing",
+      "introduced_by": "self-contained-project-handoff",
+      "invariant": "Routine continuation is recoverable from local project memory",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/validate_standard_adoption.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Structured Standard provenance is coherent while routine continuation remains local",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "foundation.standard-adoption",
+      "introduced_by": "project-standard-1.2.2",
+      "invariant": "Markdown cannot fake adoption by substring; exact JSON identity and local continuation files agree without Vault runtime access",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "{python}",
+        "-c",
+        "import json; from pathlib import Path; a=json.loads(Path('10-Resources/RESOURCE_ADOPTIONS.json').read_text(encoding='utf-8')); c=json.loads(Path('40-State/RESOURCE_CANDIDATES.json').read_text(encoding='utf-8')); assert a.get('schema_version')==1 and isinstance(a.get('resources'),list); assert c.get('schema_version')==1 and isinstance(c.get('candidates'),list)"
+      ],
+      "cwd": ".",
+      "description": "Adopted resources and reusable candidates have valid local schemas",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "foundation.resource-records",
+      "introduced_by": "resource-feedback-loop",
+      "invariant": "Project resource use and reusable discoveries survive handoff",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_claudy_integration.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Local Claude binary, Claudy fork runtime and project-only launcher are present",
+      "expected_exit_code": 0,
+      "id": "claude.local-layout",
+      "introduced_by": "local-claudy-fork-integration",
+      "invariant": "The project can launch its local Claude CLI through a reviewed Claudy fork without relying on implicit user-level runtime state",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30,
+      "enabled": false,
+      "disposition": "superseded",
+      "disposition_reason": "Operational Claudy layout was deleted and replaced by the project-local Claude Code Router layout.",
+      "decision_ref": "60-Decisions/ADR-2026-08-24-adopt-claude-code-router.md",
+      "evidence_ref": "50-Evidence/2026-08-24-claude-code-router-integration.md",
+      "rollback_ref": "40-State/NEXT_ACTIONS.md",
+      "replacement_id": "claude.router-local-layout"
+    },
+    {
+      "command": [
+        "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/claudy_project_menu.ps1",
+        "-Root",
+        ".",
+        "-SelfTest"
+      ],
+      "cwd": ".",
+      "description": "Claudy profile menu DPAPI round-trip and project-local Claude-to-Codex bridge work without network access",
+      "enabled": false,
+      "expected_exit_code": 0,
+      "id": "claude.profile-menu-selftest",
+      "introduced_by": "local-claudy-project-menu",
+      "invariant": "Provider profile credentials can be protected and recovered for the current Windows user, while the Claude-to-Codex bridge stays project-local and sends no network request during the setup check",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30,
+      "disposition": "superseded",
+      "disposition_reason": "Claudy profile/Codex menu was deleted and replaced by the project-local router menu.",
+      "decision_ref": "60-Decisions/ADR-2026-08-24-adopt-claude-code-router.md",
+      "evidence_ref": "50-Evidence/2026-08-24-claude-code-router-integration.md",
+      "rollback_ref": "40-State/NEXT_ACTIONS.md",
+      "replacement_id": "claude.router-menu-selftest"
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_router_integration.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Project-local Claude binary, pinned Claude Code Router metadata/runtime, isolated launcher, verified-start handling and offline version checks are present",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.router-local-layout",
+      "introduced_by": "project-local-claude-code-router",
+      "invariant": "One local Claude CLI uses only the project-local CCR gateway boundary and pinned router/runtime artifacts; a stale start exit cannot override a verified gateway postcondition, while an unverified start remains fail-closed without reading ignored secrets or using provider calls",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30
+    },
+    {
+      "command": [
+        "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/router_project_menu.ps1",
+        "-Root",
+        ".",
+        "-SelfTest"
+      ],
+      "cwd": ".",
+      "description": "Project-local router menu verifies setting schema/merge, DPAPI storage, verified gateway startup and Claude-only launch behavior without provider access",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.router-menu-selftest",
+      "introduced_by": "project-local-router-menu",
+      "invariant": "The router menu derives routes from ignored setting.json, keeps credentials project-local, accepts startup only after independent process/loopback/health verification, starts only bin/claude.exe through the local gateway, and performs no provider CLI invocation during self-test",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_setting_flow.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Ignored root setting.json, tracked secret-free example, prompt-free RUN menu and project-local account-only SIGN_ACCOUNT entry are deterministic",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.setting-json-flow",
+      "introduced_by": "root-setting-json-and-account-ui",
+      "invariant": "The owner edits API routes only in ignored setting.json, RUN never asks for new API data, account login stays in project-local homes, and no normal entry point exposes CCR agent profiles that can mutate external apps",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_account_import_flow.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Folder-local Codex browser login is isolated per account, route-ID compatible, retry-safe, entitlement-filtered and exposed as separate model routes without reading real credentials",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.codex-account-import",
+      "introduced_by": "folder-local-codex-login-homes",
+      "invariant": "SIGN_ACCOUNT invokes only the pinned project-local Codex binary for browser login, stores each account under a separate project-local CODEX_HOME, reloads route IDs generated from supported account labels, resumes unfinished local login safely, excludes rejected ChatGPT-account fallbacks, enumerates every retained model as a separate route, never discovers global Windows auth, never prints credentials, and exposes each imported route through the one Claude CLI harness",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_external_app_isolation.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Project launchers remove CCR agent profiles and never expose global/App takeover controls",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.external-app-isolation",
+      "introduced_by": "external-codex-app-takeover-repair",
+      "invariant": "CCR is only a project-local provider gateway; System default, CLI & APP and other agent-profile paths cannot modify external Codex/Claude configuration through normal project entry points",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
+    }
+  ],
+  "project": "Claude CLI Local",
+  "schema_version": 1
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "name": "OpenAI Codex CLI login helper",
+  "version": "0.149.0-alpha.4.1",
+  "sha256": "73d6d4a082a7cad601a446a45b1b3fa9b77aff9d3996052b74d9003d7947d515",
+  "binary_path": "provider_router/codex-login-runtime/codex.exe",
+  "source_kind": "OpenAI Codex desktop bundled CLI",
+  "source_package": "OpenAI.Codex_26.818.5229.0_x64__2p2nqsd0c76g0",
+  "copied_at": "2026-08-24",
+  "runtime_policy": "Project-local ChatGPT login only; never execute agent work or serve as the Claude harness.",
+  "official_docs": [
+    "https://learn.chatgpt.com/docs/auth",
+    "https://learn.chatgpt.com/docs/config-file/environment-variables",
+    "https://learn.chatgpt.com/docs/codex/cli"
+  ]
+}

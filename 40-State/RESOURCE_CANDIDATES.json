@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "candidates": [
+    {
+      "id": "external.claudy",
+      "name": "Claudy",
+      "source_url": "https://github.com/epicsagas/claudy",
+      "status": "retired-and-deleted",
+      "fit": "Anthropic-compatible session profile launcher",
+      "reason_retired": "does not provide the native multi-protocol gateway required by the clarified one-Claude-CLI architecture",
+      "replacement": "external.claude-code-router"
+    },
+    {
+      "id": "external.cli-proxy-api",
+      "name": "CLIProxyAPI",
+      "source_url": "https://github.com/router-for-me/CLIProxyAPI",
+      "status": "proposed-bounded-pilot",
+      "fit": "cross-protocol loopback gateway with Codex/Claude OAuth, API-key providers and multi-account routing",
+      "constraints": "not adopted; must prove project-local paths, fixed-account selection, session affinity, protocol fidelity, update isolation and quota provenance before promotion"
+    },
+    {
+      "id": "external.easy-cli-proxy-api",
+      "name": "EasyCLIProxyAPI",
+      "source_url": "https://github.com/router-for-me/EasyCLIProxyAPI",
+      "status": "candidate-after-core-pilot",
+      "fit": "portable desktop management UI for CLIProxyAPI OAuth, providers, quota and lifecycle",
+      "constraints": "must disable automatic updates and every agent/system-default configuration path; do not add until the core passes isolation and protocol gates"
+    },
+    {
+      "id": "external.zero-limit",
+      "name": "ZeroLimit",
+      "source_url": "https://github.com/0xtbug/zero-limit",
+      "status": "comparison-only",
+      "fit": "cross-platform CLIProxyAPI quota dashboard",
+      "constraints": "automatic update and quota provenance require source verification; avoid a second UI unless the selected manager lacks a required observable"
+    },
+    {
+      "id": "external.quotio-desktop",
+      "name": "Quotio Desktop",
+      "source_url": "https://github.com/xiaocoss/quotio-desktop",
+      "status": "comparison-only",
+      "fit": "cross-platform multi-account quota and scheduling UI for CLIProxyAPI",
+      "constraints": "smart scheduling, reset controls, agent reconfiguration and quota consumption behavior expand risk; not selected for the first pilot"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "name": "Claude Code Router",
+  "package": "@musistudio/claude-code-router",
+  "version": "3.0.21",
+  "license": "MIT",
+  "repository": "https://github.com/musistudio/claude-code-router",
+  "fork_repository": "https://github.com/xinchaotamhon/claude-code-router_proxy",
+  "local_source": "claude-code-router_proxy",
+  "local_branch": "claude",
+  "source_commit": "ffc823b683861ad3f86c8dd38c0dbe61eef62f6c",
+  "upstream_base_commit": "1347c868b493728a31c76098459584e0fcc23940",
+  "fork_commit": "ffc823b683861ad3f86c8dd38c0dbe61eef62f6c",
+  "fork_patch_scope": "provider-only mode skips external Claude App/profile synchronization; gateway config acceptance timeout is bounded and configurable",
+  "reviewed_at": "2026-08-25",
+  "runtime_policy": "node_modules and node.exe are project-local ignored artifacts; package.json and package-lock.json pin reconstruction"
+}
