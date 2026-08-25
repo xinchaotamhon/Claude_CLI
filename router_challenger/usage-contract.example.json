@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "provider": {
+    "id": "google-ai-pro",
+    "kind": "google_ai_pro",
+    "display_name": "Google AI Pro"
+  },
+  "account_label": "google-pro-1",
+  "observed_at": "2026-08-25T12:00:00Z",
+  "usage_groups": {
+    "gemini_models": {
+      "weekly": {
+        "status": "available",
+        "remaining_percent": 87,
+        "reset_at": "2026-08-30T12:00:00Z"
+      },
+      "five_hour": {
+        "status": "available",
+        "remaining_percent": 100,
+        "reset_at": "2026-08-25T17:00:00Z"
+      }
+    },
+    "claude_gpt_models": {
+      "weekly": {
+        "status": "available",
+        "remaining_percent": 17,
+        "reset_at": "2026-08-28T08:00:00Z"
+      },
+      "five_hour": {
+        "status": "unknown",
+        "remaining_percent": null,
+        "reset_at": null,
+        "reason": "The provider did not expose this window."
+      }
+    }
+  },
+  "extensions": {
+    "source_label": "owner-supplied snapshot",
+    "notes": "Example only; replace values with a non-secret quota observation."
+  }
+}

@@ -25,6 +25,9 @@
 # Source-only CLIProxyAPI challenger is a separate nested repository
 /cli-proxy-api_core/
 
+# Source-only EasyCLIProxyAPI dashboard candidate; separate nested repository
+/dashboard_easycli_source/
+
 # Local scratch/temp/runtime data
 /.tmp/
 /.runtime/

@@ -1,7 +1,7 @@
 # ADR — CLIProxyAPI remains a bounded challenger
 
 - Date: 2026-08-25
-- Status: accepted for Phase 0 source audit only
+- Status: accepted for Phase 1 offline pilot; not promoted
 - Owner intent: one project-local Claude CLI harness with provider/model routing,
   multiple subscription accounts and clearly labelled quota information
 
@@ -9,9 +9,10 @@
 
 Retain CCR as the active rollback champion. Keep CLIProxyAPI `v7.2.141` as an
 ignored nested source repository on local branch `claude`, with exact tracked
-provenance and an offline verifier. Do not build, authenticate, start or wire it
-into `RUN_CLAUDE.bat` until Phase 1 is separately approved and its isolation
-patch/gates pass.
+provenance and a bounded update-isolation patch. Phase 1 may build and run only
+the deterministic loopback fixture through `RUN_CHALLENGER_PILOT.bat`. Do not
+authenticate, call a real provider or wire it into `RUN_CLAUDE.bat` until a
+later owner-approved phase proves live-account controls.
 
 ## Why
 
@@ -25,16 +26,18 @@ Antigravity update request. Its core usage counters are not provider-reported
 
 ## Consequences
 
-- Phase 0 adds no runtime dependency and does not consume provider quota.
-- Phase 1 requires a project-local Go toolchain and a reviewable update-isolation
-  patch before an offline build.
+- Phase 1 stages Go and all runtime/cache paths inside this project and does not
+  consume provider quota.
+- `--local-model` is locally patched to suppress the Antigravity updater as well
+  as remote model catalogs; build/source identities are pinned and reproducible.
 - Explicit account selection is a required gate. Round-robin/failover remains
   disabled for the first real account test.
 - Sol availability is derived from the authenticated account's `plan_type` and
   model registry; it is not hard-coded into every account menu.
-- A quota UI is deferred. EasyCLIProxyAPI may be evaluated after the core
-  passes; every quota value must say provider-reported, proxy-observed,
-  estimated or unknown.
+- A live quota UI is deferred. Its contract now requires separate Google Pro
+  `gemini_models` and `claude_gpt_models` weekly branches; five-hour data is
+  optional. Every value must say provider-reported, proxy-observed, estimated
+  or unknown.
 
 ## Rollback
 

@@ -51,17 +51,17 @@ ROOT_KEYS = {
     "schema_version",
     "policy_id",
     "provider",
-    "account_label",
     "observed_at",
     "manual_only",
     "allowlist",
-    "usage_groups",
+    "accounts",
     "routes",
     "fallback",
     "extensions",
 }
 PROVIDER_KEYS = {"id", "kind", "display_name"}
 ALLOWLIST_KEYS = {"account_ids", "model_ids"}
+ACCOUNT_KEYS = {"usage_groups", "extensions"}
 WINDOW_KEYS = {"status", "remaining_percent", "reset_at", "reason"}
 GROUP_KEYS = {"weekly", "five_hour", "extensions"}
 ROUTE_KEYS = {"id", "account_id", "model_id", "usage_group", "enabled", "priority"}
@@ -173,30 +173,50 @@ def _window(value: Any, path: str) -> None:
         _fail(f"{path}.reason is required when status is {status}")
 
 
-def _usage_groups(value: Any, provider_kind: str) -> dict[str, Any]:
-    groups = _mapping(value, "$.usage_groups")
+def _usage_groups(
+    value: Any, provider_kind: str, path: str = "$.usage_groups"
+) -> dict[str, Any]:
+    groups = _mapping(value, path)
     if not groups:
-        _fail("$.usage_groups must contain at least one group")
+        _fail(f"{path} must contain at least one group")
     if provider_kind == "google_ai_pro" and set(groups) != {"gemini_models", "claude_gpt_models"}:
         _fail("Google AI Pro must contain exactly gemini_models and claude_gpt_models")
     for group_id, group in groups.items():
-        _string(group_id, f"$.usage_groups[{group_id!r}]", identifier=True)
-        item = _mapping(group, f"$.usage_groups.{group_id}")
-        _keys(item, GROUP_KEYS, f"$.usage_groups.{group_id}")
+        _string(group_id, f"{path}[{group_id!r}]", identifier=True)
+        item = _mapping(group, f"{path}.{group_id}")
+        _keys(item, GROUP_KEYS, f"{path}.{group_id}")
         if "weekly" not in item:
-            _fail(f"$.usage_groups.{group_id}.weekly is required")
-        _window(item["weekly"], f"$.usage_groups.{group_id}.weekly")
+            _fail(f"{path}.{group_id}.weekly is required")
+        _window(item["weekly"], f"{path}.{group_id}.weekly")
         if "five_hour" in item:
-            _window(item["five_hour"], f"$.usage_groups.{group_id}.five_hour")
+            _window(item["five_hour"], f"{path}.{group_id}.five_hour")
         if "extensions" in item:
-            _mapping(item["extensions"], f"$.usage_groups.{group_id}.extensions")
+            _mapping(item["extensions"], f"{path}.{group_id}.extensions")
     return groups
 
 
-def _routes_and_allowlist(root: dict[str, Any], groups: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def _accounts(value: Any, provider_kind: str) -> dict[str, dict[str, Any]]:
+    accounts = _mapping(value, "$.accounts")
+    if not accounts:
+        _fail("$.accounts must contain at least one account")
+    for account_id, account_value in accounts.items():
+        _string(account_id, f"$.accounts[{account_id!r}]", identifier=True)
+        account = _mapping(account_value, f"$.accounts.{account_id}")
+        _keys(account, ACCOUNT_KEYS, f"$.accounts.{account_id}")
+        account["usage_groups"] = _usage_groups(
+            account.get("usage_groups"), provider_kind, f"$.accounts.{account_id}.usage_groups"
+        )
+        if "extensions" in account:
+            _mapping(account["extensions"], f"$.accounts.{account_id}.extensions")
+    return accounts
+
+
+def _routes_and_allowlist(root: dict[str, Any], accounts: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     allowlist = _mapping(root.get("allowlist"), "$.allowlist")
     _keys(allowlist, ALLOWLIST_KEYS, "$.allowlist")
-    accounts = set(_string_list(allowlist.get("account_ids"), "$.allowlist.account_ids"))
+    account_ids = set(_string_list(allowlist.get("account_ids"), "$.allowlist.account_ids"))
+    if set(accounts) != account_ids:
+        _fail("$.accounts must match the account allowlist exactly")
     models = set(_string_list(allowlist.get("model_ids"), "$.allowlist.model_ids"))
     routes = root.get("routes")
     if not isinstance(routes, list) or not routes:
@@ -212,12 +232,13 @@ def _routes_and_allowlist(root: dict[str, Any], groups: dict[str, Any]) -> dict[
         account_id = _string(route.get("account_id"), f"{path}.account_id", identifier=True)
         model_id = _string(route.get("model_id"), f"{path}.model_id", identifier=True)
         usage_group = _string(route.get("usage_group"), f"{path}.usage_group", identifier=True)
-        if account_id not in accounts:
+        if account_id not in account_ids:
             _fail(f"{path}.account_id is outside the account allowlist")
         if model_id not in models:
             _fail(f"{path}.model_id is outside the model allowlist")
-        if usage_group not in groups:
-            _fail(f"{path}.usage_group does not name a usage group")
+        account_groups = root["accounts"][account_id]["usage_groups"]
+        if usage_group not in account_groups:
+            _fail(f"{path}.usage_group does not name a group for its account")
         _bool(route.get("enabled"), f"{path}.enabled")
         priority = route.get("priority")
         if isinstance(priority, bool) or not isinstance(priority, int) or priority < 1:
@@ -306,11 +327,10 @@ def validate_document(document: Any) -> None:
     provider_kind = _string(provider.get("kind"), "$.provider.kind", identifier=True)
     if "display_name" in provider:
         _string(provider["display_name"], "$.provider.display_name")
-    _string(root.get("account_label"), "$.account_label")
     _timestamp(root.get("observed_at"), "$.observed_at")
     _bool(root.get("manual_only"), "$.manual_only")
-    groups = _usage_groups(root.get("usage_groups"), provider_kind)
-    routes = _routes_and_allowlist(root, groups)
+    accounts = _accounts(root.get("accounts"), provider_kind)
+    routes = _routes_and_allowlist(root, accounts)
     _fallback(root, routes)
     if "extensions" in root:
         _mapping(root["extensions"], "$.extensions")
@@ -371,12 +391,11 @@ def eligible_route_ids(
         route_ids: Iterable[str] = chain_entry["fallback_route_ids"]
     else:
         route_ids = (route["id"] for route in document["routes"])
-    groups = document["usage_groups"]
     by_id = {route["id"]: route for route in document["routes"]}
     candidates = []
     for route_id in route_ids:
         route = by_id[route_id]
-        group = groups[route["usage_group"]]
+        group = document["accounts"][route["account_id"]]["usage_groups"][route["usage_group"]]
         if route["enabled"] and _window_allows_initial(group):
             candidates.append(route)
     candidates.sort(key=lambda route: (route["priority"], route["id"]))

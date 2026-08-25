@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "component": "EasyCLIProxyAPI dashboard candidate",
+  "status": "source-audited-blocked-no-license-and-isolation-patch-required",
+  "source_url": "https://github.com/router-for-me/EasyCLIProxyAPI.git",
+  "source_tag": "v0.2.61",
+  "source_commit": "3d44eba4926cb60b8654576ebf173e613f457fd1",
+  "source_tree": "da48e47ea5b9275ca3d1a3bed874a02e1d93b19f",
+  "source_commit_date": "2026-08-23T23:20:40+08:00",
+  "local_checkout": "dashboard_easycli_source",
+  "local_branch": "claude",
+  "remote_name": "upstream",
+  "license": "none-found-in-tag-tree",
+  "reviewed_at": "2026-08-25",
+  "anchor_sha256": {
+    "README.md": "1b53f66a59454ad4b88d4950b5af3b590adce72bad5d55b7ec3b82aca07c6780",
+    "package.json": "c6193496b8829306d67eaea3a8d56aec9871742ac887b194590d28b611e4a2a3",
+    "bun.lock": "ff124ef56d3d9cd2e58f7f8ae330dab60d07515d4d17baa7e2b8eff494004d3b",
+    "src-tauri/Cargo.toml": "c99939a00fe8fe6dc2e3a37fd4ccdc1adf78f0b2c9c780024753ae33655271fb",
+    "src-tauri/Cargo.lock": "6becdd0737e3c9f464e61ebc6bedaba9734d1fbabf335a752daf41534382a84f"
+  },
+  "observed_risks": {
+    "automatic_app_and_core_download_update_paths": true,
+    "external_agent_discovery_and_configuration_paths": true,
+    "windows_tray_and_autostart_paths": true,
+    "auth_file_upload_download_and_inspection": true,
+    "quota_ui_and_provider_calls": true,
+    "license_grant_present": false
+  },
+  "policy": {
+    "checkout_is_ignored_nested_repository": true,
+    "runtime_was_built_or_run": false,
+    "oauth_was_run": false,
+    "provider_request_was_run": false,
+    "source_may_be_inspected_not_copied_or_distributed": true,
+    "normal_launcher_changed": false
+  }
+}

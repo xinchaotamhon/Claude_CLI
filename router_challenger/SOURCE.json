@@ -1,17 +1,22 @@
 {
   "schema_version": 1,
   "component": "CLIProxyAPI",
-  "status": "phase-0-source-audited-not-adopted",
+  "status": "phase-1-isolation-patched-offline-built",
   "source_url": "https://github.com/router-for-me/CLIProxyAPI.git",
   "source_tag": "v7.2.141",
   "source_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
   "source_tree": "320d4056873d7e8fd036c568db493acc0e565dc7",
+  "patched_commit": "d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4",
+  "patched_tree": "4e8c65286d56f3e03b0a39696a931d75db126fd9",
+  "patch_file": "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
+  "patch_sha256": "e45a879854608fdac862a418bdaa3b06d28252b7ca40aed5c2f58aef2601a209",
   "source_commit_date": "2026-08-24T16:35:18+08:00",
   "local_checkout": "cli-proxy-api_core",
   "local_branch": "claude",
   "remote_name": "upstream",
   "license": "MIT",
   "required_go_version": "1.26.0",
+  "build_go_version": "1.26.7",
   "reviewed_at": "2026-08-25",
   "anchor_sha256": {
     "LICENSE": "93df585e5fa07ead6d47a3ab2dbdf0255782a39fe830022c0274a70394223cc8",
@@ -22,8 +27,11 @@
   "policy": {
     "checkout_is_ignored_nested_repository": true,
     "runtime_is_active": false,
+    "offline_binary_was_built": true,
     "oauth_was_run": false,
     "provider_request_was_run": false,
-    "normal_launcher_changed": false
+    "normal_launcher_changed": false,
+    "local_model_suppresses_remote_catalog_and_antigravity_updates": true,
+    "offline_fixture_only": true
   }
 }

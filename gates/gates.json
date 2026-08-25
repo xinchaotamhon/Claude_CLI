@@ -220,12 +220,88 @@
         "."
       ],
       "cwd": ".",
-      "description": "Pinned CLIProxyAPI Phase 0 metadata and optional ignored source checkout are independently reproducible",
+      "description": "Pinned CLIProxyAPI upstream and bounded Phase 1 isolation patch are independently reproducible",
       "enabled": true,
       "expected_exit_code": 0,
       "id": "challenger.cli-proxy-source-pin",
-      "introduced_by": "cli-proxy-api-phase-0-source-audit",
-      "invariant": "The challenger remains an unexecuted ignored nested repository at the exact reviewed tag, commit and tree, with no credentials, provider calls or normal-launcher adoption",
+      "introduced_by": "cli-proxy-api-phase-1-offline-pilot",
+      "invariant": "The challenger checkout is clean at one exact local patch commit directly above the audited upstream tag; the tracked patch suppresses remote catalog and Antigravity update requests under local-model without normal-launcher adoption",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_challenger_usage_contract.py",
+        "router_challenger/usage-contract.example.json",
+        "--quiet"
+      ],
+      "cwd": ".",
+      "description": "Secret-free provider usage contract preserves both Google AI Pro weekly quota branches",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "challenger.usage-contract",
+      "introduced_by": "cli-proxy-api-phase-1-offline-pilot",
+      "invariant": "Google AI Pro has independent gemini_models and claude_gpt_models weekly windows; five-hour data is optional and unavailable values remain explicitly unknown rather than fabricated",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/challenger_pilot.ps1",
+        "-Action",
+        "SelfTest"
+      ],
+      "cwd": ".",
+      "description": "Pinned challenger binary passes an isolated loopback Anthropic protocol pilot",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "challenger.offline-pilot",
+      "introduced_by": "cli-proxy-api-phase-1-offline-pilot",
+      "invariant": "The hash-pinned challenger uses project-local runtime/auth paths, current-user-only ACL, loopback listeners, no observed external connection, bounded startup/restart, and translates Claude non-stream, SSE and one tool-result round trip against a deterministic local fixture",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 30
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_challenger_fallback_policy.py",
+        "router_challenger/fallback-policy.example.json",
+        "--quiet"
+      ],
+      "cwd": ".",
+      "description": "Finite account-aware fallback policy respects weekly/five-hour quota and output side-effect boundaries",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "challenger.fallback-policy",
+      "introduced_by": "local-dashboard-and-fallback-architecture",
+      "invariant": "Every fallback target is account/model allowlisted with its own quota observation; known five-hour depletion blocks eligibility, unknown five-hour permits only signal-driven reactive fallback, and no retry occurs after output or a tool side effect",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_dashboard_source.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Dashboard candidate source is pinned, unrun and blocked until licensing and isolation are resolved",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "challenger.dashboard-source-boundary",
+      "introduced_by": "local-dashboard-and-fallback-architecture",
+      "invariant": "EasyCLIProxyAPI remains an ignored source-only reference at one exact tag/commit/tree; no runtime/OAuth/provider use is permitted and the missing license plus update/global-agent/tray/auth-file risks stay explicit",
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 30

@@ -28,29 +28,33 @@ class ChallengerFallbackPolicyTests(unittest.TestCase):
     def setUp(self):
         self.document = json.loads(EXAMPLE.read_text(encoding="utf-8"))
 
+    def groups(self, account_id="google-pro-1"):
+        return self.document["accounts"][account_id]["usage_groups"]
+
     def test_example_is_valid_and_google_pro_has_two_usage_branches(self):
         validate_document(self.document)
         self.assertEqual(
-            set(self.document["usage_groups"]),
+            set(self.groups()),
             {"gemini_models", "claude_gpt_models"},
         )
+        self.assertEqual(set(self.document["accounts"]), set(self.document["allowlist"]["account_ids"]))
 
     def test_weekly_is_required_for_every_group(self):
-        del self.document["usage_groups"]["gemini_models"]["weekly"]
+        del self.groups()["gemini_models"]["weekly"]
         with self.assertRaises(ContractError):
             validate_document(self.document)
 
     def test_available_five_hour_window_controls_initial_eligibility(self):
-        self.document["usage_groups"]["gemini_models"]["five_hour"]["remaining_percent"] = 0
-        self.assertEqual(eligible_route_ids(self.document), ("claude-gpt-primary",))
-        self.document["usage_groups"]["gemini_models"].pop("five_hour")
+        self.groups("google-pro-2")["gemini_models"]["five_hour"]["remaining_percent"] = 0
+        self.assertEqual(eligible_route_ids(self.document), ("claude-gpt-primary", "gemini-secondary"))
+        self.groups("google-pro-2")["gemini_models"].pop("five_hour")
         self.assertEqual(
             eligible_route_ids(self.document),
             ("gemini-primary", "claude-gpt-primary", "gemini-secondary"),
         )
 
     def test_unknown_five_hour_allows_initial_but_reactive_fallback_needs_signal(self):
-        self.document["usage_groups"]["gemini_models"]["five_hour"] = {
+        self.groups("google-pro-2")["gemini_models"]["five_hour"] = {
             "status": "unknown",
             "remaining_percent": None,
             "reset_at": None,
@@ -80,6 +84,26 @@ class ChallengerFallbackPolicyTests(unittest.TestCase):
             ),
             ("gemini-secondary",),
         )
+
+    def test_fallback_target_has_distinct_account_quota(self):
+        source = next(route for route in self.document["routes"] if route["id"] == "gemini-primary")
+        target = next(route for route in self.document["routes"] if route["id"] == "gemini-secondary")
+        self.assertNotEqual(source["account_id"], target["account_id"])
+        self.groups("google-pro-1")["gemini_models"]["weekly"]["remaining_percent"] = 0
+        self.assertEqual(
+            eligible_route_ids(
+                self.document,
+                phase="reactive",
+                current_route_id="gemini-primary",
+                signal="quota_exhausted",
+            ),
+            (),
+        )
+
+    def test_account_observations_match_allowlist(self):
+        del self.document["accounts"]["google-pro-2"]
+        with self.assertRaises(ContractError):
+            validate_document(self.document)
 
     def test_reactive_signal_must_be_quota_or_rate_limit(self):
         self.document["fallback"]["chain"][0]["fallback_route_ids"] = [

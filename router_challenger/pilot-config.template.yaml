@@ -1,0 +1,69 @@
+# Offline Phase 1 fixture only. Values wrapped in __...__ are replaced in the
+# ignored runtime copy by tools/challenger_pilot.ps1.
+host: "127.0.0.1"
+port: __PROXY_PORT__
+
+tls:
+  enable: false
+  cert: ""
+  key: ""
+
+remote-management:
+  allow-remote: false
+  secret-key: "__MANAGEMENT_KEY__"
+  disable-control-panel: true
+  disable-auto-update-panel: true
+
+auth-dir: "__AUTH_DIR__"
+api-keys:
+  - "__CLIENT_KEY__"
+
+debug: false
+pprof:
+  enable: false
+  addr: "127.0.0.1:18316"
+
+plugins:
+  enabled: false
+  dir: "plugins"
+  configs: {}
+
+commercial-mode: true
+logging-to-file: false
+logs-max-total-size-mb: 0
+error-logs-max-files: 0
+usage-statistics-enabled: false
+proxy-url: ""
+force-model-prefix: true
+passthrough-headers: false
+request-retry: 0
+max-retry-credentials: 1
+max-retry-interval: 0
+save-cooldown-status: false
+disable-claude-cloak-mode: true
+
+routing:
+  strategy: "fill-first"
+  session-affinity: false
+
+openai-compatibility:
+  - name: "local-fixture"
+    disabled: false
+    prefix: "fixture"
+    base-url: "http://127.0.0.1:__FIXTURE_PORT__/v1"
+    request-retry: 0
+    proxy-url: "direct"
+    api-key-entries:
+      - api-key: "__UPSTREAM_KEY__"
+        weight: 1
+        proxy-url: "direct"
+    models:
+      - name: "fixture-model"
+        alias: "fixture-model"
+        display-name: "Offline Fixture Model"
+        force-mapping: true
+        is-compat: true
+        input-modalities: [text]
+        output-modalities: [text]
+        thinking:
+          levels: ["low", "medium", "high"]

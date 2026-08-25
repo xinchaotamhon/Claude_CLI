@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-25
-verified_by: cli-proxy-api-phase-0-source-audit
+verified_by: cli-proxy-api-phase-1-offline-pilot
 status: active
 ---
 
@@ -160,12 +160,49 @@ status: active
   After adding the exact candidate checkout to the same exclusion set as the
   existing CCR source checkout, all 10 enabled smoke gates passed in
   `20260825T133632Z-91288459`.
+- CLIProxyAPI Phase 1 offline pilot is built but not promoted. The nested
+  `claude` branch has one bounded update-isolation patch at commit
+  `d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4`, directly above audited upstream
+  `v7.2.141`. Under `--local-model`, both remote catalogs and the Antigravity
+  manifest updater are suppressed; `go test ./cmd/server` passed.
+- Official Go `1.26.7` is staged only under ignored `vendor/go`; dependencies,
+  build cache and binaries remain under this project. The reproducible
+  challenger binary SHA-256 is
+  `830e9ff8f4526ec5d7ca9f620dc26881dd854023edea1b33452fcc3de17ad17e`.
+- `RUN_CHALLENGER_PILOT.bat` is a separate offline-only surface and does not
+  launch a real provider session. Its deterministic fixture proved loopback
+  listeners, current-user-only auth ACL, no observed external connection,
+  Claude non-stream/SSE/tool-result translation, verified stop/restart and
+  measured startup/restart below 0.6 seconds. CCR and `RUN_CLAUDE.bat` remain
+  the active champion.
+- The secret-free usage contract now requires Google AI Pro to expose separate
+  `gemini_models` and `claude_gpt_models` weekly branches. Five-hour windows are
+  optional; unknown/unavailable values require null measurements plus a reason.
+  Ten validator tests passed. No live quota adapter exists yet.
+- Dashboard architecture is separated from CCR: a future local control plane
+  owns login, account/model selection, quota provenance and finite fallback;
+  CCR remains rollback only. EasyCLIProxyAPI `v0.2.61` was pinned as an ignored
+  source reference but is blocked: no license grant exists in the tagged tree,
+  and source includes update downloads, global Codex/Claude discovery and
+  configuration, tray/autostart and auth-file inspection paths. It was not
+  built or run and no code may be copied into this project without permission.
+- The fallback contract was corrected after review so each account owns its
+  quota observation. Its example uses two distinct Google Pro accounts; known
+  five-hour depletion blocks eligibility even with weekly quota, while unknown
+  five-hour data permits only signal-driven reactive fallback. Output/tool side
+  effects stop retries. Thirteen account-aware fallback tests passed.
+- All 14 enabled smoke gates passed under the owner Windows profile in
+  `20260825T151944Z-d9df7999`: existing CCR/DPAPI/account/App isolation, pinned
+  challenger source, split usage contract, account-aware fallback, offline
+  protocol pilot and blocked dashboard-source boundary. The pilot left no PID
+  or session directory and made no provider/OAuth request.
 
 ## Blockers
 
-- Phase 1 intentionally awaits owner approval. CLIProxyAPI requires Go 1.26.0,
-  and no `go` executable is currently available. Any toolchain must be staged
-  project-locally rather than installed into the system PATH.
+- Phase 2 live-account work is not approved or proved. The challenger must not
+  open OAuth, read existing CCR accounts, call a real provider or replace the
+  normal launcher until explicit account selection, credential ACL/lifecycle
+  and provider-specific quota provenance have focused gates.
 - Owner visual verification after reopening Codex App remains.
 
 ## Unknowns

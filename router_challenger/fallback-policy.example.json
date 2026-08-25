@@ -6,44 +6,71 @@
     "kind": "google_ai_pro",
     "display_name": "Google AI Pro"
   },
-  "account_label": "google-pro-1",
   "observed_at": "2026-08-25T12:00:00Z",
   "manual_only": false,
   "allowlist": {
-    "account_ids": ["google-pro-1"],
+    "account_ids": ["google-pro-1", "google-pro-2"],
     "model_ids": ["gemini-pro", "claude-sonnet"]
   },
-  "usage_groups": {
-    "gemini_models": {
-      "weekly": {
-        "status": "available",
-        "remaining_percent": 87,
-        "reset_at": "2026-08-30T12:00:00Z"
-      },
-      "five_hour": {
-        "status": "available",
-        "remaining_percent": 100,
-        "reset_at": "2026-08-25T17:00:00Z"
+  "accounts": {
+    "google-pro-1": {
+      "usage_groups": {
+        "gemini_models": {
+          "weekly": {
+            "status": "available",
+            "remaining_percent": 87,
+            "reset_at": "2026-08-30T12:00:00Z"
+          },
+          "five_hour": {
+            "status": "available",
+            "remaining_percent": 100,
+            "reset_at": "2026-08-25T17:00:00Z"
+          }
+        },
+        "claude_gpt_models": {
+          "weekly": {
+            "status": "available",
+            "remaining_percent": 17,
+            "reset_at": "2026-08-28T08:00:00Z"
+          },
+          "five_hour": {
+            "status": "unknown",
+            "remaining_percent": null,
+            "reset_at": null,
+            "reason": "The provider did not expose this window."
+          }
+        }
       }
     },
-    "claude_gpt_models": {
-      "weekly": {
-        "status": "available",
-        "remaining_percent": 17,
-        "reset_at": "2026-08-28T08:00:00Z"
-      },
-      "five_hour": {
-        "status": "unknown",
-        "remaining_percent": null,
-        "reset_at": null,
-        "reason": "The provider did not expose this window."
+    "google-pro-2": {
+      "usage_groups": {
+        "gemini_models": {
+          "weekly": {
+            "status": "available",
+            "remaining_percent": 73,
+            "reset_at": "2026-08-31T12:00:00Z"
+          },
+          "five_hour": {
+            "status": "available",
+            "remaining_percent": 90,
+            "reset_at": "2026-08-25T17:00:00Z"
+          }
+        },
+        "claude_gpt_models": {
+          "weekly": {
+            "status": "unknown",
+            "remaining_percent": null,
+            "reset_at": null,
+            "reason": "No trustworthy weekly observation is available."
+          }
+        }
       }
     }
   },
   "routes": [
     {
       "id": "gemini-primary",
-      "account_id": "google-pro-1",
+      "account_id": "google-pro-2",
       "model_id": "gemini-pro",
       "usage_group": "gemini_models",
       "enabled": true,

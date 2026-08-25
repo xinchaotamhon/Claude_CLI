@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "component": "CLIProxyAPI isolated challenger",
+  "built_at": "2026-08-25",
+  "toolchain": {
+    "version": "go1.26.7 windows/amd64",
+    "archive": "go1.26.7.windows-amd64.zip",
+    "archive_sha256": "f4f534a486e4bc3387fa18f08208f2f854b7aaea8a08f2a2d829a914a05abb11",
+    "source": "https://go.dev/dl/"
+  },
+  "source": {
+    "upstream_tag": "v7.2.141",
+    "upstream_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
+    "patched_commit": "d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4"
+  },
+  "binary": {
+    "path": ".runtime/challenger/bin/cli-proxy-api.exe",
+    "sha256": "830e9ff8f4526ec5d7ca9f620dc26881dd854023edea1b33452fcc3de17ad17e",
+    "size_bytes": 65937920,
+    "tracked": false
+  },
+  "fixture_binary": {
+    "path": ".runtime/challenger/bin/challenger-fixture.exe",
+    "sha256": "f3205d4fa5102b2f8e1d4748dccc028929e84078b9911420116c35122aef48e2",
+    "size_bytes": 8830976,
+    "tracked": false
+  },
+  "policy": {
+    "normal_launcher_unchanged": true,
+    "pilot_launcher_only": true,
+    "oauth_run": false,
+    "provider_request_run": false,
+    "fixture_loopback_only": true,
+    "runtime_and_toolchain_project_local": true
+  }
+}

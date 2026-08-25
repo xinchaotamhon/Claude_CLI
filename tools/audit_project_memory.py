@@ -26,10 +26,15 @@ AUDIT_IGNORED_DIRS = {
     ".git",
     ".next",
     ".ccr-local",
+    ".cache",
+    ".runtime",
+    ".tmp",
     "node_modules",
     "runtime",
+    "vendor",
     "claude-code-router_proxy",
     "cli-proxy-api_core",
+    "dashboard_easycli_source",
 }
 
 

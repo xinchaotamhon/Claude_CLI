@@ -63,18 +63,39 @@ Read `START_HERE.md` and its complete local read order. Do not read ignored
 - Codex-Free-route cumulative result: all 9 enabled gates passed in
   `20260825T052438Z-21e21f26`, including owner-profile DPAPI and the separate
   Terra/Luna account-route regression.
+- CLIProxyAPI Phase 1 is an offline challenger only. Audited upstream
+  `v7.2.141` has one tracked local updater-isolation patch; official Go 1.26.7,
+  source checkout, module cache and binaries all remain inside ignored project
+  paths. `RUN_CHALLENGER_PILOT.bat` performs only fixture self-test/status/stop;
+  `RUN_CLAUDE.bat` and CCR remain normal operation.
+- The challenger fixture proved current-user-only auth ACL, exact binary/PID
+  identity, loopback-only listeners, no observed external connection,
+  Anthropic non-stream/SSE/tool-result translation and sub-0.6-second
+  startup/restart. No OAuth/provider request was run.
+- Quota contract requires separate Google AI Pro `gemini_models` and
+  `claude_gpt_models` weekly windows. Five-hour is optional. No live quota
+  adapter exists; unknown must remain explicit.
+- Fallback policy is account-aware and finite. Never route two fallback IDs to
+  the same exhausted account and call it resilience. Known five-hour depletion
+  blocks a route; unknown/missing five-hour allows only recognized
+  quota/rate-limit reactive fallback before any output/tool side effect.
+- Final Phase 1 cumulative result: all 14 enabled smoke gates passed in
+  `20260825T151944Z-d9df7999`. EasyCLIProxyAPI source remains ignored/unrun and
+  blocked; the offline challenger leaves no running process.
 
 ## Allowed Next Work
 
-1. Ask the owner to restart Codex App and confirm its normal label and Usage.
-2. Add a second account and verify explicit account switching after quota
+1. Keep the challenger offline until the owner explicitly approves a Phase 2
+   real-account test. Do not share/import CCR or global Codex account files.
+2. Ask the owner to restart Codex App and confirm its normal label and Usage.
+3. Add a second account and verify explicit account switching after quota
    exhaustion; do not claim automatic fallback unless separately implemented
    and proved.
-3. Use `[R]` only when account model entitlement changes; it sends bounded real
+4. Use `[R]` only when account model entitlement changes; it sends bounded real
    connectivity requests and does not repeat OAuth login.
-4. Improve UX while preserving per-account homes, local binary pin/hash,
+5. Improve UX while preserving per-account homes, local binary pin/hash,
    prompt-free RUN, loopback-only networking and Claude-only harness behavior.
-5. Review updates without automatic merge or binary replacement.
+6. Review updates without automatic merge or binary replacement.
 
 ## Boundaries
 
@@ -88,6 +109,8 @@ Read `START_HERE.md` and its complete local read order. Do not read ignored
   bodies or logs.
 - Do not claim account/model/quota switching works until owner-run evidence
   proves it. Filesystem independence still requires provider network service.
+- Never convert the owner screenshot into fabricated quota. A live adapter must
+  prove its data source and preserve both Google Pro weekly branches.
 
 ## Definition of Done
 
@@ -98,4 +121,6 @@ Read `START_HERE.md` and its complete local read order. Do not read ignored
   config/auth.
 - Menu `-SelfTest` passes under the owner Windows DPAPI profile.
 - All enabled smoke gates pass on the final artifact.
+- `RUN_CHALLENGER_PILOT.bat` self-test passes without provider/OAuth traffic and
+  leaves no pilot PID/session directory.
 - State/evidence/handoff remain current and secret-free.

@@ -2,6 +2,16 @@
 
 ## Current operational evidence
 
+- [Local dashboard and fallback decision](../60-Decisions/ADR-2026-08-25-local-dashboard-and-fallback.md):
+  keeps CCR as rollback, defines five-hour-aware bounded fallback and records
+  why EasyCLIProxyAPI v0.2.61 is inspect-only pending a license grant.
+- [2026-08-25 dashboard source audit](2026-08-25-dashboard-source-audit.md):
+  exact EasyCLIProxyAPI v0.2.61 pin, useful quota/OAuth surfaces, unsafe
+  update/global-agent/tray/auth-file paths and missing-license blocker.
+- [2026-08-25 CLIProxyAPI Phase 1 offline pilot](2026-08-25-cli-proxy-api-phase-1-offline-pilot.md):
+  pinned local patch/toolchain/binaries, current-user ACL, loopback-only
+  non-stream/SSE/tool-loop checks, sub-second startup and split Google Pro
+  weekly quota contract without OAuth or provider quota use.
 - [2026-08-25 router candidate research](2026-08-25-router-candidate-research.md):
   hash-recorded four owner-supplied reports, separated unsupported claims from
   primary evidence, and defined a no-credential CLIProxyAPI core pilot with CCR

@@ -14,17 +14,17 @@
       "id": "external.cli-proxy-api",
       "name": "CLIProxyAPI",
       "source_url": "https://github.com/router-for-me/CLIProxyAPI",
-      "status": "phase-0-source-audited",
+      "status": "phase-1-offline-pilot-passed-not-promoted",
       "fit": "cross-protocol loopback gateway with Codex/Claude OAuth, API-key providers and multi-account routing",
-      "constraints": "not adopted; v7.2.141 is pinned locally; must patch unconditional Antigravity version refresh and prove project-local paths, fixed-account selection, session affinity, protocol fidelity, Windows ACL, startup time and quota provenance before promotion"
+      "constraints": "v7.2.141 plus a tracked local updater-isolation patch passed project-local ACL, loopback, startup/restart and offline Anthropic protocol tests; real OAuth, fixed-account selection, live Claude tool sessions and provider-reported quota remain unproved before promotion"
     },
     {
       "id": "external.easy-cli-proxy-api",
       "name": "EasyCLIProxyAPI",
       "source_url": "https://github.com/router-for-me/EasyCLIProxyAPI",
-      "status": "candidate-after-core-pilot",
+      "status": "source-audited-blocked-no-license",
       "fit": "portable desktop management UI for CLIProxyAPI OAuth, providers, quota and lifecycle",
-      "constraints": "must disable automatic updates and every agent/system-default configuration path; do not add until the core passes isolation and protocol gates"
+      "constraints": "v0.2.61 is pinned only as an ignored inspect-only source reference; tagged tree has no license grant and includes app/core updates, global agent discovery/configuration, tray/autostart and auth-file management; do not copy, patch, build or distribute without a compatible license or permission"
     },
     {
       "id": "external.zero-limit",

@@ -37,7 +37,9 @@ FINGERPRINT_IGNORED_DIRS = {
     # Generated/local-only payloads are validated by their dedicated gates;
     # hashing them here would make the cumulative fingerprint slow and would
     # make a DPAPI/profile session change look like a source-tree mutation.
-    "runtime", ".ccr-local", "codex-login-runtime",
+    "runtime", ".runtime", ".cache", ".tmp", ".ccr-local",
+    "codex-login-runtime", "vendor", "cli-proxy-api_core",
+    "dashboard_easycli_source", "claude-code-router_proxy",
 }
 FINGERPRINT_IGNORED_DIRS_CASEFOLD = {
     name.casefold() for name in FINGERPRINT_IGNORED_DIRS

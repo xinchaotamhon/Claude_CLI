@@ -1,0 +1,87 @@
+From d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4 Mon Sep 17 00:00:00 2001
+From: hiSoft <xinchaotamhon@gmail.com>
+Date: Tue, 25 Aug 2026 21:22:01 +0700
+Subject: [PATCH] fix: keep local-model updater-free
+
+---
+ cmd/server/main.go      | 15 +++++++++++++--
+ cmd/server/main_test.go | 27 +++++++++++++++++++++++++++
+ 2 files changed, 40 insertions(+), 2 deletions(-)
+
+diff --git a/cmd/server/main.go b/cmd/server/main.go
+index 0d8cdece..b7ea43d2 100644
+--- a/cmd/server/main.go
++++ b/cmd/server/main.go
+@@ -676,7 +676,9 @@ func main() {
+ 			if standalone {
+ 				// Standalone mode: start an embedded local server and connect TUI client to it.
+ 				managementasset.StartAutoUpdater(context.Background(), configFilePath)
+-				misc.StartAntigravityVersionUpdater(context.Background())
++				if shouldStartAntigravityVersionUpdater(localModel) {
++					misc.StartAntigravityVersionUpdater(context.Background())
++				}
+ 				startModelCatalogUpdaters(localModel, cfg.Home.Enabled)
+ 				hook := tui.NewLogHook(2000)
+ 				hook.SetFormatter(&logging.LogFormatter{})
+@@ -750,13 +752,22 @@ func main() {
+ 		} else {
+ 			// Start the main proxy service
+ 			managementasset.StartAutoUpdater(context.Background(), configFilePath)
+-			misc.StartAntigravityVersionUpdater(context.Background())
++			if shouldStartAntigravityVersionUpdater(localModel) {
++				misc.StartAntigravityVersionUpdater(context.Background())
++			}
+ 			startModelCatalogUpdaters(localModel, cfg.Home.Enabled)
+ 			cmd.StartServiceWithPluginHost(cfg, configFilePath, password, pluginHost, serverOptions...)
+ 		}
+ 	}
+ }
+ 
++// shouldStartAntigravityVersionUpdater keeps --local-model free of the
++// Antigravity version manifest request. The default remains enabled so normal
++// deployments retain the established updater behavior.
++func shouldStartAntigravityVersionUpdater(localModel bool) bool {
++	return !localModel
++}
++
+ // modelCatalogUpdaterPlan decides which remote model catalogs should refresh.
+ // Codex client templates still refresh under Home mode because the model list
+ // comes from Home IDs while template metadata stays edge-local.
+diff --git a/cmd/server/main_test.go b/cmd/server/main_test.go
+index fce4be93..f7621283 100644
+--- a/cmd/server/main_test.go
++++ b/cmd/server/main_test.go
+@@ -135,3 +135,30 @@ func TestModelCatalogUpdaterPlan(t *testing.T) {
+ 		})
+ 	}
+ }
++
++func TestShouldStartAntigravityVersionUpdater(t *testing.T) {
++	tests := []struct {
++		name       string
++		localModel bool
++		want       bool
++	}{
++		{
++			name:       "default mode preserves Antigravity updater",
++			localModel: false,
++			want:       true,
++		},
++		{
++			name:       "local-model blocks Antigravity updater",
++			localModel: true,
++			want:       false,
++		},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			if got := shouldStartAntigravityVersionUpdater(tt.localModel); got != tt.want {
++				t.Fatalf("shouldStartAntigravityVersionUpdater(%v) = %v, want %v", tt.localModel, got, tt.want)
++			}
++		})
++	}
++}
+-- 
+2.54.0.windows.1
+

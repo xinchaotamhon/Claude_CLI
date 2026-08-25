@@ -1,10 +1,58 @@
 ---
 last_verified: 2026-08-25
-verified_by: cli-proxy-api-phase-0-source-audit
+verified_by: cli-proxy-api-phase-1-offline-pilot
 status: active
 ---
 
 # Known Failures
+
+## challenger.concurrent-baseline-invalid — contained 2026-08-25
+
+- Symptom: smoke run `20260825T141021Z-0bdd6512` reported 9/10 with the source
+  pin gate failing and `tree_stable: false`.
+- Cause: the explicitly delegated Terra worker began the approved nested source
+  patch while the parent baseline gate run was still in progress.
+- Impact: that run is invalid evidence, not a regression in the previously
+  accepted 10/10 baseline `20260825T133921Z-29f3a3bd`.
+- Disposition: contained. The exact patch was reviewed, formatted, tested and
+  committed before later gates. Do not run a cumulative gate concurrently with
+  any worker that can write inside an indexed/verified nested checkout.
+
+## challenger.fixture-composite-literal — fixed 2026-08-25
+
+- Symptom: the first Go compile of the new deterministic fixture reported a
+  missing comma/brace around the non-stream tool-call response.
+- Cause: one `assistantMessage` composite literal was not closed before the
+  enclosing `chatChoice` finish reason.
+- Disposition: fixed with one closing brace, then formatted by project-local
+  `gofmt`. All fixture tests, reproducible build and full offline protocol
+  self-test passed afterward.
+- Regression gate: `challenger.offline-pilot` plus fixture `go test ./...` in
+  `tools/build_challenger.ps1`.
+
+## foundation.fingerprint-scanned-local-toolchains — fixed 2026-08-25
+
+- Symptom: the first final cumulative run after staging Go/module cache and two
+  ignored source checkouts spent minutes before producing a gate result.
+- Cause: the tree fingerprint excluded the old Node/runtime payloads but still
+  hashed ignored Go toolchain/module caches and both new nested source trees.
+- Impact: evidence generation was impractically slow; focused gates themselves
+  were not failing.
+- Disposition: fixed. Exact local-only directories are excluded from the global
+  fingerprint and are instead validated by dedicated source/binary gates. The
+  runner still rejects any tracked file under a fingerprint-excluded directory.
+
+## challenger.windows-powershell-missing-filehash — fixed 2026-08-25
+
+- Symptom: cumulative run `20260825T151833Z-dbff50bf` passed 13/14 gates; only
+  `challenger.offline-pilot` failed immediately because Windows PowerShell did
+  not resolve `Get-FileHash` in the gate subprocess.
+- Cause: the new gate used legacy `powershell.exe`, while the tested pilot and
+  existing project PowerShell gates use pinned PowerShell 7.
+- Impact: no protocol/isolation behavior ran in that failed gate. The same
+  self-test had already passed directly under PowerShell 7.
+- Disposition: fixed by using exact project-approved PowerShell 7 executable in
+  the registry; no production or provider code changed.
 
 ## foundation.candidate-source-readme-triggered-secret-scan — fixed 2026-08-25
 

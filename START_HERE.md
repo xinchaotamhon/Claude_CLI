@@ -67,6 +67,12 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
   `origin` pointing to the owner's fork and `upstream` to musistudio. It is a
   separate nested Git repository and is ignored by the parent repository.
 - `RUN_CLAUDE.bat`: the only normal entry point.
+- `RUN_CHALLENGER_PILOT.bat`: separate offline CLIProxyAPI fixture/status/stop
+  surface; it is not a normal Claude launcher and never signs into a provider.
+- `router_challenger/`: pinned CLIProxyAPI source/build metadata, tracked local
+  isolation patch, deterministic fixture source and secret-free quota contract.
+- `dashboard_easycli_source/`: ignored inspect-only EasyCLIProxyAPI source at a
+  pinned tag. Missing license and unsafe integration surfaces block build/copy.
 - `setting.json`: ignored local source of truth for API URL/key/model routes;
   it may contain plaintext secrets and must never be read into project memory.
 - `setting.example.json`: tracked secret-free schema/example.
@@ -84,7 +90,8 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 
 Use one canonical front door per intended outcome: `RUN_CLAUDE.bat` for normal
 Claude use and route selection; `SIGN_ACCOUNT.bat` for adding a project-local
-account. Tool, provider or model availability never grants
+account. `RUN_CHALLENGER_PILOT.bat` is only for the isolated offline challenger
+self-test and must not be described as account/model use. Tool, provider or model availability never grants
 permission to install, update, consume quota, expose data or change an external
 account.
 
@@ -137,6 +144,7 @@ RUN_CLAUDE.bat --fetch-router-source
 RUN_CLAUDE.bat --install-router
 RUN_CLAUDE.bat --new-window
 SIGN_ACCOUNT.bat
+RUN_CHALLENGER_PILOT.bat
 ```
 
 `--install-router` is an explicit dependency operation, not a startup side
