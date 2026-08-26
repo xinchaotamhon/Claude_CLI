@@ -13,6 +13,9 @@ param(
     [string]$AddCodexPlan,
     [string]$CodexAccountName,
     [string]$LaunchProfileId,
+    [string]$ClaudeSessionId,
+    [string]$ClaudeSessionName,
+    [switch]$ResumeClaudeSession,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$ClaudeArguments
 )
@@ -52,6 +55,7 @@ $CodexAccountsRoot = Join-Path $RouterStateRoot "codex-accounts"
 $CodexLoginRuntimeRoot = Join-Path $RouterRoot "codex-login-runtime"
 $CodexLoginBinary = Join-Path $CodexLoginRuntimeRoot "codex.exe"
 $CodexLoginSourcePath = Join-Path $RouterRoot "CODEX_LOGIN_SOURCE.json"
+$ClaudeHomePath = Join-Path $RootPath ".runtime\claude-home"
 $ManagedProviderPrefix = "local-setting--"
 $LocalAgentProviderApiKey = "ccr-local-agent-login"
 $CodexAccountBaseUrl = "https://chatgpt.com/backend-api/codex"
@@ -99,6 +103,9 @@ function Ensure-StateDirectories {
         if (-not (Test-Path -LiteralPath $SafePath)) {
             New-Item -ItemType Directory -Path $SafePath -Force | Out-Null
         }
+    }
+    if (-not (Test-Path -LiteralPath $ClaudeHomePath)) {
+        New-Item -ItemType Directory -Path $ClaudeHomePath -Force | Out-Null
     }
 }
 
@@ -448,6 +455,21 @@ function Write-ModeSettings {
     return $ModePath
 }
 
+function Write-CommonClaudeSettings {
+    param([Parameter(Mandatory = $true)]$Defaults)
+    $SafeHome = Assert-PathInside -Path $ClaudeHomePath -BasePath $RootPath
+    if (-not (Test-Path -LiteralPath $SafeHome)) { New-Item -ItemType Directory -Path $SafeHome -Force | Out-Null }
+    $ClaudeSettings = [ordered]@{
+        env = [ordered]@{ CLAUDE_CODE_ENABLE_TELEMETRY = [string]$Defaults.telemetry }
+        permissions = [ordered]@{ allow = @($Defaults.allow); defaultMode = [string]$Defaults.permission_mode }
+        effortLevel = [string]$Defaults.effort_level
+        theme = [string]$Defaults.theme
+    }
+    $SettingsFile = Assert-PathInside -Path (Join-Path $SafeHome "settings.json") -BasePath $SafeHome
+    [System.IO.File]::WriteAllText($SettingsFile, ($ClaudeSettings | ConvertTo-Json -Depth 12), (New-Object System.Text.UTF8Encoding($false)))
+    return $SafeHome
+}
+
 function Assert-RouterRuntime {
     if (-not (Test-Path -LiteralPath $NodePath -PathType Leaf)) { throw "Project-local Node runtime is missing: $NodePath" }
     if (-not (Test-Path -LiteralPath $RouterCliPath -PathType Leaf)) { throw "Project-local CCR runtime is missing: $RouterCliPath" }
@@ -789,11 +811,32 @@ function Ensure-SettingApplied {
 }
 
 function Start-Profile {
-    param([Parameter(Mandatory = $true)]$Profile, [Parameter(Mandatory = $true)]$Defaults)
+    param(
+        [Parameter(Mandatory = $true)]$Profile,
+        [Parameter(Mandatory = $true)]$Defaults,
+        [string]$SessionId,
+        [string]$SessionName,
+        [switch]$ResumeSession
+    )
     if (-not (Test-Path -LiteralPath $ClaudeBinary -PathType Leaf)) { throw "Only project-local bin\claude.exe is allowed, but it is missing." }
+    if ($SessionId) {
+        $ParsedSessionId = [Guid]::Empty
+        if (-not [Guid]::TryParseExact($SessionId, "D", [ref]$ParsedSessionId)) { throw "Invalid Claude session identifier." }
+        $SessionId = $ParsedSessionId.ToString("D")
+    }
+    if ($SessionName -and ($SessionName.Length -gt 80 -or $SessionName -match '[\r\n]')) { throw "Invalid Claude session name." }
+    if ($ResumeSession -and -not $SessionId) { throw "A session identifier is required to resume Claude." }
     Ensure-Router
     $ClientKey = Read-ProtectedSecret
-    $ModePath = Write-ModeSettings -Profile $Profile -Defaults $Defaults
+    $ModePath = if ($SessionId) { Write-CommonClaudeSettings -Defaults $Defaults } else { Write-ModeSettings -Profile $Profile -Defaults $Defaults }
+    $EffectiveClaudeArguments = @($ClaudeArguments)
+    if ($ResumeSession) {
+        $EffectiveClaudeArguments += @("--resume", $SessionId)
+    }
+    elseif ($SessionId) {
+        $EffectiveClaudeArguments += @("--session-id", $SessionId)
+        if ($SessionName) { $EffectiveClaudeArguments += @("--name", $SessionName) }
+    }
     $Saved = @{}
     $Names = @("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "CLAUDE_CONFIG_DIR", "CCR_INTERNAL_HOME_DIR", "CCR_INTERNAL_APP_DATA_DIR", "CCR_INTERNAL_USER_DATA_DIR", "DISABLE_AUTOUPDATER")
     foreach ($Name in $Names) { $Saved[$Name] = [Environment]::GetEnvironmentVariable($Name, "Process") }
@@ -811,7 +854,7 @@ function Start-Profile {
         $env:CCR_INTERNAL_USER_DATA_DIR = $CcrUserDataPath
         $env:DISABLE_AUTOUPDATER = "1"
         Write-Host ("Launching Claude: {0} -> {1}" -f $Profile.name, $env:ANTHROPIC_MODEL) -ForegroundColor Green
-        & $ClaudeBinary @ClaudeArguments
+        & $ClaudeBinary @EffectiveClaudeArguments
         $script:MenuExitCode = $LASTEXITCODE
     }
     finally {
@@ -1095,13 +1138,8 @@ function SignInAndImportCodexAccount {
         [ValidateSet("codex_free", "codex_plus")][string]$ExpectedPlan = "codex_free",
         [string]$RequestedName
     )
-    try {
-        [void](Assert-VerifiedRouterService)
-        throw "A Claude/router session is running. Close it or stop the router before importing an account."
-    }
-    catch {
-        if ($_.Exception.Message -like "A Claude/router session is running.*") { throw }
-    }
+    $RouterWasRunning = $false
+    try { [void](Assert-VerifiedRouterService); $RouterWasRunning = $true } catch { }
 
     $LocalCodexDir = Assert-PathInside -Path (Join-Path $CcrHomePath ".codex") -BasePath $RouterStateRoot
     $LocalAuthPath = Assert-PathInside -Path (Join-Path $LocalCodexDir "auth.json") -BasePath $RouterStateRoot
@@ -1179,6 +1217,14 @@ function SignInAndImportCodexAccount {
         }
         else {
             $SourceAuthPath = Invoke-ProjectLocalCodexLogin -AccountHome $AccountHome
+        }
+
+        if ($RouterWasRunning) {
+            Write-Host ""
+            Write-Host ("Saved the browser login for '{0}' inside this project." -f $ProviderName) -ForegroundColor Green
+            Write-Host "A Claude/router session is currently running, so CCR was not changed." -ForegroundColor Yellow
+            Write-Host "Close the active Claude terminals, then use 'Hoan tat nhap tai khoan' in DASHBOARD.bat. No new browser login is required while this session remains valid." -ForegroundColor Cyan
+            return
         }
 
         $HadLocalAuth = Test-Path -LiteralPath $LocalAuthPath -PathType Leaf
@@ -1260,7 +1306,7 @@ function SignInAndImportCodexAccount {
     finally {
         if ($StagedLocalAuth -and (Test-Path -LiteralPath $LocalAuthPath -PathType Leaf)) { Remove-Item -LiteralPath $LocalAuthPath -Force }
         if ($HadLocalAuth -and (Test-Path -LiteralPath $BackupAuthPath -PathType Leaf)) { Move-Item -LiteralPath $BackupAuthPath -Destination $LocalAuthPath }
-        try { [void](Invoke-Ccr -Arguments @("stop")) } catch { }
+        if (-not $RouterWasRunning) { try { [void](Invoke-Ccr -Arguments @("stop")) } catch { } }
     }
 }
 
@@ -1575,7 +1621,7 @@ try {
         $DashboardProfiles = @($DashboardSetting.profiles | Where-Object { $_.enabled }) + @(Read-AccountProfiles | Where-Object { $_.enabled })
         $DashboardProfile = @($DashboardProfiles | Where-Object { [string]$_.id -eq $LaunchProfileId }) | Select-Object -First 1
         if ($null -eq $DashboardProfile) { throw "The selected dashboard profile no longer exists or is disabled." }
-        Start-Profile -Profile $DashboardProfile -Defaults $DashboardSetting.defaults
+        Start-Profile -Profile $DashboardProfile -Defaults $DashboardSetting.defaults -SessionId $ClaudeSessionId -SessionName $ClaudeSessionName -ResumeSession:$ResumeClaudeSession
         exit $script:MenuExitCode
     }
     if ($AccountMenu) { Invoke-AccountMenu; exit 0 }

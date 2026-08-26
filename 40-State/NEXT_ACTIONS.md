@@ -8,20 +8,21 @@ status: active
 
 1. **Use one entry only.** Double-click `DASHBOARD.bat`; it is the only BAT at
    project root. Keep technical rollback launchers under `tools/`.
-2. **Prove the recovered second account, then add the rest.** Run one short
-   Terra or Luna request from `codex_free_2`; its interrupted import is already
-   recovered into both routes without another browser login. Then use **Codex
-   Free** for the remaining Free account and **Codex Plus** for the Plus
-   account. Enter password and 2FA only on the official browser page. Confirm
-   the resulting models: Free must not receive Sol; Plus may retain
-   Sol/Terra/Luna only after bounded provider checks pass.
-3. **Complete Google slots one at a time.** Start with **Thêm tài khoản Google**,
-   finish official OAuth, return to the dashboard and refresh quota. Verify the
+2. **Prove Plus through the deferred path.** Use **Codex Plus** and select the
+   intended Plus account on OpenAI's official browser page. If Claude terminals
+   are active, the dashboard must show a pending account; close them and click
+   **Hoàn tất nhập tài khoản**. Confirm actual routes: Free must not receive Sol;
+   Plus may retain Sol/Terra/Luna only after bounded checks pass.
+3. **Complete Google slots one at a time.** Enter the intended Google email as
+   an optional hint, use **Thêm tài khoản Google**, confirm the chooser displays
+   the intended account, finish official OAuth, then refresh quota. Verify the
    `Gemini` and `Claude / GPT` groups independently before Slot 2 or 3.
 4. **Promote Google routes incrementally.** A completed OAuth slot is not yet a
    Claude route. Prove one explicit account/model request and full tool loop,
    then add only that route to the selector. Keep automatic fallback off.
-5. **Prove parallel terminals.** After a second account exists, open two
+5. **Prove direct and resumable terminals.** Open one named session and verify
+   exactly one console appears, close it, then use **Mở lại** and confirm prior
+   Claude context is offered. After a second account exists, open two
    dashboard terminals with different routes, then two with the same route.
    Expected: each terminal keeps its selected model; same-account terminals
    share provider quota; neither changes Codex App/global state.
@@ -45,10 +46,14 @@ status: active
     state. If dashboard fails, use `tools\RUN_CLAUDE_TECHNICAL.bat`.
 12. **Review updates conservatively.** Diff CCR/CLIProxyAPI source before merge;
     compare release notes/version/hash for the closed Claude binary. Never
-    auto-download or auto-merge during dashboard startup.
+    auto-download or auto-merge during dashboard startup. Dashboard update
+    cards are advisory metadata, not approval.
 13. **Before every push, inspect staged files.** `setting.json`, `.ccr-local`,
     `.runtime`, auth JSON, binaries, Node modules and nested source repositories
     must remain ignored.
+14. **Rehearse a clean reconstruction when convenient.** Follow
+    `docs/RECONSTRUCT_ON_NEW_MACHINE.md` in a disposable clone and prove the
+    tracked patch/install paths before relying on portability for a machine move.
 
 AI sessions may inspect tracked contracts and secret-free status only. Do not
 print or persist access tokens, refresh tokens, passwords, 2FA, provider account

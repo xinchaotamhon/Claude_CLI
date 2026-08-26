@@ -33,7 +33,7 @@ def main() -> int:
     actual = root / "setting.json"
     example = root / "setting.example.json"
     dashboard = root / "DASHBOARD.bat"
-    dashboard_helper = root / "tools" / "dashboard_terminal.bat"
+    dashboard_helper = root / "tools" / "dashboard_terminal.ps1"
     menu = root / "tools" / "router_project_menu.ps1"
     for path in (actual, example, dashboard, dashboard_helper, menu):
         if not path.is_file():

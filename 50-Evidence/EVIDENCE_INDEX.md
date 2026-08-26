@@ -1,5 +1,8 @@
 # Evidence Index
 
+- [2026-08-26 portable session/account/update repair](2026-08-26-portable-session-account-update-repair.md): direct terminal launch, deferred Codex import, Google account chooser/login hint, common resumable session home and fresh-machine reconstruction controls.
+- [2026-08-27 Kiro Pix4K test provider](2026-08-27-kiro-pix4k-test-provider.md): sanitized model-catalog/quota-page discovery and ignored custom route configuration.
+
 - [2026-08-26 one-door local dashboard](2026-08-26-one-door-local-dashboard.md):
   original loopback UI/server, one-click entry, exact route launches, account
   actions, normalized Codex quota, split Google quota contract and rollback.

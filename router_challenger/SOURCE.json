@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "component": "CLIProxyAPI",
-  "status": "phase-2-oauth-callback-isolated-offline-built",
+  "status": "phase-3-google-account-selection-offline-built",
   "source_url": "https://github.com/router-for-me/CLIProxyAPI.git",
   "source_tag": "v7.2.141",
   "source_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
   "source_tree": "320d4056873d7e8fd036c568db493acc0e565dc7",
-  "patched_commit": "3a3df12d068ac3a3bff2712db168ed1a7d31190a",
-  "patched_tree": "37209cb0f5ba9a60e45a12742a8208fa7f49928d",
+  "patched_commit": "bcc28e6133a38b2185e04c631c9e662dbf28e9c3",
+  "patched_tree": "001e0ef95ad385ac78743153cf3429bca5eadef0",
   "patches": [
     {
       "file": "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
@@ -18,6 +18,11 @@
       "file": "router_challenger/patches/0001-fix-bind-antigravity-oauth-callback-to-loopback.patch",
       "commit": "3a3df12d068ac3a3bff2712db168ed1a7d31190a",
       "sha256": "de4d6d83041cd36ea4162a248a4e5256c2a7473999b90668925ea13a46733bde"
+    },
+    {
+      "file": "router_challenger/patches/0002-fix-select-google-oauth-account.patch",
+      "commit": "bcc28e6133a38b2185e04c631c9e662dbf28e9c3",
+      "sha256": "c36c1b374afd71fb91c7fb84f183972ccfb30a59cc08f8ef26e7fde0373f1a57"
     }
   ],
   "source_commit_date": "2026-08-24T16:35:18+08:00",
@@ -43,6 +48,7 @@
     "normal_launcher_changed": false,
     "local_model_suppresses_remote_catalog_and_antigravity_updates": true,
     "offline_fixture_only": true,
-    "oauth_callback_loopback_only": true
+    "oauth_callback_loopback_only": true,
+    "google_account_chooser_and_login_hint": true
   }
 }

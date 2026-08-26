@@ -18,6 +18,7 @@
       "models": [
         "replace-with-real-model-id"
       ],
+      "quota_page_url": "",
       "extra_headers": {},
       "extra_body": {}
     }

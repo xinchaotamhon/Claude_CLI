@@ -4,7 +4,8 @@
 param(
     [string]$Root = (Join-Path $PSScriptRoot ".."),
     [switch]$SelfTest,
-    [string]$AddSlot
+    [string]$AddSlot,
+    [string]$GoogleLoginHint
 )
 
 Set-StrictMode -Version Latest
@@ -156,8 +157,18 @@ function Assert-CallbackPortFree {
 }
 
 function Add-GoogleAccount {
-    param([Parameter(Mandatory = $true)][string]$Slot)
+    param(
+        [Parameter(Mandatory = $true)][string]$Slot,
+        [string]$LoginHint
+    )
     if ((Get-GoogleSlotNumber -Slot $Slot) -eq 0) { throw "Unknown Google Pro slot: $Slot" }
+    $NormalizedHint = ([string]$LoginHint).Trim()
+    if ($NormalizedHint) {
+        if ($NormalizedHint.Length -gt 254 -or $NormalizedHint -match '[\r\n]') { throw 'Google account email hint is invalid.' }
+        try { $ParsedHint = [System.Net.Mail.MailAddress]::new($NormalizedHint) }
+        catch { throw 'Google account email hint is invalid.' }
+        if (-not $ParsedHint.Address.Equals($NormalizedHint, [System.StringComparison]::OrdinalIgnoreCase)) { throw 'Google account email hint is invalid.' }
+    }
     Assert-AccountRuntime
     $State = Get-SlotState -Slot $Slot
     if ($State.complete) {
@@ -170,14 +181,21 @@ function Add-GoogleAccount {
     $ConfigPath = Write-AccountConfig -State $State
     Write-Host ""
     Write-Host "Opening official Google OAuth for $Slot..." -ForegroundColor Cyan
-    Write-Host "Choose the intended Google AI Pro account in the browser and complete 2FA there." -ForegroundColor DarkGray
+    if ($NormalizedHint) { Write-Host "Google will be asked to select: $NormalizedHint" -ForegroundColor DarkGray }
+    Write-Host "The browser will show Google's account chooser. Complete password/2FA only there." -ForegroundColor DarkGray
     Write-Host "The callback listens only on 127.0.0.1:$Port; credentials stay in this slot." -ForegroundColor DarkGray
     Push-Location ([string]$State.root)
+    $SavedLoginHint = [Environment]::GetEnvironmentVariable('CLIPROXY_GOOGLE_LOGIN_HINT', 'Process')
     try {
+        if ($NormalizedHint) { $env:CLIPROXY_GOOGLE_LOGIN_HINT = $NormalizedHint }
+        else { Remove-Item Env:CLIPROXY_GOOGLE_LOGIN_HINT -ErrorAction SilentlyContinue }
         & $BinaryPath -config $ConfigPath -antigravity-login -oauth-callback-port $Port -local-model
         $CommandExit = $LASTEXITCODE
     }
-    finally { Pop-Location }
+    finally {
+        [Environment]::SetEnvironmentVariable('CLIPROXY_GOOGLE_LOGIN_HINT', $SavedLoginHint, 'Process')
+        Pop-Location
+    }
     if ($CommandExit -ne 0) { throw "Google OAuth helper exited with code $CommandExit." }
     $AuthFiles = @(Get-ChildItem -LiteralPath ([string]$State.authDir) -Filter "*.json" -File -ErrorAction Stop)
     if ($AuthFiles.Count -ne 1) { throw "Google OAuth did not leave exactly one project-local credential file for '$Slot'." }
@@ -231,7 +249,7 @@ function Invoke-SelfTest {
 }
 
 if ($SelfTest) { Invoke-SelfTest; exit 0 }
-if ($AddSlot) { Add-GoogleAccount -Slot $AddSlot; exit 0 }
+if ($AddSlot) { Add-GoogleAccount -Slot $AddSlot -LoginHint $GoogleLoginHint; exit 0 }
 while ($true) {
     try { Clear-Host } catch { }
     Write-Host "==============================================================" -ForegroundColor Cyan

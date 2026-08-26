@@ -55,6 +55,8 @@ def main() -> int:
         "oauth_callback_loopback_only",
         "AuthFiles.Count -ne 1",
         "Get-NetTCPConnection -State Listen -LocalPort $Port",
+        "CLIPROXY_GOOGLE_LOGIN_HINT",
+        "GoogleLoginHint",
     )
     for marker in required:
         if marker not in script:
@@ -101,8 +103,10 @@ def main() -> int:
     if source.get("policy", {}).get("oauth_callback_loopback_only") is not True:
         return fail("source policy does not require a loopback OAuth callback")
     patches = source.get("patches")
-    if not isinstance(patches, list) or len(patches) != 2:
-        return fail("reviewed two-patch challenger series is missing")
+    if not isinstance(patches, list) or len(patches) != 3:
+        return fail("reviewed three-patch challenger series is missing")
+    if source.get("policy", {}).get("google_account_chooser_and_login_hint") is not True:
+        return fail("source policy does not require explicit Google account selection")
     for patch in patches:
         path = root / str(patch.get("file", ""))
         if not path.is_file() or sha256(path) != patch.get("sha256"):

@@ -21,6 +21,12 @@ Nó không cài global. Bình thường không cần Node/npm bên ngoài nữa.
 
 ## Review update
 
+Trong `DASHBOARD.bat`, nút **Kiểm tra cập nhật** đọc release metadata công khai
+cho Claude Code, CCR, Codex helper và CLIProxyAPI. Mỗi thẻ hiển thị phiên bản
+đang dùng, release mới nhất, ngày source/build đã duyệt và thời điểm kiểm tra.
+Kết quả cache trong `.runtime/dashboard/updates.json`; khởi động dashboard không
+tự gọi mạng. Nút này không fetch source, merge hay thay binary.
+
 ```text
 tools\RUN_CLAUDE_TECHNICAL.bat --check-updates
 tools\RUN_CLAUDE_TECHNICAL.bat --fetch-router-source
@@ -42,3 +48,9 @@ Chỉ nâng khi cần tính năng/sửa lỗi thực sự. Trước khi đổi v
 
 Rollback là khôi phục version pin cũ, chạy installer explicit và chạy lại gate.
 Không dùng auto-merge hay cập nhật theo `latest` chỉ vì có release mới.
+
+CLIProxyAPI không phụ thuộc vào việc nested checkout còn tồn tại: upstream
+commit/tag và ba patch reviewable được pin trong `router_challenger/SOURCE.json`.
+`tools/install_challenger_pilot.ps1` dựng lại đúng cây source/binary. Nếu owner
+tạo fork riêng và push branch `claude`, fork là thêm một kênh review thuận tiện,
+không thay thế patch/hash/gate của parent repository.

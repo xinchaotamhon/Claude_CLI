@@ -34,7 +34,7 @@ def main() -> int:
     source_path = root / "provider_router" / "CODEX_LOGIN_SOURCE.json"
     binary_path = root / "provider_router" / "codex-login-runtime" / "codex.exe"
     dashboard_path = root / "DASHBOARD.bat"
-    dashboard_helper_path = root / "tools" / "dashboard_terminal.bat"
+    dashboard_helper_path = root / "tools" / "dashboard_terminal.ps1"
     dashboard_server_path = root / "dashboard" / "server.mjs"
     ignore_path = root / ".gitignore"
     for path in (menu_path, installer_path, source_path, binary_path, dashboard_path, dashboard_helper_path, dashboard_server_path, ignore_path):
@@ -85,7 +85,8 @@ def main() -> int:
         "Recovered the already-persisted account",
         "CCR persisted the exact account config before its gateway update reported an error",
         "$CodexAccountName",
-        "A Claude/router session is running",
+        "$RouterWasRunning",
+        "Saved the browser login",
         "Remove-Item -LiteralPath $LocalAuthPath -Force",
         "account-profiles.json",
         "Read-AccountProfiles | Where-Object",
@@ -151,7 +152,7 @@ def main() -> int:
     dashboard_server = read(dashboard_server_path)
     if "-AddCodexPlan" not in dashboard_helper or "-CodexAccountName" not in dashboard_helper or "router_project_menu.ps1" not in dashboard_helper:
         return fail("dashboard account action does not enter the project-local Codex import flow")
-    if '-AddCodexPlan "%~2" -CodexAccountName "%~3"' not in dashboard_helper:
+    if "-AddCodexPlan $Value" not in dashboard_helper or "-CodexAccountName $Extra" not in dashboard_helper:
         return fail("dashboard resume wrapper does not pass the parsed plan and exact account label")
     if "spawnTerminal('codex-resume', plan, label)" not in dashboard_server or "safeCodexLabel" not in dashboard_server:
         return fail("dashboard does not preserve a safe email-style Codex account label during resume")

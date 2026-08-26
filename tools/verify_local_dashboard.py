@@ -24,7 +24,7 @@ def main() -> int:
     files = {
         "entry": root / "DASHBOARD.bat",
         "start": root / "tools" / "start_dashboard.ps1",
-        "terminal": root / "tools" / "dashboard_terminal.bat",
+        "terminal": root / "tools" / "dashboard_terminal.ps1",
         "server": root / "dashboard" / "server.mjs",
         "ui": root / "dashboard" / "src" / "main.tsx",
         "css": root / "dashboard" / "src" / "styles.css",
@@ -62,9 +62,14 @@ def main() -> int:
         "retrieveUserQuotaSummary",
         "gemini_models",
         "claude_gpt_models",
-        "spawnTerminal('launch'",
+        "spawnTerminal(resumeId ? 'launch-resume' : 'launch-new'",
         "spawnTerminal('codex'",
         "spawnTerminal('google'",
+        "'/api/sessions/resume'",
+        "'/api/updates/check'",
+        "'/api/providers/quota/open'",
+        "'.runtime', 'claude-sessions'",
+        "'.runtime', 'claude-home'",
         "API tùy chỉnh không có chuẩn chung cho hạn mức",
     )
     for marker in required_server:
@@ -89,21 +94,21 @@ def main() -> int:
         return fail(f"project root must expose only DASHBOARD.bat, found: {root_batches}")
 
     terminal = read(files["terminal"])
-    for marker in ("-LaunchProfileId", "-AddCodexPlan", "-CodexAccountName", "-AddSlot"):
+    for marker in ("-LaunchProfileId", "-AddCodexPlan", "-CodexAccountName", "-AddSlot", "-ClaudeSessionId", "-ResumeClaudeSession", "-GoogleLoginHint"):
         if marker not in terminal:
             return fail(f"dashboard terminal dispatcher is missing {marker}")
     router = read(files["router"])
     google = read(files["google"])
-    if "$LaunchProfileId" not in router or "$AddCodexPlan" not in router or "$CodexAccountName" not in router:
+    if "$LaunchProfileId" not in router or "$AddCodexPlan" not in router or "$CodexAccountName" not in router or "$ClaudeSessionId" not in router:
         return fail("router helper lacks allowlisted dashboard route/account actions")
-    if "$AddSlot" not in google:
+    if "$AddSlot" not in google or "$GoogleLoginHint" not in google or "CLIPROXY_GOOGLE_LOGIN_HINT" not in google:
         return fail("Google helper lacks the allowlisted dashboard slot action")
 
     ui = read(files["ui"])
     css = read(files["css"])
     if "https://" in ui or "https://" in css or "http://" in ui or "http://" in css:
         return fail("browser UI has an external runtime dependency")
-    for marker in ("Mở terminal", "Codex Free", "Codex Plus", "Google AI Pro", "Làm mới tất cả", "Tín dụng bổ sung", "Hoàn tất nhập tài khoản", "mỗi 5 phút"):
+    for marker in ("Mở terminal", "Codex Free", "Codex Plus", "Google AI Pro", "Làm mới tất cả", "Tín dụng bổ sung", "Hoàn tất nhập tài khoản", "mỗi 5 phút", "Mở lại công việc cũ", "Kiểm tra cập nhật", "Mở trang quota của provider"):
         if marker not in ui:
             return fail(f"dashboard UI is missing owner-facing action: {marker}")
 

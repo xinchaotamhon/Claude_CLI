@@ -45,7 +45,8 @@ compatibility path.
 
 For runtime work, also read the [local router runbook](docs/ROUTER_LOCAL.md),
 the [update policy](docs/ROUTER_UPDATES.md), the [repository evaluation](docs/REPO_EVALUATION.md)
-and the [router adoption ADR](60-Decisions/ADR-2026-08-24-adopt-claude-code-router.md).
+the [new-machine reconstruction runbook](docs/RECONSTRUCT_ON_NEW_MACHINE.md) and
+the [router adoption ADR](60-Decisions/ADR-2026-08-24-adopt-claude-code-router.md).
 
 Routine continuation must be recoverable from this folder without chat history
 or a parent directory. Prefer runtime evidence, then the canonical owner file.
@@ -67,6 +68,9 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 - `claude-code-router_proxy/`: reviewable source fork on branch `claude`, with
   `origin` pointing to the owner's fork and `upstream` to musistudio. It is a
   separate nested Git repository and is ignored by the parent repository.
+- `cli-proxy-api_core/`: ignored independent source checkout on branch
+  `claude`. The reproducible parent-owned form is the pinned upstream commit
+  plus tracked patches under `router_challenger/patches/`.
 - `DASHBOARD.bat`: the single normal owner-facing entry point. It opens the
   authenticated loopback control room for accounts, quota, routes and new
   Claude terminals.
@@ -83,6 +87,11 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 - `setting.example.json`: tracked secret-free schema/example.
 - `dashboard/`: original local-only React UI plus zero-dependency Node server.
   Built assets are tracked so normal startup does not install or build.
+- `.runtime/claude-home/`: ignored common Claude config/session store used by
+  dashboard launches. `.runtime/claude-sessions/index.json` is its local
+  friendly index; neither belongs in Git.
+- `DEPENDENCIES.lock.json` and `docs/RECONSTRUCT_ON_NEW_MACHINE.md`: exact
+  machine-readable and human reconstruction routes for a fresh Windows clone.
 - `tools/router_project_menu.ps1`: validates/synchronizes `setting.json` through
   CCR RPC, stores the generated client key with DPAPI and launches only Claude.
 - `tools/install_router_runtime.ps1`: explicit reconstruction of the pinned
@@ -119,6 +128,12 @@ Free candidates are Terra/Luna; Plus candidates are Sol/Terra/Luna, but actual
 entitlement is retained only after the bounded provider check. No global
 Codex/App login is read or changed.
 
+If a Claude/router session is already active, browser login is still saved in
+that account's project-local home, but CCR configuration is deliberately left
+untouched. Close active Claude terminals and click **Hoàn tất nhập tài khoản**;
+the import resumes from the saved login without repeating browser/2FA while
+that login remains valid.
+
 Choose **Thêm tài khoản Google**. The dashboard allocates the next bounded slot
 (up to 50); each slot stores its ignored
 OAuth result under `.runtime/challenger/accounts/google`, invokes only the
@@ -126,10 +141,17 @@ hash-pinned local challenger binary, and binds its temporary OAuth callback to
 `127.0.0.1` on a fixed per-slot port. The wrapper never asks for or parses the
 password, 2FA or credential JSON. Configure DeepSeek/OpenRouter/custom API keys
 and endpoints only in ignored `setting.json`.
+The optional email field is only an OAuth `login_hint`; Google still displays
+its own account chooser and owns password/2FA. The project never stores that
+email as a credential.
 
 After a route is selected and **Mở terminal** is pressed, the launcher starts
 that exact route in a new terminal. Existing terminals keep their process-local
 route; multiple terminals may share one account or use different accounts.
+Every dashboard launch receives a UUID and optional friendly name. Use
+**Mở lại công việc cũ** to resume it; Claude transcript files remain only under
+ignored `.runtime/claude-home`. Legacy mode sessions are copied there once,
+without reading content or deleting the original files.
 The launcher may warm the router in a hidden
 project-local process. Before the profile's DPAPI client key is read, route
 selection still verifies that router state belongs to the exact local Node/CCR
@@ -180,8 +202,9 @@ never downloads or updates it.
 - Never remove `/setting.json` from `.gitignore`; use `setting.example.json`
   when sharing schema or asking an AI for help.
 - Never use consumer website credentials as provider API credentials.
-- Never run account import while a Claude/router session is active; the guarded
-  importer refuses this condition.
+- While a Claude/router session is active, account browser login may be saved,
+  but provider import/config mutation must remain deferred until those sessions
+  close.
 - Never point `CODEX_HOME` at a user/global folder. Each account home must stay
   under `provider_router/.ccr-local/codex-accounts`.
 - Never create a CCR `Connect agent` profile. In particular, `System default`
@@ -197,6 +220,8 @@ never downloads or updates it.
 - The closed Claude binary is reviewed by version, hash and release notes. The
   open router is reviewed by pinned package/source commit and source diff.
 - No automatic update, merge, binary replacement or global npm installation.
+- The dashboard's update button may read public GitHub release metadata only;
+  it never fetches a working branch, merges or replaces an executable.
 - `.gitignore` excludes the Claude binary, Node runtime, installed dependencies,
   local Codex login binary, `.ccr-local`, temporary review clones and
   secret-shaped files.
@@ -205,6 +230,10 @@ never downloads or updates it.
 account state and temporary files are selected from this project only. Browser
 login and model use still require the corresponding provider's network service;
 the folder cannot make OpenAI/Google/other providers offline or self-hosted.
+Git for Windows, PowerShell and a browser are explicit host dependencies. A
+fresh clone is reconstructed from `DEPENDENCIES.lock.json` and
+`docs/RECONSTRUCT_ON_NEW_MACHINE.md`; OAuth/API secrets and sessions are not
+silently published as a portability shortcut.
 
 ## External authoritative references
 

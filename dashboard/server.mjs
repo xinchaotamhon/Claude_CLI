@@ -14,12 +14,18 @@ const runtimeRoot = path.join(projectRoot, '.runtime', 'dashboard');
 const usageRoot = path.join(runtimeRoot, 'usage');
 const readyPath = path.join(runtimeRoot, 'ready.json');
 const terminalsPath = path.join(runtimeRoot, 'terminals.json');
+const sessionsRoot = path.join(projectRoot, '.runtime', 'claude-sessions');
+const sessionsPath = path.join(sessionsRoot, 'index.json');
+const sessionMigrationPath = path.join(sessionsRoot, 'legacy-migration.json');
+const claudeHomeRoot = path.join(projectRoot, '.runtime', 'claude-home');
+const legacyModesRoot = path.join(projectRoot, 'provider_router', '.ccr-local', 'modes');
+const updatesPath = path.join(runtimeRoot, 'updates.json');
 const accountProfilesPath = path.join(projectRoot, 'provider_router', '.ccr-local', 'account-profiles.json');
 const codexAccountsRoot = path.join(projectRoot, 'provider_router', '.ccr-local', 'codex-accounts');
 const codexBinary = path.join(projectRoot, 'provider_router', 'codex-login-runtime', 'codex.exe');
 const googleAccountsRoot = path.join(projectRoot, '.runtime', 'challenger', 'accounts', 'google');
 const settingPath = path.join(projectRoot, 'setting.json');
-const helperBat = path.join(projectRoot, 'tools', 'dashboard_terminal.bat');
+const helperScript = path.join(projectRoot, 'tools', 'dashboard_terminal.ps1');
 const bootstrapToken = crypto.randomBytes(32).toString('base64url');
 const instanceId = crypto.randomBytes(24).toString('base64url');
 const sessionCookie = `claude_cli_dashboard=${bootstrapToken}`;
@@ -27,6 +33,8 @@ const activeActions = new Set();
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
 fs.mkdirSync(usageRoot, { recursive: true });
+fs.mkdirSync(sessionsRoot, { recursive: true });
+fs.mkdirSync(claudeHomeRoot, { recursive: true });
 
 function readJson(file, fallback = null) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
@@ -37,6 +45,16 @@ function writeJson(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(temp, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
   fs.renameSync(temp, file);
+}
+
+function safeSessionName(value) {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim().replace(/\s+/g, ' ');
+  return normalized.length <= 80 && !/[\r\n]/.test(normalized) ? normalized : '';
+}
+
+function safeSessionId(value) {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) ? value.toLowerCase() : '';
 }
 
 function safeId(value) {
@@ -84,6 +102,13 @@ function safeAccountKey(value) {
 
 function safeCodexLabel(value) {
   return typeof value === 'string' && value.length <= 100 && /^[a-z0-9][a-z0-9_.+@ -]*$/i.test(value) ? value : '';
+}
+
+function safeGoogleLoginHint(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value !== 'string' || value.length > 254 || /[\r\n]/.test(value)) return null;
+  const normalized = value.trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
 }
 
 function codexHomeEntries() {
@@ -177,15 +202,91 @@ function buildAccounts(routes) {
     if (!provider || typeof provider.id !== 'string' || typeof provider.name !== 'string') continue;
     const id = `api:${provider.id}`;
     const providerRoutes = routes.filter((route) => route.kind === 'api' && route.provider === provider.name);
+    const hasQuotaPage = typeof provider.quota_page_url === 'string' && Boolean(provider.quota_page_url.trim());
     accounts.push({
       id, kind: 'api', label: provider.name, plan: String(provider.protocol || 'API'),
+      providerKey: provider.id,
+      quotaPageAvailable: hasQuotaPage,
       status: provider.enabled === false ? 'disabled' : 'ready',
       models: Array.isArray(provider.models) ? provider.models.map(String) : providerRoutes.map((route) => route.model),
       routes: providerRoutes.map((route) => route.id),
-      usage: { ...emptyUsage('API tùy chỉnh không có chuẩn chung cho hạn mức; dashboard chỉ hiển thị khi nhà cung cấp có adapter riêng.'), experimental: false, source: 'Không có API hạn mức chuẩn' },
+      usage: { ...emptyUsage(hasQuotaPage ? 'Provider có trang quota riêng. Dashboard chỉ mở đúng trang HTTPS cùng host và không gửi key trong URL.' : 'API tùy chỉnh không có chuẩn chung cho hạn mức; dashboard chỉ hiển thị khi nhà cung cấp có adapter riêng.'), experimental: false, source: hasQuotaPage ? 'Trang quota do provider cung cấp' : 'Không có API hạn mức chuẩn' },
     });
   }
   return accounts;
+}
+
+function sessionRecords() {
+  const records = readJson(sessionsPath, []);
+  if (!Array.isArray(records)) return [];
+  return records
+    .filter((record) => safeSessionId(record?.id) && typeof record?.routeId === 'string')
+    .map((record) => ({
+      id: safeSessionId(record.id),
+      name: safeSessionName(record.name) || `Phiên ${safeSessionId(record.id).slice(0, 8)}`,
+      routeId: String(record.routeId),
+      routeName: String(record.routeName || record.routeId),
+      model: String(record.model || ''),
+      createdAt: String(record.createdAt || new Date(0).toISOString()),
+      lastOpenedAt: String(record.lastOpenedAt || record.createdAt || new Date(0).toISOString()),
+      migrated: record.migrated === true,
+    }))
+    .sort((a, b) => Date.parse(b.lastOpenedAt) - Date.parse(a.lastOpenedAt))
+    .slice(0, 200);
+}
+
+function saveSessionRecord(record) {
+  const current = sessionRecords().filter((item) => item.id !== record.id);
+  writeJson(sessionsPath, [record, ...current].slice(0, 200));
+}
+
+function copyLegacySessionFiles(routes) {
+  if (readJson(sessionMigrationPath)?.completed === true) return;
+  const copied = [];
+  const known = new Map(sessionRecords().map((record) => [record.id, record]));
+  let modeEntries = [];
+  try { modeEntries = fs.readdirSync(legacyModesRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()); } catch { }
+  for (const modeEntry of modeEntries) {
+    const sourceProjects = path.join(legacyModesRoot, modeEntry.name, 'projects');
+    if (!fs.existsSync(sourceProjects)) continue;
+    const route = routes.find((item) => item.id === modeEntry.name);
+    const pending = [sourceProjects];
+    while (pending.length) {
+      const directory = pending.pop();
+      let entries = [];
+      try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch { continue; }
+      for (const entry of entries) {
+        const source = path.join(directory, entry.name);
+        if (entry.isDirectory()) { pending.push(source); continue; }
+        if (!entry.isFile() || !entry.name.toLowerCase().endsWith('.jsonl')) continue;
+        const id = safeSessionId(path.basename(entry.name, '.jsonl'));
+        if (!id) continue;
+        const relative = path.relative(sourceProjects, source);
+        const destination = path.join(claudeHomeRoot, 'projects', relative);
+        if (!fs.existsSync(destination)) {
+          fs.mkdirSync(path.dirname(destination), { recursive: true });
+          fs.copyFileSync(source, destination);
+          copied.push(id);
+        }
+        if (!known.has(id)) {
+          const stat = fs.statSync(source);
+          const record = {
+            id,
+            name: `Phiên cũ ${id.slice(0, 8)}`,
+            routeId: route?.id || modeEntry.name,
+            routeName: route?.name || modeEntry.name,
+            model: route?.model || '',
+            createdAt: stat.birthtime.toISOString(),
+            lastOpenedAt: stat.mtime.toISOString(),
+            migrated: true,
+          };
+          known.set(id, record);
+        }
+      }
+    }
+  }
+  writeJson(sessionsPath, [...known.values()].sort((a, b) => Date.parse(b.lastOpenedAt) - Date.parse(a.lastOpenedAt)).slice(0, 200));
+  writeJson(sessionMigrationPath, { schemaVersion: 1, completed: true, completedAt: new Date().toISOString(), copiedFiles: copied.length, policy: 'copied-without-reading-or-deleting-source' });
 }
 
 function processRunning(pid) {
@@ -215,6 +316,70 @@ const claudeVersion = binaryVersion();
 const routerPackage = readJson(path.join(projectRoot, 'provider_router', 'node_modules', '@musistudio', 'claude-code-router', 'package.json'), {});
 const routerVersion = typeof routerPackage?.version === 'string' ? routerPackage.version : 'chưa cài';
 
+function gitCommitDate(directory) {
+  const result = spawnSync('git', ['-C', directory, 'log', '-1', '--format=%cI'], { cwd: projectRoot, encoding: 'utf8', timeout: 5000, windowsHide: true });
+  const value = String(result.stdout || '').trim();
+  return result.status === 0 && !Number.isNaN(Date.parse(value)) ? value : null;
+}
+
+function versionKey(value) {
+  return String(value || '').trim().replace(/^v/i, '').replace(/^claude-code-/i, '');
+}
+
+let localUpdateSnapshot = null;
+
+function localUpdateState() {
+  const cached = readJson(updatesPath, { checkedAt: null, latest: {} });
+  if (!localUpdateSnapshot) {
+    const challengerSource = readJson(path.join(projectRoot, 'router_challenger', 'SOURCE.json'), {});
+    const challengerBuild = readJson(path.join(projectRoot, 'router_challenger', 'BUILD.json'), {});
+    const routerSource = readJson(path.join(projectRoot, 'provider_router', 'SOURCE.json'), {});
+    const codexSource = readJson(path.join(projectRoot, 'provider_router', 'CODEX_LOGIN_SOURCE.json'), {});
+    const projectUpdatedAt = gitCommitDate(projectRoot);
+    const codexHelperVersion = (() => {
+      if (!fs.existsSync(codexBinary)) return 'chưa cài';
+      const result = spawnSync(codexBinary, ['--version'], { cwd: projectRoot, encoding: 'utf8', timeout: 5000, windowsHide: true });
+      return String(result.stdout || result.stderr || '').trim().split(/\s+/).pop() || 'đã cài';
+    })();
+    localUpdateSnapshot = {
+      lastProjectUpdateAt: projectUpdatedAt,
+      components: [
+        { id: 'claude', label: 'Claude Code', localVersion: claudeVersion, lastUpdatedAt: projectUpdatedAt, source: 'anthropics/claude-code' },
+        { id: 'router', label: 'Claude Code Router', localVersion: routerVersion, lastUpdatedAt: routerSource?.reviewed_at || null, source: 'musistudio/claude-code-router' },
+        { id: 'codex', label: 'Codex helper', localVersion: codexHelperVersion, lastUpdatedAt: codexSource?.reviewed_at || codexSource?.copied_at || null, source: 'openai/codex' },
+        { id: 'challenger', label: 'Google / CLIProxyAPI', localVersion: challengerSource?.source_tag || 'chưa cài', lastUpdatedAt: challengerBuild?.built_at || challengerSource?.reviewed_at || null, source: 'router-for-me/CLIProxyAPI' },
+      ],
+    };
+  }
+  const components = localUpdateSnapshot.components.map((component) => ({
+    ...component,
+    latestVersion: cached?.latest?.[component.id] || null,
+    status: cached?.latest?.[component.id] ? (versionKey(cached.latest[component.id]) === versionKey(component.localVersion) ? 'current' : 'available') : 'unchecked',
+  }));
+  return { checkedAt: cached?.checkedAt || null, lastProjectUpdateAt: localUpdateSnapshot.lastProjectUpdateAt, components };
+}
+
+async function checkUpdates() {
+  const repositories = {
+    claude: 'anthropics/claude-code',
+    router: 'musistudio/claude-code-router',
+    codex: 'openai/codex',
+    challenger: 'router-for-me/CLIProxyAPI',
+  };
+  const latest = {};
+  const errors = {};
+  for (const [id, repository] of Object.entries(repositories)) {
+    try {
+      const release = await fetchJson(`https://api.github.com/repos/${repository}/releases/latest`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'claude-cli-local-dashboard' } });
+      latest[id] = String(release.tag_name || release.name || '').trim() || null;
+    } catch (error) {
+      errors[id] = error instanceof Error ? error.message : String(error);
+    }
+  }
+  writeJson(updatesPath, { schemaVersion: 1, checkedAt: new Date().toISOString(), latest, errors });
+  return localUpdateState();
+}
+
 function routerStatus() {
   const service = readJson(path.join(projectRoot, 'provider_router', '.ccr-local', 'appdata', 'claude-code-router', 'service.json'));
   return service && processRunning(Number(service.pid)) ? 'running' : 'stopped';
@@ -222,14 +387,17 @@ function routerStatus() {
 
 function buildState() {
   const routes = readRoutes();
+  copyLegacySessionFiles(routes);
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     project: { name: 'Claude CLI Control Room', rootLabel: path.basename(projectRoot), isolation: 'Mọi state nằm trong folder dự án' },
     accounts: buildAccounts(routes),
     routes,
+    sessions: sessionRecords(),
     terminals: readTerminals(),
     services: { dashboard: 'running', router: routerStatus(), claudeVersion, routerVersion },
+    updates: localUpdateState(),
   };
 }
 
@@ -444,20 +612,49 @@ async function refreshUsage(accountId) {
 }
 
 function spawnTerminal(action, ...values) {
-  if (!fs.existsSync(helperBat)) throw new Error('Thiếu công cụ mở terminal của dashboard.');
-  const comspec = process.env.ComSpec || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
-  const child = spawn(comspec, ['/d', '/c', 'call', helperBat, action, ...values], { cwd: projectRoot, detached: true, windowsHide: false, stdio: 'ignore', shell: false });
+  if (!fs.existsSync(helperScript)) throw new Error('Thiếu công cụ mở terminal của dashboard.');
+  const candidates = [
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'PowerShell', '7', 'pwsh.exe'),
+    path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+  ];
+  const powershell = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!powershell) throw new Error('Máy này thiếu PowerShell để mở terminal Claude.');
+  const args = ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helperScript, '-Action', action, '-Root', projectRoot];
+  if (values[0] !== undefined) args.push('-Value', String(values[0]));
+  if (values[1] !== undefined) args.push('-Extra', String(values[1]));
+  if (values[2] !== undefined) args.push('-Label', String(values[2]));
+  const child = spawn(powershell, args, { cwd: projectRoot, detached: true, windowsHide: false, stdio: 'ignore', shell: false });
   child.unref();
   return child.pid;
 }
 
-function launchRoute(route) {
-  const pid = spawnTerminal('launch', route.id);
+function launchRoute(route, options = {}) {
+  const resumeId = safeSessionId(options.resumeId);
+  let record;
+  if (resumeId) {
+    record = sessionRecords().find((item) => item.id === resumeId);
+    if (!record) throw new Error('Không tìm thấy session Claude cục bộ này.');
+    record = { ...record, routeId: route.id, routeName: route.name, model: route.model, lastOpenedAt: new Date().toISOString() };
+  } else {
+    const id = crypto.randomUUID();
+    record = {
+      id,
+      name: safeSessionName(options.name) || `Phiên ${route.model} ${new Date().toLocaleString('vi-VN')}`.slice(0, 80),
+      routeId: route.id,
+      routeName: route.name,
+      model: route.model,
+      createdAt: new Date().toISOString(),
+      lastOpenedAt: new Date().toISOString(),
+      migrated: false,
+    };
+  }
+  saveSessionRecord(record);
+  const pid = spawnTerminal(resumeId ? 'launch-resume' : 'launch-new', route.id, record.id, record.name);
   const records = readJson(terminalsPath, []);
   const next = Array.isArray(records) ? records.slice(-39) : [];
-  next.push({ pid, routeId: route.id, routeName: route.name, model: route.model, startedAt: new Date().toISOString(), running: true });
+  next.push({ pid, sessionId: record.id, sessionName: record.name, routeId: route.id, routeName: route.name, model: route.model, startedAt: new Date().toISOString(), running: true });
   writeJson(terminalsPath, next);
-  return pid;
+  return { pid, session: record };
 }
 
 function securityHeaders(response) {
@@ -522,7 +719,18 @@ async function handle(request, response) {
     if (url.pathname === '/api/launch') {
       const route = readRoutes().find((item) => item.id === body.routeId);
       if (!route) return json(response, 400, { error: 'Route không hợp lệ hoặc đã bị xóa.' });
-      return json(response, 200, { ok: true, pid: launchRoute(route) });
+      const name = body.name === undefined ? '' : safeSessionName(body.name);
+      if (body.name && !name) return json(response, 400, { error: 'Tên session phải từ 1 đến 80 ký tự và không được xuống dòng.' });
+      return json(response, 200, { ok: true, ...launchRoute(route, { name }) });
+    }
+    if (url.pathname === '/api/sessions/resume') {
+      const sessionId = safeSessionId(body.sessionId);
+      if (!sessionId) return json(response, 400, { error: 'Session Claude không hợp lệ.' });
+      const session = sessionRecords().find((item) => item.id === sessionId);
+      if (!session) return json(response, 404, { error: 'Session Claude không còn trong chỉ mục cục bộ.' });
+      const route = readRoutes().find((item) => item.id === (body.routeId || session.routeId));
+      if (!route) return json(response, 400, { error: 'Route cũ không còn dùng được; hãy chọn một route hiện có để mở lại session.' });
+      return json(response, 200, { ok: true, ...launchRoute(route, { resumeId: sessionId }) });
     }
     if (url.pathname === '/api/accounts/codex') {
       if (!['free', 'plus'].includes(body.plan)) return json(response, 400, { error: 'Gói Codex không hợp lệ.' });
@@ -542,12 +750,27 @@ async function handle(request, response) {
     if (url.pathname === '/api/accounts/google') {
       const slot = body.slot ? String(body.slot) : nextGoogleSlot();
       if (!googleSlotNumber(slot)) return json(response, 400, { error: 'Slot Google không hợp lệ.' });
-      spawnTerminal('google', slot);
+      const loginHint = safeGoogleLoginHint(body.loginHint);
+      if (loginHint === null) return json(response, 400, { error: 'Email Google không hợp lệ.' });
+      spawnTerminal('google', slot, loginHint);
       return json(response, 200, { ok: true, slot });
     }
     if (url.pathname === '/api/settings/open') {
       const notepad = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'notepad.exe');
       const child = spawn(notepad, [settingPath], { cwd: projectRoot, detached: true, windowsHide: false, stdio: 'ignore' });
+      child.unref();
+      return json(response, 200, { ok: true });
+    }
+    if (url.pathname === '/api/providers/quota/open') {
+      if (typeof body.providerKey !== 'string' || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(body.providerKey)) return json(response, 400, { error: 'Provider không hợp lệ.' });
+      const setting = readJson(settingPath, { providers: [] });
+      const provider = (Array.isArray(setting?.providers) ? setting.providers : []).find((item) => item?.id === body.providerKey);
+      if (!provider || typeof provider.base_url !== 'string' || typeof provider.quota_page_url !== 'string') return json(response, 404, { error: 'Provider không có trang quota đã cấu hình.' });
+      let baseUrl; let quotaUrl;
+      try { baseUrl = new URL(provider.base_url); quotaUrl = new URL(provider.quota_page_url); } catch { return json(response, 400, { error: 'URL quota không hợp lệ.' }); }
+      if (baseUrl.protocol !== 'https:' || quotaUrl.protocol !== 'https:' || baseUrl.origin !== quotaUrl.origin || quotaUrl.username || quotaUrl.password) return json(response, 400, { error: 'Trang quota phải là HTTPS cùng host với API và không chứa credential.' });
+      const rundll32 = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'rundll32.exe');
+      const child = spawn(rundll32, ['url.dll,FileProtocolHandler', quotaUrl.href], { cwd: projectRoot, detached: true, windowsHide: false, stdio: 'ignore', shell: false });
       child.unref();
       return json(response, 200, { ok: true });
     }
@@ -567,6 +790,9 @@ async function handle(request, response) {
       }
       return json(response, 200, { ok: true, results });
     }
+    if (url.pathname === '/api/updates/check') {
+      return json(response, 200, { ok: true, updates: await checkUpdates() });
+    }
     return json(response, 404, { error: 'Thao tác không tồn tại.' });
   }
   if (request.method !== 'GET') return json(response, 405, { error: 'Phương thức không được phép.' });
@@ -576,6 +802,8 @@ async function handle(request, response) {
 function runSelfTest() {
   if (!safeCodexLabel('cruxes_hermits7y+renewik@icloud.com')) throw new Error('email-style Codex label was rejected');
   if (safeCodexLabel('unsafe&command')) throw new Error('command metacharacter was accepted in a Codex label');
+  if (safeGoogleLoginHint('owner@example.com') !== 'owner@example.com' || safeGoogleLoginHint('bad address') !== null) throw new Error('Google login hint validation failed');
+  if (!safeSessionId('1132beb4-1234-4abc-8abc-1234567890ab') || safeSessionId('not-a-session')) throw new Error('Claude session ID validation failed');
   if (resetIso({ resetsAt: 1_800_000_000 }) !== new Date(1_800_000_000 * 1000).toISOString()) throw new Error('official resetsAt timestamp was not normalized');
   const isolated = codexChildEnvironment('D:\\project-local-account', { Path: 'safe-path', OPENAI_API_KEY: 'outside', CODEX_ACCESS_TOKEN: 'outside', CHATGPT_ACCESS_TOKEN: 'outside', AZURE_OPENAI_API_KEY: 'outside' });
   if (isolated.OPENAI_API_KEY || isolated.CODEX_ACCESS_TOKEN || isolated.CHATGPT_ACCESS_TOKEN || isolated.AZURE_OPENAI_API_KEY) throw new Error('external credential environment was inherited');

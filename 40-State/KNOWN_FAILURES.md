@@ -6,6 +6,31 @@ status: active
 
 # Known Failures
 
+## dashboard.double-console-and-active-import-block — fixed/contained 2026-08-26
+
+- Symptom: the first dashboard launch could leave an extra blank terminal; a
+  Codex Plus attempt failed while another Claude/router session was active.
+- Causes: Node launched CMD/batch before PowerShell, and the importer rejected
+  active CCR before allowing project-local browser auth.
+- Disposition: dashboard now starts PowerShell directly. Codex auth may be
+  saved while CCR is active, but provider/config mutation is deferred and
+  completed from the pending dashboard card after sessions close.
+- Regression gates: `dashboard.local-control-room` and
+  `claude.codex-account-import`.
+
+## challenger.google-browser-account-reuse — fixed pending live proof 2026-08-26
+
+- Symptom: Google OAuth reused the browser's current Google identity instead of
+  clearly allowing the intended Pro account.
+- Cause: OAuth requested consent but not explicit account selection and had no
+  bounded login hint.
+- Disposition: reviewed patch adds `prompt=consent select_account`; dashboard
+  may pass a validated optional email through process-local
+  `CLIPROXY_GOOGLE_LOGIN_HINT`. Password/2FA remain on Google. Offline URL tests
+  and reproducible build pass; one owner-run live OAuth remains required.
+- Regression gates: `challenger.cli-proxy-source-pin` and
+  `challenger.google-account-flow`.
+
 ## phase2.wrapper-verifier-and-sandbox-dpapi — fixed/contained 2026-08-25
 
 - Symptom: cumulative run `20260825T163959Z-1811586c` passed 15/17 gates.

@@ -1,0 +1,81 @@
+From bcc28e6133a38b2185e04c631c9e662dbf28e9c3 Mon Sep 17 00:00:00 2001
+From: hiSoft <xinchaotamhon@gmail.com>
+Date: Wed, 26 Aug 2026 17:27:35 +0700
+Subject: [PATCH] fix: select intended Google OAuth account
+
+---
+ internal/auth/antigravity/auth.go      |  6 +++++-
+ internal/auth/antigravity/auth_test.go | 29 ++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/internal/auth/antigravity/auth.go b/internal/auth/antigravity/auth.go
+index 489d796f..d9d0c334 100644
+--- a/internal/auth/antigravity/auth.go
++++ b/internal/auth/antigravity/auth.go
+@@ -8,6 +8,7 @@ import (
+ 	"io"
+ 	"net/http"
+ 	"net/url"
++	"os"
+ 	"strings"
+ 	"time"
+ 
+@@ -126,7 +127,10 @@ func (o *AntigravityAuth) BuildAuthURL(state, redirectURI string) string {
+ 	params := url.Values{}
+ 	params.Set("access_type", "offline")
+ 	params.Set("client_id", ClientID)
+-	params.Set("prompt", "consent")
++	params.Set("prompt", "consent select_account")
++	if loginHint := strings.TrimSpace(os.Getenv("CLIPROXY_GOOGLE_LOGIN_HINT")); loginHint != "" {
++		params.Set("login_hint", loginHint)
++	}
+ 	params.Set("redirect_uri", redirectURI)
+ 	params.Set("response_type", "code")
+ 	params.Set("scope", strings.Join(Scopes, " "))
+diff --git a/internal/auth/antigravity/auth_test.go b/internal/auth/antigravity/auth_test.go
+index 7e8112ad..7fad3876 100644
+--- a/internal/auth/antigravity/auth_test.go
++++ b/internal/auth/antigravity/auth_test.go
+@@ -4,6 +4,7 @@ import (
+ 	"context"
+ 	"io"
+ 	"net/http"
++	"net/url"
+ 	"strings"
+ 	"testing"
+ )
+@@ -14,6 +15,34 @@ func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+ 	return f(req)
+ }
+ 
++func TestBuildAuthURLSelectsAccountAndUsesOptionalLoginHint(t *testing.T) {
++	t.Setenv("CLIPROXY_GOOGLE_LOGIN_HINT", "owner+google@example.com")
++	auth := NewAntigravityAuth(nil, nil)
++	parsed, err := url.Parse(auth.BuildAuthURL("state-value", "http://127.0.0.1:51121/oauth-callback"))
++	if err != nil {
++		t.Fatalf("parse auth URL: %v", err)
++	}
++	query := parsed.Query()
++	if got := query.Get("prompt"); got != "consent select_account" {
++		t.Fatalf("prompt = %q", got)
++	}
++	if got := query.Get("login_hint"); got != "owner+google@example.com" {
++		t.Fatalf("login_hint = %q", got)
++	}
++}
++
++func TestBuildAuthURLOmitsBlankLoginHint(t *testing.T) {
++	t.Setenv("CLIPROXY_GOOGLE_LOGIN_HINT", "   ")
++	auth := NewAntigravityAuth(nil, nil)
++	parsed, err := url.Parse(auth.BuildAuthURL("state-value", "http://127.0.0.1:51121/oauth-callback"))
++	if err != nil {
++		t.Fatalf("parse auth URL: %v", err)
++	}
++	if _, exists := parsed.Query()["login_hint"]; exists {
++		t.Fatal("blank login_hint was included")
++	}
++}
++
+ func TestFetchProjectIDFromLoadCodeAssist(t *testing.T) {
+ 	auth := NewAntigravityAuth(nil, &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+ 		if req.URL.String() != "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist" {

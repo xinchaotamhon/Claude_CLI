@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "project": {
+    "repository": "https://github.com/xinchaotamhon/Claude_CLI.git",
+    "branch": "claude",
+    "entry": "DASHBOARD.bat"
+  },
+  "components": [
+    {
+      "id": "claude-code",
+      "kind": "closed-binary",
+      "version": "2.1.241",
+      "path": "bin/claude.exe",
+      "sha256_file": "checksums/claude.exe.sha256",
+      "reconstruction": "Download the official Windows native binary after owner approval, copy it to bin/claude.exe, then verify the tracked SHA-256 or explicitly review and promote a new version/hash."
+    },
+    {
+      "id": "claude-code-router",
+      "kind": "open-source-runtime",
+      "version": "3.0.21",
+      "fork": "https://github.com/xinchaotamhon/claude-code-router_proxy.git",
+      "branch": "claude",
+      "runtime_install": "tools/install_router_runtime.ps1",
+      "source_record": "provider_router/SOURCE.json"
+    },
+    {
+      "id": "codex-login-helper",
+      "kind": "official-ignored-binary",
+      "version": "0.149.0-alpha.4.1",
+      "runtime_install": "tools/install_codex_login_runtime.ps1",
+      "source_record": "provider_router/CODEX_LOGIN_SOURCE.json"
+    },
+    {
+      "id": "cli-proxy-api-challenger",
+      "kind": "open-source-patched-build",
+      "version": "v7.2.141",
+      "upstream": "https://github.com/router-for-me/CLIProxyAPI.git",
+      "branch": "claude",
+      "runtime_install": "tools/install_challenger_pilot.ps1",
+      "source_record": "router_challenger/SOURCE.json",
+      "build_record": "router_challenger/BUILD.json",
+      "patches": [
+        "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
+        "router_challenger/patches/0001-fix-bind-antigravity-oauth-callback-to-loopback.patch",
+        "router_challenger/patches/0002-fix-select-google-oauth-account.patch"
+      ]
+    },
+    {
+      "id": "local-dashboard",
+      "kind": "tracked-source-and-built-assets",
+      "path": "dashboard",
+      "lockfile": "dashboard/pnpm-lock.yaml",
+      "runtime": "provider_router/runtime/node.exe"
+    }
+  ],
+  "intentionally_untracked": [
+    "bin/claude.exe",
+    "provider_router/runtime",
+    "provider_router/node_modules",
+    "provider_router/codex-login-runtime",
+    "provider_router/.ccr-local",
+    ".runtime",
+    "setting.json",
+    "nested source checkouts"
+  ],
+  "external_requirements": [
+    "Windows 10 or newer",
+    "PowerShell 5.1 or newer",
+    "Git for Windows",
+    "a browser and provider network access for OAuth/model use"
+  ]
+}

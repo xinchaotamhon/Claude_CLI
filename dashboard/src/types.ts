@@ -19,6 +19,8 @@ export type Account = {
   kind: 'codex' | 'google' | 'api';
   label: string;
   resumeKey?: string;
+  providerKey?: string;
+  quotaPageAvailable?: boolean;
   plan: string;
   status: 'ready' | 'not_signed_in' | 'incomplete' | 'disabled';
   models: string[];
@@ -46,11 +48,34 @@ export type Route = {
 
 export type TerminalRecord = {
   pid: number;
+  sessionId?: string;
+  sessionName?: string;
   routeId: string;
   routeName: string;
   model: string;
   startedAt: string;
   running: boolean;
+};
+
+export type ClaudeSession = {
+  id: string;
+  name: string;
+  routeId: string;
+  routeName: string;
+  model: string;
+  createdAt: string;
+  lastOpenedAt: string;
+  migrated: boolean;
+};
+
+export type UpdateComponent = {
+  id: string;
+  label: string;
+  localVersion: string;
+  latestVersion: string | null;
+  lastUpdatedAt: string | null;
+  source: string;
+  status: 'unchecked' | 'current' | 'available';
 };
 
 export type DashboardState = {
@@ -59,7 +84,13 @@ export type DashboardState = {
   project: { name: string; rootLabel: string; isolation: string };
   accounts: Account[];
   routes: Route[];
+  sessions: ClaudeSession[];
   terminals: TerminalRecord[];
+  updates: {
+    checkedAt: string | null;
+    lastProjectUpdateAt: string | null;
+    components: UpdateComponent[];
+  };
   services: {
     dashboard: string;
     router: 'running' | 'stopped' | 'unknown';

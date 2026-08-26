@@ -31,7 +31,9 @@ switching among separately imported Codex accounts.
 - On the explicit Codex-import action only, copy the fixed current-Windows-user
   `.codex/auth.json` to guarded project-local staging. Never accept an arbitrary
   auth path, parse it in PowerShell or print its contents.
-- Refuse import while the verified CCR gateway is serving a Claude session.
+- Superseded 2026-08-26 by the deferred-import decision: browser auth may be
+  saved while the verified CCR gateway serves Claude, but import/config mutation
+  remains refused until active sessions close.
 - Call CCR's authenticated `getLocalAgentProviderCandidates`,
   `importLocalAgentProvider`, `getConfig` and `saveConfig` RPC methods.
 - Materialize unique provider IDs and OAuth plugin keys from the chosen account

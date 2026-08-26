@@ -9,7 +9,9 @@ const EMPTY: DashboardState = {
   project: { name: 'Claude CLI', rootLabel: 'claude_CLI-V', isolation: 'project-local' },
   accounts: [],
   routes: [],
+  sessions: [],
   terminals: [],
+  updates: { checkedAt: null, lastProjectUpdateAt: null, components: [] },
   services: { dashboard: 'starting', router: 'unknown', claudeVersion: '—', routerVersion: '—' },
 };
 
@@ -57,7 +59,7 @@ function Gauge({ window }: { window: UsageWindow }) {
   );
 }
 
-function AccountCard({ account, busy, onRefresh, onResume }: { account: Account; busy: boolean; onRefresh: (id: string) => void; onResume: (account: Account) => void }) {
+function AccountCard({ account, busy, onRefresh, onResume, onOpenQuota }: { account: Account; busy: boolean; onRefresh: (id: string) => void; onResume: (account: Account) => void; onOpenQuota: (account: Account) => void }) {
   const statusText = account.status === 'ready' ? 'Đã sẵn sàng' : account.status === 'incomplete' ? 'Đăng nhập chưa xong' : account.status === 'disabled' ? 'Đã tắt' : 'Chưa đăng nhập';
   const windows = account.usage.groups.flatMap((group) => group.windows.map((window) => ({ group, window })));
   return (
@@ -88,6 +90,9 @@ function AccountCard({ account, busy, onRefresh, onResume }: { account: Account;
         <button className="wide-button resume-button" disabled={busy} onClick={() => onResume(account)}>
           {account.kind === 'codex' ? 'Hoàn tất nhập tài khoản' : 'Tiếp tục đăng nhập Google'}
         </button>
+      )}
+      {account.kind === 'api' && account.quotaPageAvailable && (
+        <button className="wide-button resume-button" disabled={busy} onClick={() => onOpenQuota(account)}>Mở trang quota của provider</button>
       )}
 
       <div className="usage-panel">
@@ -136,6 +141,8 @@ function AccountCard({ account, busy, onRefresh, onResume }: { account: Account;
 function App() {
   const [state, setState] = useState<DashboardState>(EMPTY);
   const [selectedRoute, setSelectedRoute] = useState('');
+  const [sessionName, setSessionName] = useState('');
+  const [googleLoginHint, setGoogleLoginHint] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
@@ -212,8 +219,9 @@ function App() {
             <div><h2>Mở phiên Claude mới</h2><p>Terminal mới không thay đổi tài khoản của những terminal đang chạy.</p></div>
           </div>
           <div className="launch-controls">
+            <label><span>TÊN SESSION (TÙY CHỌN)</span><input value={sessionName} maxLength={80} placeholder="Ví dụ: sửa website buổi sáng" onChange={(event) => setSessionName(event.target.value)} /></label>
             <label><span>TÀI KHOẢN / MODEL</span><select value={selectedRoute} onChange={(event) => setSelectedRoute(event.target.value)} disabled={!state.routes.length}>{state.routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label>
-            <button className="primary-button" disabled={!selected || busy !== null} onClick={() => void action('/api/launch', { routeId: selected?.id }, `Đã mở terminal với ${selected?.model}.`)}><span>＋</span> Mở terminal</button>
+            <button className="primary-button" disabled={!selected || busy !== null} onClick={() => void action('/api/launch', { routeId: selected?.id, name: sessionName }, `Đã mở terminal với ${selected?.model}.`)}><span>＋</span> Mở terminal</button>
           </div>
         </section>
 
@@ -232,6 +240,7 @@ function App() {
               onResume={(target) => void (target.kind === 'codex'
                 ? action('/api/accounts/codex/resume', { resumeKey: target.resumeKey }, `Đã mở cửa sổ hoàn tất ${target.label}.`)
                 : action('/api/accounts/google', { slot: target.id.replace('google:', '') }, `Đã mở lại đăng nhập ${target.label}.`))}
+              onOpenQuota={(target) => void action('/api/providers/quota/open', { providerKey: target.providerKey }, `Đã mở trang quota của ${target.label}.`)}
             />)}
           </div>
         </section>
@@ -242,13 +251,32 @@ function App() {
             <div className="button-row"><button onClick={() => void action('/api/accounts/codex', { plan: 'free' }, 'Đã mở cửa sổ đăng nhập Codex Free.')}>＋ Codex Free</button><button onClick={() => void action('/api/accounts/codex', { plan: 'plus' }, 'Đã mở cửa sổ đăng nhập Codex Plus.')}>＋ Codex Plus</button></div>
           </article>
           <article className="manage-card">
-            <div className="manage-head"><span className="badge google">G</span><div><h3>Thêm Google AI Pro</h3><p>Mỗi slot giữ OAuth riêng; quota có hai nhánh model.</p></div></div>
-            <button className="wide-button" onClick={() => void action('/api/accounts/google', {}, 'Đã mở đăng nhập cho slot Google kế tiếp.')}>＋ Thêm tài khoản Google</button>
+            <div className="manage-head"><span className="badge google">G</span><div><h3>Thêm Google AI Pro</h3><p>Nhập email để trang Google ưu tiên đúng tài khoản; mật khẩu và 2FA chỉ nhập trên Google.</p></div></div>
+            <input value={googleLoginHint} placeholder="ten-tai-khoan@gmail.com (tùy chọn)" onChange={(event) => setGoogleLoginHint(event.target.value)} />
+            <button className="wide-button" onClick={() => void action('/api/accounts/google', { loginHint: googleLoginHint }, 'Đã mở đăng nhập cho slot Google kế tiếp.')}>＋ Thêm tài khoản Google</button>
           </article>
           <article className="manage-card compact">
             <div className="manage-head"><span className="badge api">{`{}`}</span><div><h3>API endpoint</h3><p>Key chỉ nằm trong setting.json bị Git bỏ qua.</p></div></div>
             <button className="wide-button" onClick={() => void action('/api/settings/open', {}, 'Đã mở setting.json.')}>Mở setting.json</button>
           </article>
+        </section>
+
+        <section className="terminal-section">
+          <div className="section-heading"><div><div className="eyebrow">SESSION CỤC BỘ</div><h2>Mở lại công việc cũ</h2></div></div>
+          <p className="section-note">Nội dung session nằm trong <code>.runtime/claude-home</code> và không được đưa lên Git. Các session cũ đã được sao chép vào đây mà không xóa bản gốc.</p>
+          <div className="terminal-table">
+            {state.sessions.length === 0 ? <div className="table-empty">Chưa có session Claude nào trong dự án.</div> : state.sessions.slice(0, 20).map((session) => (
+              <div className="terminal-row session-row" key={session.id}><span className="terminal-state ended" /><strong>{session.name}</strong><span>{session.model || session.routeName}</span><span>{session.migrated ? 'Đã nhập từ cấu hình cũ' : 'Session mới'}</span><time>{new Date(session.lastOpenedAt).toLocaleString('vi-VN')}</time><button disabled={busy !== null} onClick={() => void action('/api/sessions/resume', { sessionId: session.id, routeId: session.routeId }, `Đã mở lại ${session.name}.`)}>Mở lại</button></div>
+            ))}
+          </div>
+        </section>
+
+        <section className="terminal-section update-section">
+          <div className="section-heading"><div><div className="eyebrow">CẬP NHẬT CÓ KIỂM SOÁT</div><h2>Chỉ kiểm tra, không tự merge</h2></div><button className="quiet-button" disabled={busy !== null} onClick={() => void action('/api/updates/check', {}, 'Đã kiểm tra bản phát hành mới; không có gì được tự cập nhật.')}>↻ Kiểm tra cập nhật</button></div>
+          <p className="section-note">Lần cập nhật project gần nhất: {state.updates.lastProjectUpdateAt ? new Date(state.updates.lastProjectUpdateAt).toLocaleString('vi-VN') : 'chưa xác định'}. Lần kiểm tra mạng: {state.updates.checkedAt ? new Date(state.updates.checkedAt).toLocaleString('vi-VN') : 'chưa kiểm tra'}.</p>
+          <div className="update-grid">
+            {state.updates.components.map((component) => <article className="update-card" key={component.id}><div><strong>{component.label}</strong><small>{component.source}</small></div><span className={`update-status ${component.status}`}>{component.status === 'available' ? 'Có bản mới' : component.status === 'current' ? 'Đang mới nhất' : 'Chưa kiểm tra'}</span><dl><div><dt>Đang dùng</dt><dd>{component.localVersion}</dd></div><div><dt>Mới nhất</dt><dd>{component.latestVersion || '—'}</dd></div><div><dt>Đã duyệt/build</dt><dd>{component.lastUpdatedAt || '—'}</dd></div></dl></article>)}
+          </div>
         </section>
 
         <section className="terminal-section">

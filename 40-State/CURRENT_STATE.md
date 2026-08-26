@@ -1,6 +1,6 @@
 ---
-last_verified: 2026-08-26
-verified_by: one-door-local-dashboard
+last_verified: 2026-08-27
+verified_by: portable-session-account-update-and-kiro-route
 status: active
 ---
 
@@ -29,6 +29,36 @@ status: active
   authenticated loopback RPC, preserving account providers. The former
   command-line launcher is retained only as
   `tools\RUN_CLAUDE_TECHNICAL.bat` for bounded rollback/diagnostics.
+- Dashboard terminal dispatch is now direct Node -> PowerShell -> Claude; the
+  intermediate CMD/batch launcher was removed to eliminate the extra blank
+  console observed on the first launch.
+- Dashboard launches now use a common ignored `.runtime/claude-home`, UUID and
+  optional friendly name. The ignored session index supports **Mở lại** via
+  Claude's `--resume`; legacy per-route JSONL files are copied once without
+  reading transcript content, overwriting or deleting the source.
+- Codex login is two-phase when CCR is already serving Claude: official browser
+  auth is saved to its project-local account home, while CCR provider/config
+  mutation stays pending until active sessions close. Dashboard recovery then
+  completes the import without another login while auth remains valid.
+- The CLIProxyAPI nested `claude` branch now has a third reviewed patch at
+  `bcc28e6133a38b2185e04c631c9e662dbf28e9c3`: Google OAuth requests an account
+  chooser and accepts a bounded optional email `login_hint`. The rebuilt binary
+  SHA-256 is `322468f600e7e3f85034a964c4f2852bcd87da0bbfbcf82fd572e53eb4d3d95c`.
+- The dashboard exposes explicit release checks for Claude, CCR, Codex and
+  CLIProxyAPI plus local reviewed/build dates. Network is used only when the
+  owner presses the button; no source fetch, merge or replacement occurs.
+- `DEPENDENCIES.lock.json`, `docs/RECONSTRUCT_ON_NEW_MACHINE.md` and
+  `tools/audit_reconstruction.ps1` define fresh-machine reconstruction. Runtime,
+  auth, DPAPI, keys and sessions remain intentionally outside Git.
+- Owner-supplied Kiro Pix4K test access is configured only in ignored
+  `setting.json`. Authenticated catalog discovery returned HTTP 200 and exact
+  model `claude-opus-4.7`; no completion request was made. `/quota` is an HTML
+  provider page while `/quotaBase` is not an API endpoint. Dashboard can open
+  that same-host HTTPS quota page without placing the key in its URL.
+- All 18 enabled smoke gates passed on the integrated dashboard/session/account,
+  Google patch, reconstruction and Kiro schema changes in
+  `20260826T171253Z-f404c4ef`. The run used the owner Windows profile only so
+  the DPAPI self-test could execute; no provider/model request was made.
 - The pre-dashboard account action formerly exposed as `SIGN_ACCOUNT.bat [1]` no longer reads the Windows/global Codex App
   login or resolves a `codex` executable from `PATH`. It runs only
   `provider_router/codex-login-runtime/codex.exe login`.
@@ -57,7 +87,7 @@ status: active
 - The retained technical account menu action `[R]` refreshes/tests the current Codex model
   candidates without another browser login. Each retained model is written as
   a separate account route. Dashboard currently exposes Terra and Luna for
-  both `codex_free_1` and `codex_free_2`.
+  `codex_free_1`, `codex_free_2` and `codex_free_3`.
 - Account route IDs reload with slug-safe `_` and `.` punctuation. The
   multi-profile reader now enumerates each route instead of wrapping all routes
   as one `System.Object[]`. Re-running the same account label still resumes a
@@ -366,3 +396,5 @@ status: active
 - [Phase 2 account onboarding and warm start](../50-Evidence/2026-08-25-phase-2-account-onboarding-and-warm-start.md)
 - [CLIProxyAPI Phase 0 source audit](../50-Evidence/2026-08-25-cli-proxy-api-phase-0-source-audit.md)
 - [CLIProxyAPI challenger decision](../60-Decisions/ADR-2026-08-25-cli-proxy-api-challenger.md)
+- [Portable session/account/update repair](../50-Evidence/2026-08-26-portable-session-account-update-repair.md)
+- [Portable session decision](../60-Decisions/ADR-2026-08-26-portable-sessions-and-deferred-account-import.md)

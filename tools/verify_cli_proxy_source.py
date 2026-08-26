@@ -59,8 +59,8 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         fail("SOURCE schema_version must be 1")
     if metadata.get("component") != "CLIProxyAPI":
         fail("unexpected source component")
-    if metadata.get("status") != "phase-2-oauth-callback-isolated-offline-built":
-        fail("source status must identify the callback-isolated Phase 2 build")
+    if metadata.get("status") != "phase-3-google-account-selection-offline-built":
+        fail("source status must identify the Google-selection Phase 3 build")
     if metadata.get("source_url") != EXPECTED_URL:
         fail("unexpected source URL")
     if not HEX40.fullmatch(str(metadata.get("source_commit", ""))):
@@ -72,8 +72,8 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
     if not HEX40.fullmatch(str(metadata.get("patched_tree", ""))):
         fail("invalid patched tree")
     patches = metadata.get("patches")
-    if not isinstance(patches, list) or len(patches) != 2:
-        fail("exactly two reviewed challenger patches are required")
+    if not isinstance(patches, list) or len(patches) != 3:
+        fail("exactly three reviewed challenger patches are required")
     if metadata.get("local_branch") != "claude":
         fail("candidate branch must be claude")
     if metadata.get("remote_name") != "upstream":
@@ -98,6 +98,7 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         "local_model_suppresses_remote_catalog_and_antigravity_updates": True,
         "offline_fixture_only": True,
         "oauth_callback_loopback_only": True,
+        "google_account_chooser_and_login_hint": True,
     }
     if policy != expected_policy:
         fail("Phase 0 source policy changed unexpectedly")
