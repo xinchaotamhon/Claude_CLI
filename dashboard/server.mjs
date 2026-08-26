@@ -21,6 +21,7 @@ const terminalsPath = path.join(runtimeRoot, 'terminals.json');
 const sessionsRoot = path.join(projectRoot, '.runtime', 'claude-sessions');
 const sessionsPath = path.join(sessionsRoot, 'index.json');
 const sessionMigrationPath = path.join(sessionsRoot, 'legacy-migration.json');
+const sessionTrashRoot = path.join(sessionsRoot, 'trash');
 const claudeHomeRoot = path.join(projectRoot, '.runtime', 'claude-home');
 const legacyModesRoot = path.join(projectRoot, 'provider_router', '.ccr-local', 'modes');
 const updatesPath = path.join(runtimeRoot, 'updates.json');
@@ -38,6 +39,7 @@ const AUTO_REFRESH_MS = 5 * 60 * 1000;
 fs.mkdirSync(usageRoot, { recursive: true });
 fs.mkdirSync(actionsRoot, { recursive: true });
 fs.mkdirSync(sessionsRoot, { recursive: true });
+fs.mkdirSync(sessionTrashRoot, { recursive: true });
 fs.mkdirSync(claudeHomeRoot, { recursive: true });
 
 function readJson(file, fallback = null) {
@@ -264,6 +266,26 @@ function discoverTranscriptIds() {
   return ids;
 }
 
+function sessionTranscriptPaths(sessionId) {
+  const id = safeSessionId(sessionId);
+  if (!id) return [];
+  const matches = [];
+  const pending = [claudeHomeRoot];
+  while (pending.length) {
+    const directory = pending.pop();
+    let entries = [];
+    try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      const candidate = path.resolve(directory, entry.name);
+      const relative = path.relative(claudeHomeRoot, candidate);
+      if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) continue;
+      if (entry.isDirectory()) pending.push(candidate);
+      else if (entry.isFile() && entry.name.toLowerCase() === `${id}.jsonl`) matches.push(candidate);
+    }
+  }
+  return matches;
+}
+
 function sessionRecords() {
   const records = readJson(sessionsPath, []);
   if (!Array.isArray(records)) return [];
@@ -287,6 +309,49 @@ function sessionRecords() {
 function saveSessionRecord(record) {
   const current = sessionRecords().filter((item) => item.id !== record.id);
   writeJson(sessionsPath, [record, ...current].slice(0, 200));
+}
+
+function moveSessionToTrash(sessionId) {
+  const id = safeSessionId(sessionId);
+  const records = readJson(sessionsPath, []);
+  if (!id || !Array.isArray(records)) throw new Error('Session Claude không hợp lệ.');
+  const record = sessionRecords().find((item) => item.id === id);
+  if (!record) throw new Error('Session Claude không còn trong chỉ mục cục bộ.');
+  if (readTerminals().some((terminal) => terminal.sessionId === id && terminal.running)) {
+    throw new Error('Hãy đóng terminal đang dùng session này trước khi xóa.');
+  }
+  const sources = sessionTranscriptPaths(id);
+  if (!sources.length) throw new Error('Không tìm thấy transcript cục bộ của session này.');
+
+  const trashBatch = path.join(sessionTrashRoot, `${id}-${crypto.randomUUID()}`);
+  const moved = [];
+  try {
+    for (const source of sources) {
+      const relative = path.relative(claudeHomeRoot, source);
+      const destination = path.join(trashBatch, 'claude-home', relative);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.renameSync(source, destination);
+      moved.push({ source, destination, relative });
+    }
+    writeJson(path.join(trashBatch, 'manifest.json'), {
+      schemaVersion: 1,
+      session: record,
+      movedAt: new Date().toISOString(),
+      files: moved.map((item) => item.relative),
+      policy: 'recoverable-project-local-trash',
+    });
+    writeJson(sessionsPath, records.filter((item) => safeSessionId(item?.id) !== id));
+  } catch (error) {
+    for (const item of moved.reverse()) {
+      try {
+        fs.mkdirSync(path.dirname(item.source), { recursive: true });
+        fs.renameSync(item.destination, item.source);
+      } catch { }
+    }
+    try { fs.rmSync(trashBatch, { recursive: true, force: true }); } catch { }
+    throw error;
+  }
+  return { session: record, movedFiles: moved.length };
 }
 
 function copyLegacySessionFiles(routes) {
@@ -349,6 +414,19 @@ function readTerminals() {
   const normalized = records.slice(-40).map((record) => ({ ...record, running: processRunning(Number(record.pid)) }));
   if (JSON.stringify(records) !== JSON.stringify(normalized)) writeJson(terminalsPath, normalized);
   return normalized.reverse();
+}
+
+function clearClosedTerminalHistory() {
+  const records = readJson(terminalsPath, []);
+  if (!Array.isArray(records)) throw new Error('Lịch sử terminal cục bộ không hợp lệ.');
+  const retained = [];
+  let removed = 0;
+  for (const record of records) {
+    if (processRunning(Number(record.pid))) retained.push({ ...record, running: true });
+    else removed += 1;
+  }
+  writeJson(terminalsPath, retained);
+  return { removed, retained: retained.length };
 }
 
 function binaryVersion() {
@@ -809,6 +887,15 @@ async function handle(request, response) {
       const route = readRoutes().find((item) => item.id === (body.routeId || session.routeId));
       if (!route) return json(response, 400, { error: 'Route cũ không còn dùng được; hãy chọn một route hiện có để mở lại session.' });
       return json(response, 200, { ok: true, ...await launchRoute(route, { resumeId: sessionId }) });
+    }
+    if (url.pathname === '/api/sessions/delete') {
+      const sessionId = safeSessionId(body.sessionId);
+      if (!sessionId || body.confirmation !== sessionId) return json(response, 400, { error: 'Xác nhận xóa session không hợp lệ.' });
+      return json(response, 200, { ok: true, ...moveSessionToTrash(sessionId) });
+    }
+    if (url.pathname === '/api/terminals/clear-closed') {
+      if (body.confirmation !== 'clear-closed-terminals') return json(response, 400, { error: 'Xác nhận dọn lịch sử terminal không hợp lệ.' });
+      return json(response, 200, { ok: true, ...clearClosedTerminalHistory() });
     }
     if (url.pathname === '/api/accounts/codex') {
       if (!['free', 'plus'].includes(body.plan)) return json(response, 400, { error: 'Gói Codex không hợp lệ.' });

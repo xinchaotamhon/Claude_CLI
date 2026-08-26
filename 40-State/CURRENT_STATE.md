@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-27
-verified_by: portable-session-account-update-and-kiro-route
+verified_by: google-oauth-and-session-trash-repair
 status: active
 ---
 
@@ -46,14 +46,30 @@ status: active
   lists only IDs with a real JSONL transcript and allows **Mở lại bằng** any
   currently enabled route; failed starts no longer create visible phantom
   sessions.
+- Dashboard session rows now include **Xóa** with an explicit browser
+  confirmation. The server rejects a running session, matches only the exact
+  UUID transcript under the isolated Claude home, and moves it plus a recovery
+  manifest into ignored `.runtime/claude-sessions/trash`; it does not
+  permanently unlink transcript content.
+- **Terminal gần đây** now has one **Xóa mục đã đóng** action. It recomputes
+  process liveness, retains every running PID, and removes only closed rows from
+  ignored `.runtime/dashboard/terminals.json`; it never stops a process or
+  touches session/transcript storage.
 - Codex login is two-phase when CCR is already serving Claude: official browser
   auth is saved to its project-local account home, while CCR provider/config
   mutation stays pending until active sessions close. Dashboard recovery then
   completes the import without another login while auth remains valid.
-- The CLIProxyAPI nested `claude` branch now has a third reviewed patch at
-  `bcc28e6133a38b2185e04c631c9e662dbf28e9c3`: Google OAuth requests an account
-  chooser and accepts a bounded optional email `login_hint`. The rebuilt binary
-  SHA-256 is `322468f600e7e3f85034a964c4f2852bcd87da0bbfbcf82fd572e53eb4d3d95c`.
+- The CLIProxyAPI nested `claude` branch now has four reviewed patches at
+  `e835220044fb7f9bbe3f21ef3705864d4ded6cd1`: Google OAuth requests an account
+  chooser, accepts a bounded optional email `login_hint`, and uses the exact
+  same IPv4 loopback host (`127.0.0.1`) for redirect URI and listener. The
+  reproducibly rebuilt `7.2.141-local.4` binary SHA-256 is
+  `3d3f909e0a59d810c415be65b1fbd1941a79a32eeb1e3d6a7eb1ac730b25d70e`.
+- Google onboarding no longer throws when a new slot has zero auth files, and
+  current-user-only ACL setup is idempotent on a previously created empty slot
+  without requesting owner/audit privileges. A live retry reached the official
+  Google chooser and waited on `127.0.0.1:51121`; final account authorization
+  is still an owner/browser action and is not claimed complete here.
 - The dashboard exposes explicit release checks for Claude, CCR, Codex and
   CLIProxyAPI plus local reviewed/build dates. Network is used only when the
   owner presses the button; no source fetch, merge or replacement occurs.
@@ -68,10 +84,12 @@ status: active
   exact text `OK` with exit 0. `/quota` is
   an HTML provider page while `/quotaBase` is not an API endpoint. Dashboard
   can open that same-host HTTPS quota page without placing the key in its URL.
-- All 19 enabled smoke gates passed under the owner Windows profile in
-  `20260826T190051Z-3f7f3930`, including the new acknowledged-action,
+- All 21 enabled smoke gates passed under the owner Windows profile in
+  `20260826T202334Z-d7f6d1a7`, including the acknowledged-action,
   transcript-backed-session, supervised-restart, selectable-resume-route and
-  concurrent-update gate. The gate run itself made no provider/model request.
+  concurrent-update gates plus focused recoverable session-trash and
+  closed-terminal-history gates. The gate run itself made no provider/model
+  request.
 - Live lifecycle evidence observed a Codex Free account terminal acknowledge in
   about 3.0 seconds with an exact verified helper PID; the test terminal was
   then closed. Killing the exact verified dashboard Node process caused the

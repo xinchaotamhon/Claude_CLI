@@ -79,6 +79,19 @@ function Protect-DirectoryForCurrentUser {
     $Identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     $Sid = $Identity.User
     $Acl = Get-Acl -LiteralPath $Path
+    $AccessEntries = @($Acl.Access)
+    $AlreadyProtected = $Acl.AreAccessRulesProtected -and $AccessEntries.Count -ge 1
+    foreach ($Entry in $AccessEntries) {
+        $EntrySid = $Entry.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier])
+        if ($Entry.IsInherited -or $Entry.AccessControlType -ne 'Allow' -or $EntrySid.Value -ne $Sid.Value) {
+            $AlreadyProtected = $false
+            break
+        }
+    }
+    if ($AlreadyProtected) { return }
+
+    $OwnerSid = ([System.Security.Principal.NTAccount]$Acl.Owner).Translate([System.Security.Principal.SecurityIdentifier])
+    if ($OwnerSid.Value -ne $Sid.Value) { throw "Account directory must be owned by the current Windows user before its ACL can be protected." }
     $Acl.SetAccessRuleProtection($true, $false)
     foreach ($Rule in @($Acl.Access)) { [void]$Acl.RemoveAccessRuleSpecific($Rule) }
     $Inheritance = [System.Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
@@ -91,7 +104,6 @@ function Protect-DirectoryForCurrentUser {
         $Propagation,
         $Access
     )
-    $Acl.SetOwner($Sid)
     $Acl.AddAccessRule($Rule)
     Set-Acl -LiteralPath $Path -AclObject $Acl
     $Verified = Get-Acl -LiteralPath $Path
@@ -127,7 +139,9 @@ function Get-SlotState {
     $SlotRoot = Assert-ProjectChild -Path (Join-Path $AccountsRoot $Slot)
     $AuthDir = Assert-ProjectChild -Path (Join-Path $SlotRoot "auth")
     $Marker = Assert-ProjectChild -Path (Join-Path $SlotRoot "completed.json")
-    $AuthFiles = if (Test-Path -LiteralPath $AuthDir -PathType Container) { @(Get-ChildItem -LiteralPath $AuthDir -Filter "*.json" -File -ErrorAction Stop) } else { @() }
+    $AuthFiles = @(if (Test-Path -LiteralPath $AuthDir -PathType Container) {
+        Get-ChildItem -LiteralPath $AuthDir -Filter "*.json" -File -ErrorAction Stop
+    })
     return [PSCustomObject]@{
         slot = $Slot
         root = $SlotRoot
@@ -198,7 +212,7 @@ function Add-GoogleAccount {
     }
     if ($CommandExit -ne 0) { throw "Google OAuth helper exited with code $CommandExit." }
     $AuthFiles = @(Get-ChildItem -LiteralPath ([string]$State.authDir) -Filter "*.json" -File -ErrorAction Stop)
-    if ($AuthFiles.Count -ne 1) { throw "Google OAuth did not leave exactly one project-local credential file for '$Slot'." }
+    if ($AuthFiles.Count -ne 1) { throw "Google sign-in was not completed for '$Slot'. Run it again and finish the Google browser flow within 5 minutes." }
     $MarkerPayload = [ordered]@{
         schema_version = 1
         slot = $Slot
@@ -244,7 +258,18 @@ function Invoke-SelfTest {
         if ($Template.IndexOf($Required, [System.StringComparison]::Ordinal) -lt 0) { throw "Account template safety marker is missing: $Required" }
     }
     if ((Get-GoogleCallbackPort -Slot "google_pro_1") -ne 51121 -or (Get-GoogleCallbackPort -Slot "google_pro_50") -ne 51170) { throw "Google Pro slot/callback contract is invalid." }
+    $UnusedState = Get-SlotState -Slot (Get-NextGoogleSlot)
+    if ($UnusedState.complete -or $UnusedState.authFileCount -ne 0) { throw "An unused Google Pro slot must be represented as an empty state." }
+    $AclTestRoot = Assert-ProjectChild -Path (Join-Path $ProjectRoot (".tmp\challenger-account-acl-" + [Guid]::NewGuid().ToString("N")))
+    try {
+        Protect-DirectoryForCurrentUser -Path $AclTestRoot
+        Protect-DirectoryForCurrentUser -Path $AclTestRoot
+    }
+    finally {
+        if (Test-Path -LiteralPath $AclTestRoot -PathType Container) { Remove-Item -LiteralPath $AclTestRoot -Recurse -Force }
+    }
     Write-Output "PASS: Google Pro OAuth account helper is project-local, hash-pinned and loopback-callback-only"
+    Write-Output "PASS: current-user-only account ACL setup is retry-safe without owner/audit mutation"
     Write-Output "PASS: self-test opened no browser and read no credential file"
 }
 

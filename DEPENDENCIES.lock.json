@@ -42,7 +42,8 @@
       "patches": [
         "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
         "router_challenger/patches/0001-fix-bind-antigravity-oauth-callback-to-loopback.patch",
-        "router_challenger/patches/0002-fix-select-google-oauth-account.patch"
+        "router_challenger/patches/0002-fix-select-google-oauth-account.patch",
+        "router_challenger/patches/0004-fix-align-antigravity-oauth-callback-host.patch"
       ]
     },
     {

@@ -28,6 +28,10 @@ the secret in output.
   persistent HttpOnly browser session lets an open page reconnect. Session rows
   are shown only for real transcript JSONL IDs and **Mở lại bằng** can select any
   current route against the common ignored Claude home.
+- Session **Xóa** requires confirmation, rejects active terminals and moves the
+  exact UUID transcript to ignored project-local trash with a recovery manifest.
+- **Xóa mục đã đóng** changes only the ignored terminal-history registry after
+  recomputing liveness; it must not stop processes or remove sessions.
 - Dashboard process orchestration explicitly requires PowerShell 7+. Do not
   reintroduce Windows PowerShell 5.1 fallback around `ArgumentList` or
   `Convert.ToHexString`; reconstruction documents this host prerequisite.
@@ -37,7 +41,9 @@ the secret in output.
 - Backend Codex quota refresh has one live bounded proof. It returns only
   normalized windows/credits to the browser and labels the undocumented source
   experimental. Window duration determines 5-hour/weekly/monthly display.
-- Google quota contract always preserves two groups: `gemini_models` and
+- Google onboarding uses reviewed CLIProxyAPI `7.2.141-local.4` at nested commit
+  `e835220044fb7f9bbe3f21ef3705864d4ded6cd1`; redirect and listener both use
+  `127.0.0.1`. Google quota contract always preserves two groups: `gemini_models` and
   `claude_gpt_models`. No Google owner login or live quota shape is proved yet;
   missing values remain unknown.
 - API providers have no generic subscription-quota adapter. Never relabel local
@@ -46,12 +52,12 @@ the secret in output.
   allowlists, session affinity and no retry after output/tool side effects.
 - EasyCLIProxyAPI remains ignored inspect-only at a pinned revision because its
   tree has no license grant and unsafe global/update paths. No source was copied.
-- Current owner-profile baseline: 19/19 pass
-  `20260826T190051Z-3f7f3930`. Kiro `claude-opus-5` has a bounded full
+- Current owner-profile baseline: 21/21 pass
+  `20260826T202334Z-d7f6d1a7`. Kiro `claude-opus-5` has a bounded full
   Claude CLI -> CCR -> provider smoke with exact output `OK`; this proves one
   request, not provider identity, privacy or future availability.
 - Current dashboard focused evidence is
-  `50-Evidence/2026-08-27-dashboard-lifecycle-and-kiro-opus5.md`.
+  `50-Evidence/2026-08-27-google-oauth-and-session-trash-repair.md`.
 
 ## Allowed Next Work
 

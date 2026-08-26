@@ -50,7 +50,7 @@ Rollback là khôi phục version pin cũ, chạy installer explicit và chạy 
 Không dùng auto-merge hay cập nhật theo `latest` chỉ vì có release mới.
 
 CLIProxyAPI không phụ thuộc vào việc nested checkout còn tồn tại: upstream
-commit/tag và ba patch reviewable được pin trong `router_challenger/SOURCE.json`.
+commit/tag và bốn patch reviewable được pin trong `router_challenger/SOURCE.json`.
 `tools/install_challenger_pilot.ps1` dựng lại đúng cây source/binary. Nếu owner
 tạo fork riêng và push branch `claude`, fork là thêm một kênh review thuận tiện,
 không thay thế patch/hash/gate của parent repository.

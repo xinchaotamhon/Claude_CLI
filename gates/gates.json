@@ -388,6 +388,40 @@
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 20
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_session_trash.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Dashboard deletes one exact closed Claude session into recoverable project-local trash",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.session-trash",
+      "introduced_by": "owner-requested-session-deletion",
+      "invariant": "Session deletion requires explicit confirmation, rejects active terminals, selects only exact UUID transcript files under the isolated Claude home and moves them with a manifest into ignored project-local trash instead of permanently deleting content",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_terminal_history_cleanup.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Dashboard clears only closed terminal history while preserving running processes and sessions",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.terminal-history-cleanup",
+      "introduced_by": "owner-requested-terminal-list-cleanup",
+      "invariant": "Terminal-history cleanup requires explicit confirmation, recomputes and retains running PIDs, and changes only the ignored dashboard terminal registry without stopping a process or deleting session/transcript data",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
     }
   ],
   "project": "Claude CLI Local",

@@ -11,12 +11,12 @@
   "source": {
     "upstream_tag": "v7.2.141",
     "upstream_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
-    "patched_commit": "bcc28e6133a38b2185e04c631c9e662dbf28e9c3"
+    "patched_commit": "e835220044fb7f9bbe3f21ef3705864d4ded6cd1"
   },
   "binary": {
     "path": ".runtime/challenger/bin/cli-proxy-api.exe",
-    "sha256": "322468f600e7e3f85034a964c4f2852bcd87da0bbfbcf82fd572e53eb4d3d95c",
-    "size_bytes": 65937920,
+    "sha256": "3d3f909e0a59d810c415be65b1fbd1941a79a32eeb1e3d6a7eb1ac730b25d70e",
+    "size_bytes": 65938432,
     "tracked": false
   },
   "fixture_binary": {
@@ -28,7 +28,7 @@
   "policy": {
     "normal_launcher_unchanged": true,
     "pilot_launcher_only": true,
-    "oauth_run": false,
+    "oauth_run": true,
     "provider_request_run": false,
     "fixture_loopback_only": true,
     "runtime_and_toolchain_project_local": true

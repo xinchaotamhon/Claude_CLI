@@ -51,7 +51,7 @@ try {
     & $goExe test ./cmd/server
     if ($LASTEXITCODE -ne 0) { throw 'CLIProxyAPI cmd/server tests failed.' }
     & $goExe build -trimpath -buildvcs=false `
-        -ldflags '-s -w -X main.Version=7.2.141-local.3 -X main.Commit=bcc28e6133a38b2185e04c631c9e662dbf28e9c3 -X main.BuildDate=2026-08-26' `
+        -ldflags '-s -w -X main.Version=7.2.141-local.4 -X main.Commit=e835220044fb7f9bbe3f21ef3705864d4ded6cd1 -X main.BuildDate=2026-08-27' `
         -o $outputExe ./cmd/server
     if ($LASTEXITCODE -ne 0) { throw 'CLIProxyAPI build failed.' }
 }

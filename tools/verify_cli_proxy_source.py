@@ -59,8 +59,8 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         fail("SOURCE schema_version must be 1")
     if metadata.get("component") != "CLIProxyAPI":
         fail("unexpected source component")
-    if metadata.get("status") != "phase-3-google-account-selection-offline-built":
-        fail("source status must identify the Google-selection Phase 3 build")
+    if metadata.get("status") != "phase-4-google-oauth-callback-fix-built":
+        fail("source status must identify the Google OAuth callback Phase 4 build")
     if metadata.get("source_url") != EXPECTED_URL:
         fail("unexpected source URL")
     if not HEX40.fullmatch(str(metadata.get("source_commit", ""))):
@@ -72,8 +72,8 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
     if not HEX40.fullmatch(str(metadata.get("patched_tree", ""))):
         fail("invalid patched tree")
     patches = metadata.get("patches")
-    if not isinstance(patches, list) or len(patches) != 3:
-        fail("exactly three reviewed challenger patches are required")
+    if not isinstance(patches, list) or len(patches) != 4:
+        fail("exactly four reviewed challenger patches are required")
     if metadata.get("local_branch") != "claude":
         fail("candidate branch must be claude")
     if metadata.get("remote_name") != "upstream":
@@ -90,15 +90,16 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         fail("missing source policy")
     expected_policy = {
         "checkout_is_ignored_nested_repository": True,
-        "runtime_is_active": False,
+        "runtime_is_active": True,
         "offline_binary_was_built": True,
-        "oauth_was_run": False,
+        "oauth_was_run": True,
         "provider_request_was_run": False,
         "normal_launcher_changed": False,
         "local_model_suppresses_remote_catalog_and_antigravity_updates": True,
-        "offline_fixture_only": True,
+        "offline_fixture_only": False,
         "oauth_callback_loopback_only": True,
         "google_account_chooser_and_login_hint": True,
+        "google_redirect_matches_ipv4_listener": True,
     }
     if policy != expected_policy:
         fail("Phase 0 source policy changed unexpectedly")
@@ -166,6 +167,10 @@ def verify_checkout(metadata: dict[str, object], checkout: Path) -> None:
         fail("candidate must have only the upstream remote during Phase 0")
     if run_git(checkout, "remote", "get-url", metadata["remote_name"]) != EXPECTED_URL:
         fail("candidate upstream URL differs from metadata")
+
+    antigravity_auth = (checkout / "sdk" / "auth" / "antigravity.go").read_text(encoding="utf-8")
+    if 'fmt.Sprintf("http://127.0.0.1:%d/oauth-callback", port)' not in antigravity_auth:
+        fail("Antigravity redirect URI must use the same IPv4 loopback address as its callback listener")
 
     anchors = metadata["anchor_sha256"]
     assert isinstance(anchors, dict)

@@ -1,0 +1,52 @@
+From e835220044fb7f9bbe3f21ef3705864d4ded6cd1 Mon Sep 17 00:00:00 2001
+From: hiSoft <xinchaotamhon@gmail.com>
+Date: Thu, 27 Aug 2026 02:49:19 +0700
+Subject: [PATCH] fix: align antigravity oauth callback host
+
+---
+ sdk/auth/antigravity.go      | 6 +++++-
+ sdk/auth/antigravity_test.go | 7 +++++++
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/sdk/auth/antigravity.go b/sdk/auth/antigravity.go
+index 8de7401e..b16440b1 100644
+--- a/sdk/auth/antigravity.go
++++ b/sdk/auth/antigravity.go
+@@ -65,7 +65,7 @@ func (AntigravityAuthenticator) Login(ctx context.Context, cfg *config.Config, o
+ 		_ = srv.Shutdown(shutdownCtx)
+ 	}()
+ 
+-	redirectURI := fmt.Sprintf("http://localhost:%d/oauth-callback", port)
++	redirectURI := antigravityRedirectURI(port)
+ 	authURL := authSvc.BuildAuthURL(state, redirectURI)
+ 
+ 	if !opts.NoBrowser {
+@@ -222,6 +222,10 @@ waitForCallback:
+ 	}, nil
+ }
+ 
++func antigravityRedirectURI(port int) string {
++	return fmt.Sprintf("http://127.0.0.1:%d/oauth-callback", port)
++}
++
+ type callbackResult struct {
+ 	Code  string
+ 	Error string
+diff --git a/sdk/auth/antigravity_test.go b/sdk/auth/antigravity_test.go
+index eaf82a83..77bd4d6e 100644
+--- a/sdk/auth/antigravity_test.go
++++ b/sdk/auth/antigravity_test.go
+@@ -8,3 +8,10 @@ func TestAntigravityCallbackAddressIsLoopbackOnly(t *testing.T) {
+ 		t.Fatalf("callback address = %q, want loopback-only address", got)
+ 	}
+ }
++
++func TestAntigravityRedirectUsesSameIPv4Loopback(t *testing.T) {
++	got := antigravityRedirectURI(51121)
++	if got != "http://127.0.0.1:51121/oauth-callback" {
++		t.Fatalf("redirect URI = %q, want exact IPv4 loopback callback", got)
++	}
++}
+-- 
+2.54.0.windows.1
+

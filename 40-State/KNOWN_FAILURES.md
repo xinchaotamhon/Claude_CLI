@@ -1,10 +1,30 @@
 ---
-last_verified: 2026-08-25
-verified_by: phase-2-account-onboarding-and-warm-start
+last_verified: 2026-08-27
+verified_by: google-oauth-and-session-trash-repair
 status: active
 ---
 
 # Known Failures
+
+## challenger.google-empty-slot-acl-and-callback — fixed pending owner authorization 2026-08-27
+
+- Symptoms: **Thêm tài khoản Google** failed before showing OAuth with
+  `The property 'Count' cannot be found`; a later retry on the empty slot failed
+  because `Set-Acl` requested `SeSecurityPrivilege`; an earlier OAuth attempt
+  reached Google but timed out without a callback.
+- Confirmed causes: PowerShell unrolled the zero-file branch to `$null`; ACL
+  setup needlessly reapplied owner metadata on an already protected directory;
+  and the patched listener used IPv4 `127.0.0.1` while the OAuth redirect still
+  used hostname `localhost`, which can resolve to IPv6 first on Windows.
+- Disposition: zero auth files are now forced to an array; ACL protection is
+  retry-safe and changes no owner/audit data when already correct; reviewed
+  CLIProxyAPI patch 4 makes both listener and redirect exactly IPv4 loopback.
+  The `7.2.141-local.4` binary was reproduced at SHA-256
+  `3d3f909e0a59d810c415be65b1fbd1941a79a32eeb1e3d6a7eb1ac730b25d70e`.
+  Live startup reached Google's official chooser with the corrected callback;
+  completing password/2FA remains an owner action and is not yet claimed.
+- Regression gates: `challenger.cli-proxy-source-pin` and
+  `challenger.google-account-flow`.
 
 ## dashboard.double-console-and-active-import-block — fixed/contained 2026-08-26
 

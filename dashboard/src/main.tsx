@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { Account, DashboardState, Route, UsageWindow } from './types';
+import type { Account, ClaudeSession, DashboardState, Route, UsageWindow } from './types';
 import './styles.css';
 
 const EMPTY: DashboardState = {
@@ -206,6 +206,18 @@ function App() {
     }
   }
 
+  async function deleteSession(session: ClaudeSession) {
+    const confirmed = window.confirm(`Xóa session "${session.name}" khỏi Claude CLI?\n\nSession sẽ được chuyển vào thùng rác cục bộ để có thể khôi phục, không bị xóa vĩnh viễn.`);
+    if (!confirmed) return;
+    await action('/api/sessions/delete', { sessionId: session.id, confirmation: session.id }, `Đã chuyển ${session.name} vào thùng rác cục bộ.`);
+  }
+
+  async function clearClosedTerminals() {
+    const confirmed = window.confirm('Xóa mọi mục terminal đã đóng khỏi danh sách gần đây?\n\nThao tác này không tắt terminal đang chạy, không xóa session và không xóa transcript.');
+    if (!confirmed) return;
+    await action('/api/terminals/clear-closed', { confirmation: 'clear-closed-terminals' }, 'Đã dọn các mục terminal đã đóng.');
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -290,7 +302,7 @@ function App() {
           <p className="section-note">Nội dung session nằm trong <code>.runtime/claude-home</code> và không được đưa lên Git. Các session cũ đã được sao chép vào đây mà không xóa bản gốc.</p>
           <div className="terminal-table">
             {state.sessions.length === 0 ? <div className="table-empty">Chưa có session Claude nào trong dự án.</div> : state.sessions.slice(0, 20).map((session) => (
-              <div className="terminal-row session-row" key={session.id}><span className="terminal-state ended" /><strong>{session.name}</strong><span>{session.model || session.routeName}</span><span>{session.migrated ? 'Đã nhập từ cấu hình cũ' : 'Session mới'}</span><time>{new Date(session.lastOpenedAt).toLocaleString('vi-VN')}</time><label className="session-route-choice"><span>Mở lại bằng</span><select value={resumeRoutes[session.id] || ''} aria-label={`Mở lại bằng ${session.name}`} disabled={!dashboardConnected || busy !== null || !state.routes.length} onChange={(event) => setResumeRoutes((current) => ({ ...current, [session.id]: event.target.value }))}><option value="" disabled>Chọn route</option>{state.routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label><button disabled={!dashboardConnected || busy !== null || !resumeRoutes[session.id]} onClick={() => void action('/api/sessions/resume', { sessionId: session.id, routeId: resumeRoutes[session.id] }, `Đã mở lại ${session.name}.`)}>Mở lại</button></div>
+              <div className="terminal-row session-row" key={session.id}><span className="terminal-state ended" /><strong>{session.name}</strong><span>{session.model || session.routeName}</span><span>{session.migrated ? 'Đã nhập từ cấu hình cũ' : 'Session mới'}</span><time>{new Date(session.lastOpenedAt).toLocaleString('vi-VN')}</time><label className="session-route-choice"><span>Mở lại bằng</span><select value={resumeRoutes[session.id] || ''} aria-label={`Mở lại bằng ${session.name}`} disabled={!dashboardConnected || busy !== null || !state.routes.length} onChange={(event) => setResumeRoutes((current) => ({ ...current, [session.id]: event.target.value }))}><option value="" disabled>Chọn route</option>{state.routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label><div className="session-actions"><button disabled={!dashboardConnected || busy !== null || !resumeRoutes[session.id]} onClick={() => void action('/api/sessions/resume', { sessionId: session.id, routeId: resumeRoutes[session.id] }, `Đã mở lại ${session.name}.`)}>Mở lại</button><button className="session-delete-button" disabled={!dashboardConnected || busy !== null} onClick={() => void deleteSession(session)}>Xóa</button></div></div>
             ))}
           </div>
         </section>
@@ -304,7 +316,7 @@ function App() {
         </section>
 
         <section className="terminal-section">
-          <div className="section-heading"><div><div className="eyebrow">PHIÊN ĐANG CHẠY</div><h2>Terminal gần đây</h2></div></div>
+          <div className="section-heading"><div><div className="eyebrow">PHIÊN ĐANG CHẠY</div><h2>Terminal gần đây</h2></div><button className="quiet-button" disabled={!dashboardConnected || busy !== null || !state.terminals.some((terminal) => !terminal.running)} onClick={() => void clearClosedTerminals()}>Xóa mục đã đóng</button></div>
           <div className="terminal-table">
             {state.terminals.length === 0 ? <div className="table-empty">Chưa có terminal nào được mở từ dashboard.</div> : state.terminals.map((terminal) => (
               <div className="terminal-row" key={`${terminal.pid}-${terminal.startedAt}`}><span className={`terminal-state ${terminal.running ? 'live' : 'ended'}`} /><strong>{terminal.routeName}</strong><span>{terminal.model}</span><span>PID {terminal.pid}</span><time>{new Date(terminal.startedAt).toLocaleString('vi-VN')}</time><em>{terminal.running ? 'Đang chạy' : 'Đã đóng'}</em></div>

@@ -1,6 +1,6 @@
 ---
-last_verified: 2026-08-26
-verified_by: one-door-local-dashboard
+last_verified: 2026-08-27
+verified_by: google-oauth-and-session-trash-repair
 status: active
 ---
 
@@ -8,6 +8,8 @@ status: active
 
 1. **Use one entry only.** Double-click `DASHBOARD.bat`; it is the only BAT at
    project root. Keep technical rollback launchers under `tools/`.
+   Use **Xóa mục đã đóng** when terminal history becomes noisy; it preserves
+   running terminals and every resumable session.
 2. **Prove Plus through the deferred path.** Use **Codex Plus** and select the
    intended Plus account on OpenAI's official browser page. If Claude terminals
    are active, the dashboard must show a pending account; close them and click
@@ -17,6 +19,9 @@ status: active
    an optional hint, use **Thêm tài khoản Google**, confirm the chooser displays
    the intended account, finish official OAuth, then refresh quota. Verify the
    `Gemini` and `Claude / GPT` groups independently before Slot 2 or 3.
+   The repaired helper must show binary `7.2.141-local.4` and callback
+   `127.0.0.1`; do not reuse credential files from the separately installed
+   Antigravity app.
 4. **Promote Google routes incrementally.** A completed OAuth slot is not yet a
    Claude route. Prove one explicit account/model request and full tool loop,
    then add only that route to the selector. Keep automatic fallback off.
@@ -27,6 +32,9 @@ status: active
    dashboard terminals with different routes, then two with the same route.
    Expected: each terminal keeps its selected model; same-account terminals
    share provider quota; neither changes Codex App/global state.
+   The dashboard **Xóa** action is recoverable: close the session terminal
+   first, confirm the prompt, and let the server move only that UUID to local
+   trash. Do not manually delete the common Claude home.
 6. **Treat quota display as advisory.** Codex uses the official app-server
    method, but plan policy and response buckets can still change; Google quota
    remains provider-internal. On auth/schema/network failure show

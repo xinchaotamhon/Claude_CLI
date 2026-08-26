@@ -35,7 +35,7 @@ Windows user khác vì nó không giải mã được.
 ## Source fork và cập nhật
 
 - CCR có fork riêng `xinchaotamhon/claude-code-router_proxy`, branch `claude`.
-- CLIProxyAPI được tái tạo từ upstream pin + ba patch được parent Git giữ. Bản
+- CLIProxyAPI được tái tạo từ upstream pin + bốn patch được parent Git giữ. Bản
   nested checkout chỉ là workspace độc lập bị ignore; mất nó không làm mất
   thay đổi của dự án. Khi owner tạo fork CLIProxyAPI riêng, thêm `origin` và
   push branch `claude`; vẫn giữ patch series trong parent làm nguồn tái tạo.

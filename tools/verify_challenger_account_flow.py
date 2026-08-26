@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -44,6 +45,8 @@ def main() -> int:
         "return (51120 + $Number)",
         "if ($Number -lt 1 -or $Number -gt 50)",
         "function Protect-DirectoryForCurrentUser",
+        "$AlreadyProtected",
+        "$OwnerSid.Value -ne $Sid.Value",
         "function Assert-AccountRuntime",
         "function Assert-CallbackPortFree",
         "function Add-GoogleAccount",
@@ -57,6 +60,8 @@ def main() -> int:
         "Get-NetTCPConnection -State Listen -LocalPort $Port",
         "CLIPROXY_GOOGLE_LOGIN_HINT",
         "GoogleLoginHint",
+        "challenger-account-acl-",
+        "finish the Google browser flow within 5 minutes",
     )
     for marker in required:
         if marker not in script:
@@ -103,8 +108,8 @@ def main() -> int:
     if source.get("policy", {}).get("oauth_callback_loopback_only") is not True:
         return fail("source policy does not require a loopback OAuth callback")
     patches = source.get("patches")
-    if not isinstance(patches, list) or len(patches) != 3:
-        return fail("reviewed three-patch challenger series is missing")
+    if not isinstance(patches, list) or len(patches) != 4:
+        return fail("reviewed four-patch challenger series is missing")
     if source.get("policy", {}).get("google_account_chooser_and_login_hint") is not True:
         return fail("source policy does not require explicit Google account selection")
     for patch in patches:
@@ -124,6 +129,29 @@ def main() -> int:
     menu = read(menu_path)
     if "function Invoke-GoogleAccountMenu" not in menu or "challenger_account_menu.ps1" not in menu:
         return fail("project-local account menu does not expose the Google Pro helper")
+
+    self_test = subprocess.run(
+        [
+            r"C:\Program Files\PowerShell\7\pwsh.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+            "-Root",
+            str(root),
+            "-SelfTest",
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if self_test.returncode != 0:
+        detail = (self_test.stderr or self_test.stdout).strip().splitlines()
+        return fail(f"Google account helper self-test failed: {detail[-1] if detail else 'unknown error'}")
 
     print("PASS: dynamic Google Pro OAuth slots use ignored project-local account directories")
     print("PASS: callback ports and patched listener are loopback-only")

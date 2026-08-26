@@ -1,5 +1,6 @@
 # Evidence Index
 
+- [2026-08-27 Google OAuth and session trash repair](2026-08-27-google-oauth-and-session-trash-repair.md): empty-slot/ACL/callback root causes, fourth reviewed CLIProxyAPI patch, reproducible local.4 binary and confirmed recoverable session deletion contract.
 - [2026-08-27 dashboard lifecycle and Kiro Opus 5 repair](2026-08-27-dashboard-lifecycle-and-kiro-opus5.md): acknowledged visible-terminal launch, transcript-backed sessions, cross-route resume UI, supervised dashboard restart, concurrent update checks and full Claude-to-Kiro Opus 5 smoke.
 - [2026-08-26 portable session/account/update repair](2026-08-26-portable-session-account-update-repair.md): direct terminal launch, deferred Codex import, Google account chooser/login hint, common resumable session home and fresh-machine reconstruction controls.
 - [2026-08-27 Kiro Pix4K test provider](2026-08-27-kiro-pix4k-test-provider.md): sanitized model-catalog/quota-page discovery and ignored custom route configuration.

@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "component": "CLIProxyAPI",
-  "status": "phase-3-google-account-selection-offline-built",
+  "status": "phase-4-google-oauth-callback-fix-built",
   "source_url": "https://github.com/router-for-me/CLIProxyAPI.git",
   "source_tag": "v7.2.141",
   "source_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
   "source_tree": "320d4056873d7e8fd036c568db493acc0e565dc7",
-  "patched_commit": "bcc28e6133a38b2185e04c631c9e662dbf28e9c3",
-  "patched_tree": "001e0ef95ad385ac78743153cf3429bca5eadef0",
+  "patched_commit": "e835220044fb7f9bbe3f21ef3705864d4ded6cd1",
+  "patched_tree": "f823d155849f2be31d7de3c19adb90e65146e6f8",
   "patches": [
     {
       "file": "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
@@ -23,6 +23,11 @@
       "file": "router_challenger/patches/0002-fix-select-google-oauth-account.patch",
       "commit": "bcc28e6133a38b2185e04c631c9e662dbf28e9c3",
       "sha256": "c36c1b374afd71fb91c7fb84f183972ccfb30a59cc08f8ef26e7fde0373f1a57"
+    },
+    {
+      "file": "router_challenger/patches/0004-fix-align-antigravity-oauth-callback-host.patch",
+      "commit": "e835220044fb7f9bbe3f21ef3705864d4ded6cd1",
+      "sha256": "51ef6e57763943871da68253f55ae76a357fe375bd5e5b0854218fe85cb95e50"
     }
   ],
   "source_commit_date": "2026-08-24T16:35:18+08:00",
@@ -32,7 +37,7 @@
   "license": "MIT",
   "required_go_version": "1.26.0",
   "build_go_version": "1.26.7",
-  "reviewed_at": "2026-08-25",
+  "reviewed_at": "2026-08-27",
   "anchor_sha256": {
     "LICENSE": "93df585e5fa07ead6d47a3ab2dbdf0255782a39fe830022c0274a70394223cc8",
     "go.mod": "99dc7f2ceb707e0138346e33beea00e828d4233ae25a02603048c32c2e67728b",
@@ -41,14 +46,15 @@
   },
   "policy": {
     "checkout_is_ignored_nested_repository": true,
-    "runtime_is_active": false,
+    "runtime_is_active": true,
     "offline_binary_was_built": true,
-    "oauth_was_run": false,
+    "oauth_was_run": true,
     "provider_request_was_run": false,
     "normal_launcher_changed": false,
     "local_model_suppresses_remote_catalog_and_antigravity_updates": true,
-    "offline_fixture_only": true,
+    "offline_fixture_only": false,
     "oauth_callback_loopback_only": true,
-    "google_account_chooser_and_login_hint": true
+    "google_account_chooser_and_login_hint": true,
+    "google_redirect_matches_ipv4_listener": true
   }
 }
