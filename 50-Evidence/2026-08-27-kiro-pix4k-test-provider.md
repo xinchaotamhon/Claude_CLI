@@ -12,9 +12,12 @@
 - The pasted text had visually joined “quota” and “Base Url”. The literal path
   `/quotaBase` returned HTTP 404 for GET, POST and OPTIONS. `/quota` returned an
   HTML quota page and its public JavaScript asset, not a stable JSON quota API.
-- No model completion was sent and no model quota was intentionally consumed.
-  Credential values and provider response bodies were not printed or copied to
-  tracked evidence.
+- The owner-authorized non-sensitive completion probe initially received HTTP
+  429, then one bounded retry was accepted with a successful 2xx response. This
+  proves the configured chat-completions path can reach inference, while the
+  first result also shows that the free relay may throttle transiently.
+- Credential values, authentication headers and provider response bodies were
+  not printed or copied to tracked evidence.
 
 ## Applied behavior
 
@@ -30,7 +33,8 @@
 
 ## Remaining owner proof
 
-Select the Kiro route and send one short non-sensitive Claude request. Verify
-the response and tool loop before using it for real work. The relay is a
-third-party endpoint, so do not send private source/data until the owner accepts
-its privacy, retention and terms.
+Select the Kiro route in the dashboard and send one short non-sensitive request
+through Claude Code itself. The direct API path is proved, but the complete
+Claude -> CCR -> relay tool loop remains an owner-visible live check. The relay
+is a third-party endpoint, so do not send private source/data until the owner
+accepts its privacy, retention and terms.

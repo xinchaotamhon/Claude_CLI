@@ -52,9 +52,10 @@ status: active
   auth, DPAPI, keys and sessions remain intentionally outside Git.
 - Owner-supplied Kiro Pix4K test access is configured only in ignored
   `setting.json`. Authenticated catalog discovery returned HTTP 200 and exact
-  model `claude-opus-4.7`; no completion request was made. `/quota` is an HTML
-  provider page while `/quotaBase` is not an API endpoint. Dashboard can open
-  that same-host HTTPS quota page without placing the key in its URL.
+  model `claude-opus-4.7`. A non-sensitive completion probe first received a
+  transient HTTP 429 and one bounded retry was accepted with 2xx. `/quota` is
+  an HTML provider page while `/quotaBase` is not an API endpoint. Dashboard
+  can open that same-host HTTPS quota page without placing the key in its URL.
 - All 18 enabled smoke gates passed on the integrated dashboard/session/account,
   Google patch, reconstruction and Kiro schema changes in
   `20260826T173407Z-7144aa82`. The run used the owner Windows profile only so
