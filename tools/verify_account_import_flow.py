@@ -34,9 +34,11 @@ def main() -> int:
     source_path = root / "provider_router" / "CODEX_LOGIN_SOURCE.json"
     binary_path = root / "provider_router" / "codex-login-runtime" / "codex.exe"
     sign_path = root / "SIGN_ACCOUNT.bat"
+    dashboard_path = root / "DASHBOARD.bat"
+    dashboard_helper_path = root / "tools" / "dashboard_terminal.bat"
     run_path = root / "RUN_CLAUDE.bat"
     ignore_path = root / ".gitignore"
-    for path in (menu_path, installer_path, source_path, binary_path, sign_path, run_path, ignore_path):
+    for path in (menu_path, installer_path, source_path, binary_path, sign_path, dashboard_path, dashboard_helper_path, run_path, ignore_path):
         if not path.is_file():
             return fail(f"missing folder-local account-flow file: {path.relative_to(root).as_posix()}")
 
@@ -141,9 +143,12 @@ def main() -> int:
     if "/provider_router/codex-login-runtime/*" not in ignore:
         return fail("large Codex login binary is not Git-ignored")
     sign = read(sign_path)
+    dashboard_helper = read(dashboard_helper_path)
     run = read(run_path)
-    if 'RUN_CLAUDE.bat" --account-menu' not in sign:
-        return fail("SIGN_ACCOUNT.bat does not enter the project account menu")
+    if 'DASHBOARD.bat"' not in sign:
+        return fail("SIGN_ACCOUNT.bat is not a compatibility redirect to the project dashboard")
+    if "-AddCodexPlan" not in dashboard_helper or "router_project_menu.ps1" not in dashboard_helper:
+        return fail("dashboard account action does not enter the project-local Codex import flow")
     if "goto ACCOUNT_MENU" not in run or "-AccountMenu" not in run:
         return fail("RUN_CLAUDE.bat lacks the account-menu dispatcher")
 
@@ -155,7 +160,7 @@ def main() -> int:
     print("PASS: imported providers/plugins use unique identities and appear in RUN_CLAUDE")
     print("PASS: generated route IDs with slug-safe punctuation survive account-index reload")
     print("PASS: Free and Plus declared plans expose bounded candidate sets while rejected legacy fallback models stay excluded")
-    print("PASS: imported account models can be refreshed from SIGN_ACCOUNT without another browser login")
+    print("PASS: dashboard owns account onboarding while SIGN_ACCOUNT remains a compatibility redirect")
     print("PASS: an unfinished folder-local login can resume without repeating browser/2FA")
     print("network: not used; real auth files and setting.json were not read")
     return 0

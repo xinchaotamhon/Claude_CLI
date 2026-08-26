@@ -3,7 +3,9 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot ".."),
-    [switch]$SelfTest
+    [switch]$SelfTest,
+    [ValidateSet("google_pro_1", "google_pro_2", "google_pro_3")]
+    [string]$AddSlot
 )
 
 Set-StrictMode -Version Latest
@@ -191,6 +193,7 @@ function Invoke-SelfTest {
 }
 
 if ($SelfTest) { Invoke-SelfTest; exit 0 }
+if ($AddSlot) { Add-GoogleAccount -Slot $AddSlot; exit 0 }
 while ($true) {
     try { Clear-Host } catch { }
     Write-Host "==============================================================" -ForegroundColor Cyan

@@ -66,7 +66,11 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 - `claude-code-router_proxy/`: reviewable source fork on branch `claude`, with
   `origin` pointing to the owner's fork and `upstream` to musistudio. It is a
   separate nested Git repository and is ignored by the parent repository.
-- `RUN_CLAUDE.bat`: the only normal entry point.
+- `DASHBOARD.bat`: the single normal owner-facing entry point. It opens the
+  authenticated loopback control room for accounts, quota, routes and new
+  Claude terminals.
+- `RUN_CLAUDE.bat`: retained technical/rollback launcher; normal use is through
+  the dashboard.
 - `RUN_CHALLENGER_PILOT.bat`: separate offline CLIProxyAPI fixture/status/stop
   surface; it is not a normal Claude launcher and never signs into a provider.
 - `router_challenger/`: pinned CLIProxyAPI source/build metadata, tracked local
@@ -76,9 +80,10 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 - `setting.json`: ignored local source of truth for API URL/key/model routes;
   it may contain plaintext secrets and must never be read into project memory.
 - `setting.example.json`: tracked secret-free schema/example.
-- `SIGN_ACCOUNT.bat`: opens the account menu. Codex Free/Plus login uses a new
-  isolated CCR account home; Google AI Pro login uses a separate ignored
-  challenger slot. It never opens CCR's agent UI or changes Codex App auth.
+- `SIGN_ACCOUNT.bat`: compatibility shortcut that only forwards to
+  `DASHBOARD.bat`; it has no separate account menu.
+- `dashboard/`: original local-only React UI plus zero-dependency Node server.
+  Built assets are tracked so normal startup does not install or build.
 - `tools/router_project_menu.ps1`: validates/synchronizes `setting.json` through
   CCR RPC, stores the generated client key with DPAPI and launches only Claude.
 - `tools/install_router_runtime.ps1`: explicit reconstruction of the pinned
@@ -89,23 +94,24 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 
 ## One-click operation
 
-Use one canonical front door per intended outcome: `RUN_CLAUDE.bat` for normal
-Claude use and route selection; `SIGN_ACCOUNT.bat` for adding a project-local
-account. `RUN_CHALLENGER_PILOT.bat` is only for the isolated offline challenger
+Use one canonical front door: double-click `DASHBOARD.bat`. Accounts, quota,
+route/model selection and separate Claude terminals are all handled there.
+`SIGN_ACCOUNT.bat` only redirects to the same dashboard; `RUN_CLAUDE.bat` is a
+technical rollback path. `RUN_CHALLENGER_PILOT.bat` is only for the isolated offline challenger
 self-test and must not be described as account/model use. Tool, provider or model availability never grants
 permission to install, update, consume quota, expose data or change an external
 account.
 
-Edit ignored `setting.json`, set the desired provider/profile entries to
-`enabled: true`, then double-click `RUN_CLAUDE.bat`. On first use or after a
+For a custom API, use the dashboard's **Mở setting.json** button, set the desired
+provider/profile entries to `enabled: true`, then return to the dashboard. On first use or after a
 file change, the launcher validates the whole file and merges only its managed
 providers into CCR's SQLite database through authenticated loopback RPC. It
 preserves account/providers managed in the CCR UI and automatically protects
 the generated CCR client key with Windows DPAPI. The RUN menu never asks for a
 new API key, URL or profile.
 
-For a ChatGPT/Codex account, double-click `SIGN_ACCOUNT.bat`, choose `[1]` for
-Free or `[2]` for Plus, then complete password/2FA in the official browser
+For a ChatGPT/Codex account, open `DASHBOARD.bat`, choose **Codex Free** or
+**Codex Plus**, then complete password/2FA in the official browser
 page. The wrapper runs only the pinned local login helper with a fresh
 `CODEX_HOME` under `provider_router/.ccr-local/codex-accounts`, imports that
 account into CCR, creates its RUN routes and removes temporary CCR staging.
@@ -113,14 +119,17 @@ Free candidates are Terra/Luna; Plus candidates are Sol/Terra/Luna, but actual
 entitlement is retained only after the bounded provider check. No global
 Codex/App login is read or changed.
 
-Choose `[G]` for one of three Google AI Pro slots. Each slot stores its ignored
+Choose one of the three Google AI Pro slot buttons. Each slot stores its ignored
 OAuth result under `.runtime/challenger/accounts/google`, invokes only the
 hash-pinned local challenger binary, and binds its temporary OAuth callback to
 `127.0.0.1` on a fixed per-slot port. The wrapper never asks for or parses the
 password, 2FA or credential JSON. Configure DeepSeek/OpenRouter/custom API keys
 and endpoints only in ignored `setting.json`.
 
-After the route list appears, the launcher may warm the router in a hidden
+After a route is selected and **Mở terminal** is pressed, the launcher starts
+that exact route in a new terminal. Existing terminals keep their process-local
+route; multiple terminals may share one account or use different accounts.
+The launcher may warm the router in a hidden
 project-local process. Before the profile's DPAPI client key is read, route
 selection still verifies that router state belongs to the exact local Node/CCR
 process and that its loopback health endpoint succeeds. An unrelated process
@@ -130,7 +139,8 @@ startup.
 Normal control flow:
 
 ```text
-RUN_CLAUDE.bat
+DASHBOARD.bat -> authenticated http://127.0.0.1:18320
+  -> exact account/model route -> new terminal
   -> validate/sync changed setting.json to project-local CCR SQLite
   -> project-local router on 127.0.0.1:3456
   -> bin/claude.exe with ANTHROPIC_BASE_URL pointing to loopback
@@ -146,6 +156,7 @@ Windows-user DPAPI ciphertext. None belongs in Git or documentation.
 Useful explicit commands:
 
 ```text
+DASHBOARD.bat
 RUN_CLAUDE.bat --version
 RUN_CLAUDE.bat --router-version
 RUN_CLAUDE.bat --router-stop
@@ -153,7 +164,7 @@ RUN_CLAUDE.bat --check-updates
 RUN_CLAUDE.bat --fetch-router-source
 RUN_CLAUDE.bat --install-router
 RUN_CLAUDE.bat --new-window
-SIGN_ACCOUNT.bat
+SIGN_ACCOUNT.bat  (compatibility alias for DASHBOARD.bat)
 RUN_CHALLENGER_PILOT.bat
 ```
 

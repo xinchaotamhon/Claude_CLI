@@ -1,67 +1,53 @@
 ---
-last_verified: 2026-08-25
-verified_by: phase-2-account-onboarding-and-warm-start
+last_verified: 2026-08-26
+verified_by: one-door-local-dashboard
 status: active
 ---
 
 # Next Actions
 
-1. **Owner completes the remaining interactive logins.** Double-click
-   `SIGN_ACCOUNT.bat`: `[1]` adds each Codex Free account, `[2]` adds Codex Plus,
-   and `[G]` opens the three Google AI Pro slots. Enter passwords and 2FA only
-   on the official browser pages. Codex App/global account switching is outside
-   this project.
-2. **Verify every completed slot before route promotion.** List project-local
-   accounts from `SIGN_ACCOUNT.bat`; inspect only labels, declared plan, model
-   route results and credential-file counts. Never read or print `auth.json`.
-   Prove one bounded Claude-compatible request per candidate before retaining
-   it; Free must not acquire Sol merely from an owner-entered label.
-3. **Promote Google accounts incrementally.** Start with one Google slot and
-   explicit account/model selection. Keep automatic fallback disabled. Confirm
-   callback closure, account isolation and Claude tool-loop fidelity before
-   wiring the second or third slot into normal RUN.
-4. **Implement quota adapters only with proved provenance.** Google AI Pro must
-   keep separate `gemini_models` and `claude_gpt_models` weekly branches;
-   five-hour data is optional. If an official/provider surface cannot be
-   proved, show `unknown` rather than infer from proxy traffic.
-5. **Keep CCR as the rollback champion.** Do not delete or rewrite its ignored
-   runtime/auth state. A challenger is promoted only after all existing gates
-   and its focused isolation/protocol gates pass on the same artifact.
-6. **Reconstruct the pilot only explicitly when needed.** Run
-   `tools\install_challenger_pilot.ps1`; it downloads official Go into
-   `vendor`, recreates the ignored pinned source/patch and builds hash-checked
-   binaries. Normal startup never downloads or builds.
-7. **Keep Codex App separate.** Its account switching and five-hour quota are
-   not part of Claude CLI. Do not modify global `.codex`, App profiles or App
-   login to solve project routing. If the owner tests the App separately, only
-   record the result when it affects a proved project boundary.
-8. **Use the verified account routes.** Double-click `RUN_CLAUDE.bat` and pick
-   the Terra or Luna line. Sol and legacy `gpt-5-codex` are intentionally hidden
-   because direct requests from this Free account returned HTTP 400.
-9. **Add another account when needed.** In `SIGN_ACCOUNT.bat`, run `[1]` again, choose a different label and sign
-   into the other account in the newly opened browser flow. No switching in
-   Codex App or global CLI is needed. Gate: both labels appear separately in
-   RUN; duplicate detected account IDs are rejected.
-10. **Refresh routes if model entitlement changes.** In `SIGN_ACCOUNT.bat`, use
-   `[R]`, select the imported account and let the bounded checks rebuild its
-   model routes. This does not repeat browser login but sends a minimal request
-   to each candidate and can consume a small amount of quota.
-11. **Verify explicit account switching manually.** After two accounts exist, exhaust or
-   disable one account and confirm the intended switch behavior. Current CCR
-   routes select accounts explicitly; automatic 9router-style fallback is not
-   part of the active design.
-12. **Configure an API route when needed.** Edit ignored `setting.json`; replace
-   sample URL/key/model and enable provider/profile. Gate: reload with `[S]`
-   without validation/RPC error; rollback: disable both and reload.
-13. **Repair the local login helper only if missing/hash-mismatched.** Run
-   `powershell -File tools\install_codex_login_runtime.ps1`. This is an explicit
-   network/install action and must never be added to normal startup.
-14. **Before every GitHub push, inspect staged files.** `setting.json`, `.ccr-local`,
-   all EXE binaries, Node modules and the nested source repo must stay ignored.
-15. **Review updates conservatively.** Source-diff CCR and CLIProxyAPI before
-   merge; compare
-   release notes/version/hash for closed binaries. Rerun all gates before any
-   operational replacement.
+1. **Use one entry only.** Double-click `DASHBOARD.bat`. `SIGN_ACCOUNT.bat` is
+   only a compatibility alias; do not add another account menu. Keep
+   `RUN_CLAUDE.bat` as technical rollback.
+2. **Complete owner-interactive Codex logins from the dashboard.** Use
+   **Codex Free** for the remaining Free accounts and **Codex Plus** for the Plus
+   account. Enter password and 2FA only on the official browser page. Confirm
+   the resulting models: Free must not receive Sol; Plus may retain
+   Sol/Terra/Luna only after bounded provider checks pass.
+3. **Complete Google slots one at a time.** Start with Google AI Pro Slot 1,
+   finish official OAuth, return to the dashboard and refresh quota. Verify the
+   `Gemini` and `Claude / GPT` groups independently before Slot 2 or 3.
+4. **Promote Google routes incrementally.** A completed OAuth slot is not yet a
+   Claude route. Prove one explicit account/model request and full tool loop,
+   then add only that route to the selector. Keep automatic fallback off.
+5. **Prove parallel terminals.** After a second account exists, open two
+   dashboard terminals with different routes, then two with the same route.
+   Expected: each terminal keeps its selected model; same-account terminals
+   share provider quota; neither changes Codex App/global state.
+6. **Treat quota display as advisory.** Codex and Google quota endpoints are
+   undocumented and may change. On 401/schema/network failure show
+   `unknown`/reauthentication, preserve the last timestamped snapshot and never
+   block manual route launch solely because quota refresh failed.
+7. **Keep Google branches separate.** `gemini_models` and
+   `claude_gpt_models` must never be averaged into one percentage. Five-hour
+   values are optional; weekly/monthly duration is derived from provider data.
+8. **Do not call local proxy counts subscription quota.** A custom API provider
+   remains `unknown` unless its own documented/verified quota adapter is added.
+9. **Do not enable automatic fallback yet.** Before promotion, prove finite
+   allowlists, session affinity, a recognized quota/rate-limit signal, bounded
+   attempts and no retry after streamed output/tool side effects.
+10. **Configure custom APIs only through ignored `setting.json`.** Use the
+    dashboard button to open it, validate/reload through the existing route
+    path and keep keys out of Git/docs/browser state.
+11. **Keep CCR as rollback champion.** Do not delete its ignored runtime/auth
+    state. If dashboard fails, stop its process and use `RUN_CLAUDE.bat`.
+12. **Review updates conservatively.** Diff CCR/CLIProxyAPI source before merge;
+    compare release notes/version/hash for the closed Claude binary. Never
+    auto-download or auto-merge during dashboard startup.
+13. **Before every push, inspect staged files.** `setting.json`, `.ccr-local`,
+    `.runtime`, auth JSON, binaries, Node modules and nested source repositories
+    must remain ignored.
 
-Never ask an AI to read `setting.json`, per-account `auth.json`, CCR SQLite or
-DPAPI data. Use `setting.example.json` or a separately sanitized description.
+AI sessions may inspect tracked contracts and secret-free status only. Do not
+print or persist access tokens, refresh tokens, passwords, 2FA, provider account
+IDs, emails from auth payloads, CCR SQLite or DPAPI plaintext.

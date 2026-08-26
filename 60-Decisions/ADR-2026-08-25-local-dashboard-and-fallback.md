@@ -1,17 +1,18 @@
 # ADR — Local dashboard owns accounts, quota and bounded fallback
 
 - Date: 2026-08-25
-- Status: architecture accepted; Phase 2 onboarding wrappers ready, live
-  accounts and dashboard promotion pending owner-interactive proof
+- Status: dashboard control plane implemented and locally verified; remaining
+  account logins, Google route promotion and automatic fallback pending
 - Owner intent: manage provider accounts and quota visibly while keeping one
   Claude CLI harness and avoiding session interruption
 
 ## Decision
 
-Build one project-local dashboard/control plane around the isolated CLIProxyAPI
-challenger. Do not extend CCR's Connect-agent UI or use CCR as the long-term
-quota/fallback dashboard. CCR remains the current operational router and
-rollback champion until the challenger/dashboard passes live-account gates.
+Build one original project-local dashboard/control plane around the existing
+CCR champion and isolated CLIProxyAPI challenger. Do not extend CCR's
+Connect-agent UI or use CCR as the quota/fallback dashboard. CCR remains the
+operational router and rollback champion while the dashboard owns user-facing
+account, quota, route/model and terminal actions.
 
 The dashboard will eventually own these explicit user outcomes:
 
@@ -67,25 +68,27 @@ over the project's usage/fallback contracts unless that blocker is resolved.
 
 ## Phased implementation
 
-- Phase 1 (current): deterministic local proxy pilot, usage/fallback contracts,
+- Phase 1 (complete): deterministic local proxy pilot, usage/fallback contracts,
   no OAuth, no real provider traffic and no dashboard binary.
-- Phase 2A: source-only audit completed for EasyCLIProxyAPI and blocked it; now
-  specify/build a minimal original project-local dashboard control plane.
-- Phase 2B (current): seven-slot secret-free manifest, plan-aware Codex login,
+- Phase 2A (complete): source-only audit completed for EasyCLIProxyAPI and
+  blocked it; a minimal original project-local dashboard was built instead.
+- Phase 2B (complete implementation; live Google proof pending): secret-free manifest, plan-aware Codex login,
   three isolated Google login slots and loopback-only callback are implemented.
   One owner-approved test account must be proved with explicit selection only;
   automatic fallback remains disabled.
-- Phase 2C: two accounts, manual switch and quota display provenance.
+- Phase 2C (current): Codex quota provenance is live for one account; complete
+  remaining logins, prove two-account manual switching and Google quota shape.
 - Phase 2D: bounded automatic fallback after failure injection and duplicate
   output/tool-side-effect tests.
 - Promotion: replace CCR only after cumulative gates pass and rollback is
-  rehearsed. Until then, normal use remains `RUN_CLAUDE.bat`.
+  rehearsed. Until then, normal owner use is `DASHBOARD.bat` and technical
+  rollback is `RUN_CLAUDE.bat`.
 
 ## Rollback
 
-Stop/remove only the ignored dashboard/challenger runtime and account state.
-Continue through CCR. Never delete or import CCR/global Codex App auth as part
-of dashboard rollback.
+Stop the dashboard and continue through `RUN_CLAUDE.bat`/CCR. Do not remove
+account state merely to roll back the UI. Never delete or import CCR/global
+Codex App auth as part of dashboard rollback.
 
 Codex App account switching, including switching because its five-hour quota
 is exhausted, is explicitly outside this architecture. This dashboard may only

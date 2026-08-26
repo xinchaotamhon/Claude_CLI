@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 from pathlib import Path
 
@@ -45,6 +46,21 @@ def contains_embedded_secret(text: str) -> bool:
     )
 
 
+def iter_project_files(root: Path, names: set[str] | None = None, suffix: str | None = None):
+    """Yield files while pruning ignored trees before filesystem traversal."""
+    for directory, child_dirs, files in os.walk(root, topdown=True, followlinks=False):
+        child_dirs[:] = [
+            name for name in child_dirs if name.casefold() not in AUDIT_IGNORED_DIRS
+        ]
+        base = Path(directory)
+        for name in files:
+            if names is not None and name not in names:
+                continue
+            if suffix is not None and not name.casefold().endswith(suffix.casefold()):
+                continue
+            yield base / name
+
+
 def audit(root: Path) -> dict[str, list[str]]:
     result: dict[str, list[str]] = {"errors": [], "warnings": [], "info": []}
     start = root / "START_HERE.md"
@@ -67,12 +83,7 @@ def audit(root: Path) -> dict[str, list[str]]:
                 f"Possible volatile fact in START_HERE.md:{line_no}: {line.strip()}"
             )
 
-    state_files = [
-        path
-        for path in list(root.glob("**/CURRENT_STATE.md"))
-        + list(root.glob("**/NEXT_ACTIONS.md"))
-        if not any(part.casefold() in AUDIT_IGNORED_DIRS for part in path.parts)
-    ]
+    state_files = list(iter_project_files(root, names={"CURRENT_STATE.md", "NEXT_ACTIONS.md"}))
     if not state_files:
         result["warnings"].append("No CURRENT_STATE.md or NEXT_ACTIONS.md found")
     for path in state_files:
@@ -83,9 +94,7 @@ def audit(root: Path) -> dict[str, list[str]]:
             )
 
     scanned = 0
-    for path in root.rglob("*.md"):
-        if any(part.casefold() in AUDIT_IGNORED_DIRS for part in path.parts):
-            continue
+    for path in iter_project_files(root, suffix=".md"):
         scanned += 1
         doc = path.read_text(encoding="utf-8", errors="replace")
         if contains_embedded_secret(doc):

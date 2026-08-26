@@ -1,13 +1,20 @@
 # Claude CLI multi-provider router — local runbook
 
-## Hai file người dùng thao tác
+## Một file người dùng thao tác
 
-1. `setting.json`: tự nhập API endpoint/key/model và route chạy Claude.
-2. `SIGN_ACCOUNT.bat`: đăng nhập từng tài khoản Codex vào home riêng trong dự
-   án. File này không mở giao diện agent/profile của CCR.
+Double-click `DASHBOARD.bat`. Đây là giao diện duy nhất để đăng nhập tài khoản,
+xem quota, mở `setting.json`, chọn route/model và mở terminal Claude mới.
+`SIGN_ACCOUNT.bat` chỉ là alias tương thích mở lại đúng dashboard này.
 
-`RUN_CLAUDE.bat` chỉ đồng bộ file đã thay đổi, hiện profile được bật và chạy
-Claude. Nó không còn hỏi nhập API, URL, provider, model hoặc CCR client key.
+`RUN_CLAUDE.bat` được giữ làm menu kỹ thuật/rollback. Dashboard gọi đúng route
+đã chọn; launcher vẫn không hỏi nhập API, URL, provider, model hoặc CCR client
+key.
+
+Dashboard dùng Node nằm trong dự án, chỉ nghe tại
+`http://127.0.0.1:18320` và mở trình duyệt bằng cookie phiên cục bộ. Frontend
+không nhận token, email hay provider account ID. Nhiều terminal được phép chạy
+cùng lúc: mỗi terminal giữ route trong process của nó; các terminal dùng cùng
+account vẫn chia sẻ quota account đó.
 
 ## Sửa setting.json
 
@@ -111,27 +118,28 @@ client key và báo cả ngữ cảnh start lẫn lỗi xác minh.
 Nếu file JSON sai, URL chứa credential, protocol sai, provider trùng tên hoặc
 provider bật mà thiếu key/model, việc save không diễn ra.
 
-## Nhập tài khoản với SIGN_ACCOUNT.bat
+## Nhập tài khoản từ DASHBOARD.bat
 
 Màn hình Add Provider chuẩn không thấy Codex import trong dự án này vì CCR tìm
 login tại `CCR_INTERNAL_HOME_DIR/.codex/auth.json`, còn home của router đã được
 cô lập trong folder. Đây là nguyên nhân panel import tự ẩn.
 
-Double-click `SIGN_ACCOUNT.bat`:
+Double-click `DASHBOARD.bat`:
 
-- `[1]`: đặt tên tài khoản, mở trang đăng nhập OpenAI chính thức và tự hoàn tất
+- **Codex Free / Codex Plus**: đặt tên tài khoản, mở trang đăng nhập OpenAI chính thức và tự hoàn tất
   password/2FA. Mỗi lần chạy tạo một `CODEX_HOME` riêng dưới
   `provider_router/.ccr-local/codex-accounts`; route tự xuất hiện trong
   `RUN_CLAUDE.bat` mà không cần thêm provider vào `setting.json`.
-- `[R]`: chọn tài khoản đã nhập, kiểm tra lại các model ứng viên và tạo lại mỗi
-  model dùng được thành một route RUN riêng; không đăng nhập browser lại. Mỗi
-  kiểm tra là request thật rất nhỏ nên có thể tiêu một lượng quota nhỏ.
-- `[L]`: chỉ liệt kê tên các tài khoản Codex đã nhập.
+- **Google Slot 1/2/3**: mở OAuth chính thức với auth home và callback loopback
+  riêng cho từng slot.
+- **Làm mới hạn mức**: đọc quota ở backend. Nếu nhà cung cấp không trả dữ liệu,
+  giao diện hiện `unknown`; lỗi quota không tự đổi route.
+- **Mở terminal**: mở đúng route/model đã chọn trong cửa sổ mới.
 
 API key/endpoint Gemini, DeepSeek, OpenRouter, OpenAI API hoặc custom chỉ cấu
 hình trong ignored `setting.json`. Không dùng trang `Connect agent` của CCR.
 
-Để nhập tài khoản Codex thứ hai, chạy `[1]` lần nữa với tên khác và đăng nhập
+Để nhập tài khoản Codex thứ hai, bấm **Codex Free** hoặc **Codex Plus** lần nữa với tên khác và đăng nhập
 tài khoản đó trong browser. Script không đọc login của Codex App/CLI toàn cục,
 không tìm `C:\Users\...\.codex`, không dùng `PATH`; nó gọi đúng binary cục bộ
 chỉ với lệnh `login`, stage auth cục bộ cho native CCR import RPC rồi xóa
@@ -142,7 +150,8 @@ Với account Free đã kiểm chứng ngày 2026-08-25, `gpt-5-codex` và
 `gpt-5.6-sol` đều bị endpoint thật từ chối HTTP 400; `gpt-5.6-terra` và
 `gpt-5.6-luna` hoàn tất stream nên được tạo thành hai route riêng. Generic
 connection check của CCR đã báo Sol sai, vì vậy kết quả đường `/v1/messages`
-thật được ưu tiên. Khi entitlement thay đổi, dùng `[R]` để kiểm tra lại.
+thật được ưu tiên. Khi entitlement thay đổi, dùng menu kỹ thuật rollback để
+kiểm tra lại cho tới khi action refresh-model được đưa vào dashboard.
 
 Trong Claude, menu `/model` vẫn hiện các vai trò Opus/Sonnet/Haiku. Đó là ba
 vai trò của harness Claude được ánh xạ vào route đã chọn, không phải ba model
@@ -150,7 +159,8 @@ Codex khác nhau. Model upstream thật được chọn ở menu `RUN_CLAUDE.bat
 
 - Nếu chỉ có một model hợp lệ, script tạo một route.
 - Nếu có nhiều model hợp lệ, mỗi model được tạo thành một route riêng.
-- Nếu browser login đã thành công nhưng một bước sau đó lỗi, chạy lại `[1]` và
+- Nếu browser login đã thành công nhưng một bước sau đó lỗi, bấm lại đúng nút
+  Codex Free/Plus và
   nhập đúng cùng account label. Script tiếp tục local login dang dở mà không yêu
   cầu browser/2FA lần nữa, miễn phiên cục bộ còn dùng được.
 
@@ -166,7 +176,7 @@ Giới hạn quan trọng:
   authorization; một số browser connector chỉ có trong CCR Desktop/Electron,
   còn project này chạy CCR CLI web management.
 
-Route Codex do `SIGN_ACCOUNT.bat` tạo tự động nằm trong ignored
+Route Codex do helper được dashboard gọi tạo tự động nằm trong ignored
 `.ccr-local/account-profiles.json`. Nếu tự quản lý một account provider khác
 qua UI, vẫn có thể thêm profile vào `setting.json` với đúng tên provider:
 

@@ -9,6 +9,9 @@ param(
     [switch]$StopRouter,
     [switch]$SyncSettings,
     [switch]$WarmRouter,
+    [ValidateSet("codex_free", "codex_plus")]
+    [string]$AddCodexPlan,
+    [string]$LaunchProfileId,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$ClaudeArguments
 )
@@ -1487,10 +1490,20 @@ try {
     if ($WarmRouter) { [void](Ensure-Router); exit 0 }
     if ($SelfTest) { Invoke-SelfTest; exit 0 }
     if ($StopRouter) { Stop-RouterService; exit 0 }
+    if ($AddCodexPlan) { SignInAndImportCodexAccount -ExpectedPlan $AddCodexPlan; exit 0 }
+    if ($LaunchProfileId) {
+        if ($LaunchProfileId -notmatch '^[a-z0-9][a-z0-9_.-]{0,62}$') { throw "Invalid dashboard profile identifier." }
+        $DashboardSetting = Ensure-SettingApplied
+        $DashboardProfiles = @($DashboardSetting.profiles | Where-Object { $_.enabled }) + @(Read-AccountProfiles | Where-Object { $_.enabled })
+        $DashboardProfile = @($DashboardProfiles | Where-Object { [string]$_.id -eq $LaunchProfileId }) | Select-Object -First 1
+        if ($null -eq $DashboardProfile) { throw "The selected dashboard profile no longer exists or is disabled." }
+        Start-Profile -Profile $DashboardProfile -Defaults $DashboardSetting.defaults
+        exit $script:MenuExitCode
+    }
     if ($AccountMenu) { Invoke-AccountMenu; exit 0 }
     if ($SyncSettings) { [void](Ensure-SettingApplied -Force); exit 0 }
     if ($Launch) { Invoke-Menu; exit $script:MenuExitCode }
-    Write-Output "Use -Launch, -SelfTest, -AccountMenu, -StopRouter, -SyncSettings, or -WarmRouter."
+    Write-Output "Use -Launch, -LaunchProfileId, -AddCodexPlan, -SelfTest, -AccountMenu, -StopRouter, -SyncSettings, or -WarmRouter."
     exit 0
 }
 catch {

@@ -1,6 +1,6 @@
 ---
-last_verified: 2026-08-25
-verified_by: phase-2-account-onboarding-and-warm-start
+last_verified: 2026-08-26
+verified_by: one-door-local-dashboard
 status: active
 ---
 
@@ -27,7 +27,7 @@ status: active
 - `RUN_CLAUDE.bat` is profile selection only. It validates and synchronizes
   changed `setting.json` providers into CCR SQLite through authenticated
   loopback RPC, preserving UI/account providers.
-- `SIGN_ACCOUNT.bat` option `[1]` no longer reads the Windows/global Codex App
+- The pre-dashboard account action formerly exposed as `SIGN_ACCOUNT.bat [1]` no longer reads the Windows/global Codex App
   login or resolves a `codex` executable from `PATH`. It runs only
   `provider_router/codex-login-runtime/codex.exe login`.
 - The local login helper reports `codex-cli 0.149.0-alpha.4.1`; SHA-256 is
@@ -52,7 +52,7 @@ status: active
   `gpt-5.6-sol` returned the same unsupported-account HTTP 400 and are hidden.
   CCR's generic connectivity check falsely accepted Sol, so the real
   Claude-compatible gateway result is authoritative for this policy.
-- `SIGN_ACCOUNT.bat` action `[R]` refreshes/tests the current Codex model
+- The retained technical account menu action `[R]` refreshes/tests the current Codex model
   candidates without another browser login. Each retained model is written as
   a separate account route. RUN currently exposes one Terra route and one Luna
   route for `codex_free_1`.
@@ -97,7 +97,7 @@ status: active
 - CCR is now provider-gateway-only. Normal project flows remove every CCR agent
   profile before save, apply takeover cleanup, and do not expose CCR agent UI or
   `System default` / `CLI & APP`. API providers use ignored `setting.json`;
-  account login remains project-local through `SIGN_ACCOUNT.bat`.
+  account login remains project-local through the dashboard's reviewed helpers.
 - The pre-change baseline passed all 8 enabled smoke gates in
   `20260824T172947Z-7cb886ff`. The new sanitized fixture failed before the fix
   in `20260824T173222Z-32aa653f`; both focused gates passed after the reader fix
@@ -178,7 +178,8 @@ status: active
 - The secret-free usage contract now requires Google AI Pro to expose separate
   `gemini_models` and `claude_gpt_models` weekly branches. Five-hour windows are
   optional; unknown/unavailable values require null measurements plus a reason.
-  Ten validator tests passed. No live quota adapter exists yet.
+  Ten validator tests passed. This statement was later superseded by the
+  original dashboard's live Codex adapter; Google remains pending login/proof.
 - Dashboard architecture is separated from CCR: a future local control plane
   owns login, account/model selection, quota provenance and finite fallback;
   CCR remains rollback only. EasyCLIProxyAPI `v0.2.61` was pinned as an ignored
@@ -205,7 +206,7 @@ status: active
   are Sol/Terra/Luna. Each Google account preserves separate `gemini_models`
   and `claude_gpt_models` usage groups. Automatic fallback remains off by
   default.
-- `SIGN_ACCOUNT.bat` now distinguishes Codex Free and Plus before browser
+- The underlying account helper distinguishes Codex Free and Plus before browser
   login. The declared plan selects a bounded candidate set and is stored only
   as non-secret local metadata; actual entitlement still requires the existing
   minimal route check. Existing accounts without this metadata remain Free for
@@ -238,22 +239,75 @@ status: active
   17 gates under the owner Windows profile passed in
   `20260825T164115Z-8fc5f438`; after updating state/evidence, all 17 passed
   again in final cumulative run `20260825T164233Z-42021e6c`.
+- `DASHBOARD.bat` is now the single owner-facing entry point. It starts the
+  original project-local dashboard with `provider_router/runtime/node.exe`,
+  binds only `127.0.0.1:18320`, bootstraps an HttpOnly/SameSite cookie and
+  rejects unauthenticated or cross-origin API calls. Built browser assets are
+  tracked; normal double-click startup performs no package install or build.
+- `SIGN_ACCOUNT.bat` is only a compatibility redirect to `DASHBOARD.bat`.
+  `RUN_CLAUDE.bat` remains available as the tested CCR rollback/technical menu,
+  but the dashboard owns normal account, quota, route/model and terminal UX.
+- Dashboard account discovery is dynamic for imported Codex and custom API
+  routes. Three explicit Google Pro slots remain because their callback ports
+  and isolated auth homes are individually pinned. Codex Free/Plus and each
+  Google slot launch the existing reviewed browser-login helpers in a separate
+  visible terminal; password and 2FA stay on the provider page.
+- Selecting a dashboard route launches a new terminal by exact allowlisted
+  profile ID. Each terminal receives its route through process-local
+  environment. Multiple terminals may use the same or different routes; two
+  terminals on one account share that provider account's quota.
+- The local server reads provider auth only inside the backend adapter and
+  returns no token, email or provider account ID to the browser. A live bounded
+  check against the imported Codex account returned one recognized quota
+  window. The UI labels the undocumented source experimental and derives 5h,
+  weekly or monthly labels from the returned duration instead of assuming one.
+- Google quota state always keeps separate `gemini_models` and
+  `claude_gpt_models` groups. The adapter reads a completed project-local slot,
+  queries the Antigravity quota surface and leaves missing/unrecognized groups
+  `unknown`; no Google account was logged in or queried during this change.
+- Custom API providers show `unknown` unless a provider-specific quota adapter
+  exists. Local proxy request counts are not presented as subscription quota.
+  Automatic fallback remains off and was not promoted into dashboard actions.
+- The implementation is original code. The unlicensed EasyCLIProxyAPI checkout
+  remains inspect-only and ignored; none of its source was copied, built or
+  executed. The generated Sites hosting file and Cloudflare packages were
+  removed because this dashboard is intentionally localhost-only.
+- Focused live smoke proved schema 1, five displayed account/provider entries,
+  two current Codex routes, Claude `2.1.241`, CCR `3.0.21`, authenticated state,
+  successful Codex quota refresh and rejection of an unknown route with HTTP
+  400. An unauthenticated state request was also rejected.
+- The actual `tools/start_dashboard.ps1` double-click flow also passed under the
+  owner Windows profile. Ready PID `1588` was observed running the exact
+  project-local Node executable with the exact `dashboard/server.mjs` command,
+  loopback-only state was true and the independent health instance ID matched.
+  The PID is volatile evidence only; future starts must reverify identity.
+- The pre-change sandbox baseline `20260826T002435Z-578682a6` passed 15/17
+  gates. `foundation.memory-routing` exceeded its 30-second timeout and could
+  not terminate the child under sandbox ACL; `claude.router-menu-selftest`
+  hit the known sandbox-only unloaded DPAPI profile. The previous owner-profile
+  baseline remained 17/17 in `20260825T164233Z-42021e6c`.
+- After pruning ignored directory trees before filesystem traversal, the memory
+  audit dropped from timeout to about 0.2 seconds. All 18 enabled smoke gates
+  then passed in `20260826T012244Z-b98e0bf3` under the owner Windows profile.
+- After exact PID/instance verification and the provider-credit UI were added,
+  all 18 enabled smoke gates passed again on the final artifact in
+  `20260826T012651Z-4331fd55`.
 
 ## Blockers
 
 - The Phase 2 wrappers and offline gates are ready, but real Google OAuth has
-  not been completed. The owner must choose each slot and complete the official
+  not been completed. The owner must choose each slot from `DASHBOARD.bat` and complete the official
   browser password/2FA flow. This project must never request those secrets.
 - Google accounts are not yet promoted as Claude routes. After interactive
-  login, inspect only non-secret slot status and run one bounded account/model
-  route proof before wiring selection or fallback into normal Claude use.
+  login, refresh both quota groups and run one bounded account/model route proof
+  before wiring a Google route into the normal launch selector.
 - Owner reported that Codex App operates normally again. Its separate account
   rotation/quota workflow remains deliberately outside this project.
 
 ## Unknowns
 
-- Browser login, route display and real Terra/Luna inference are proved for one
-  imported account. Token refresh, quota exhaustion and explicit switching
+- Browser login, route display, real Terra/Luna inference and current quota
+  retrieval are proved for one imported account. Expired-token refresh, quota exhaustion and explicit switching
   among two or more imported accounts remain unproved until owner-run checks.
 - 9router appears capable of Anthropic-compatible routing and automatic Codex
   account fallback, but its project-local packaging, inspected OAuth import
@@ -261,9 +315,10 @@ status: active
 - API keys in ignored `setting.json` are plaintext by owner choice. Git protects
   against normal commit, but Windows-user access and backups remain an owner
   responsibility.
-- CLIProxyAPI real OAuth refresh, mixed Free/Plus routing, explicit account
-  selection, provider-reported quota and full Claude tool-loop fidelity remain
-  unproved. EasyCLIProxyAPI global-agent/update isolation remains unreviewed.
+- CLIProxyAPI real OAuth refresh, mixed Free/Plus routing, Google quota response
+  shape and full Claude tool-loop fidelity remain unproved. Codex quota uses an
+  undocumented provider endpoint and can change without notice; the dashboard
+  must degrade to `unknown`/reauthentication instead of failing launch.
 - The source supports per-plan model catalogs, but actual Sol/Terra/Luna
   entitlements remain provider-controlled and require a bounded owner-run test.
 - Filesystem/runtime independence does not remove provider dependencies:

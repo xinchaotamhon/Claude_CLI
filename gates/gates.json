@@ -354,6 +354,23 @@
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 30
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_local_dashboard.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "One-door localhost dashboard safely owns account onboarding, quota refresh and exact Claude route launches",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.local-dashboard",
+      "introduced_by": "one-door-local-dashboard-implementation",
+      "invariant": "DASHBOARD.bat binds only loopback, keeps credentials server-side, uses only project-local runtimes, preserves unknown provider quota, launches exact allowlisted routes in separate terminals and leaves SIGN_ACCOUNT as a compatibility redirect",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 20
     }
   ],
   "project": "Claude CLI Local",

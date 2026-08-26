@@ -1,5 +1,9 @@
 # Evidence Index
 
+- [2026-08-26 one-door local dashboard](2026-08-26-one-door-local-dashboard.md):
+  original loopback UI/server, one-click entry, exact route launches, account
+  actions, normalized Codex quota, split Google quota contract and rollback.
+
 ## Current operational evidence
 
 - [Local dashboard and fallback decision](../60-Decisions/ADR-2026-08-25-local-dashboard-and-fallback.md):
