@@ -44,6 +44,7 @@ def main() -> int:
         "const PORT = 18320",
         "bootstrapToken = crypto.randomBytes(32)",
         "instanceId = crypto.randomBytes(24)",
+        "serverHash = crypto.createHash('sha256')",
         "HttpOnly; SameSite=Strict; Path=/",
         "if (!authorized(request))",
         "if (!sameOrigin(request))",
@@ -82,7 +83,7 @@ def main() -> int:
     start = read(files["start"])
     if "provider_router\\runtime\\node.exe" not in start or "-WindowStyle Hidden" not in start:
         return fail("dashboard does not use the project-local Node runtime in a hidden server process")
-    for marker in ("127.0.0.1:18320", "loopbackOnly", "Get-CimInstance Win32_Process", "ExecutablePath", "CommandLine", "instanceId"):
+    for marker in ("127.0.0.1:18320", "loopbackOnly", "Get-CimInstance Win32_Process", "ExecutablePath", "CommandLine", "instanceId", "ExpectedServerHash", "Stop-OutdatedOwnedDashboard"):
         if marker not in start:
             return fail(f"dashboard startup does not independently verify exact process/loopback identity: {marker}")
 

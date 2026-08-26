@@ -37,10 +37,17 @@
 - Focused verifiers passed: local dashboard, Codex account import, Google
   account flow and CLIProxyAPI source pin. These checks read no auth file,
   `setting.json` secret or session transcript and made no provider request.
-- The final cumulative smoke run `20260826T171253Z-f404c4ef` passed all 18
+- The final cumulative smoke run `20260826T173407Z-7144aa82` passed all 18
   enabled gates under the owner Windows profile, including DPAPI. The earlier
   sandbox run's DPAPI/profile failure is environment evidence only, not a
   production regression.
+- Startup and health state carry the exact dashboard server hash. A mismatched
+  server is replaced only after PID, executable, command line, loopback service
+  identity and instance ID all match this project; Claude/router processes are
+  outside that bounded restart action.
+- A live owner-profile start matched the ready-state hash, health hash and local
+  server file hash; authenticated state exposed five account/provider entries,
+  seven routes and five resumable sessions without returning a secret.
 
 ## Remaining owner proof
 

@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 const HOST = '127.0.0.1';
 const PORT = 18320;
 const dashboardRoot = path.dirname(fileURLToPath(import.meta.url));
+const serverPath = fileURLToPath(import.meta.url);
+const serverHash = crypto.createHash('sha256').update(fs.readFileSync(serverPath)).digest('hex');
 const projectRoot = path.resolve(dashboardRoot, '..');
 const staticRoot = path.join(dashboardRoot, 'static');
 const runtimeRoot = path.join(projectRoot, '.runtime', 'dashboard');
@@ -704,7 +706,7 @@ function serveStatic(request, response, pathname) {
 
 async function handle(request, response) {
   const url = new URL(request.url || '/', `http://${HOST}:${PORT}`);
-  if (url.pathname === '/health') return json(response, 200, { ok: true, service: 'claude-cli-dashboard', instanceId });
+  if (url.pathname === '/health') return json(response, 200, { ok: true, service: 'claude-cli-dashboard', instanceId, serverHash });
   if (url.pathname === '/' && url.searchParams.get('session') === bootstrapToken) {
     securityHeaders(response);
     response.writeHead(302, { Location: '/', 'Set-Cookie': `${sessionCookie}; HttpOnly; SameSite=Strict; Path=/` });
@@ -826,7 +828,7 @@ server.on('error', (error) => {
 });
 
 server.listen(PORT, HOST, () => {
-  writeJson(readyPath, { schemaVersion: 1, pid: process.pid, host: HOST, port: PORT, loopbackOnly: true, instanceId, startedAt: new Date().toISOString(), url: `http://${HOST}:${PORT}/?session=${bootstrapToken}` });
+  writeJson(readyPath, { schemaVersion: 1, pid: process.pid, host: HOST, port: PORT, loopbackOnly: true, instanceId, serverHash, startedAt: new Date().toISOString(), url: `http://${HOST}:${PORT}/?session=${bootstrapToken}` });
   process.stdout.write(`Claude CLI dashboard ready at http://${HOST}:${PORT}\n`);
 });
 

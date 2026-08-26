@@ -57,8 +57,15 @@ status: active
   that same-host HTTPS quota page without placing the key in its URL.
 - All 18 enabled smoke gates passed on the integrated dashboard/session/account,
   Google patch, reconstruction and Kiro schema changes in
-  `20260826T171253Z-f404c4ef`. The run used the owner Windows profile only so
+  `20260826T173407Z-7144aa82`. The run used the owner Windows profile only so
   the DPAPI self-test could execute; no provider/model request was made.
+- Dashboard ready state now records the exact `server.mjs` SHA-256. On the next
+  `DASHBOARD.bat` click after a reviewed source update, startup stops/replaces
+  only the independently verified outdated dashboard Node process; router and
+  running Claude terminals are not stopped.
+- A live owner-profile start matched the ready-state hash, loopback health hash
+  and current server file hash, then returned five account/provider entries,
+  seven routes and five resumable sessions without returning a secret.
 - The pre-dashboard account action formerly exposed as `SIGN_ACCOUNT.bat [1]` no longer reads the Windows/global Codex App
   login or resolves a `codex` executable from `PATH`. It runs only
   `provider_router/codex-login-runtime/codex.exe login`.
