@@ -3,10 +3,10 @@
 ## Một file người dùng thao tác
 
 Double-click `DASHBOARD.bat`. Đây là giao diện duy nhất để đăng nhập tài khoản,
-xem quota, mở `setting.json`, chọn route/model và mở terminal Claude mới.
-`SIGN_ACCOUNT.bat` chỉ là alias tương thích mở lại đúng dashboard này.
+xem quota, mở `setting.json`, chọn route/model và mở terminal Claude mới; nó
+cũng là file BAT duy nhất ở thư mục gốc.
 
-`RUN_CLAUDE.bat` được giữ làm menu kỹ thuật/rollback. Dashboard gọi đúng route
+`tools\RUN_CLAUDE_TECHNICAL.bat` được giữ làm menu kỹ thuật/rollback. Dashboard gọi đúng route
 đã chọn; launcher vẫn không hỏi nhập API, URL, provider, model hoặc CCR client
 key.
 
@@ -129,11 +129,16 @@ Double-click `DASHBOARD.bat`:
 - **Codex Free / Codex Plus**: đặt tên tài khoản, mở trang đăng nhập OpenAI chính thức và tự hoàn tất
   password/2FA. Mỗi lần chạy tạo một `CODEX_HOME` riêng dưới
   `provider_router/.ccr-local/codex-accounts`; route tự xuất hiện trong
-  `RUN_CLAUDE.bat` mà không cần thêm provider vào `setting.json`.
-- **Google Slot 1/2/3**: mở OAuth chính thức với auth home và callback loopback
-  riêng cho từng slot.
+  dashboard mà không cần thêm provider vào `setting.json`. Login đã lưu nhưng
+  import lỗi sẽ hiện thẻ **Hoàn tất nhập tài khoản**.
+- **Thêm tài khoản Google**: tự cấp slot kế tiếp (tối đa 50), mở OAuth chính
+  thức với auth home và callback loopback riêng cho từng slot. Nếu lỗi, cửa sổ
+  giữ nguyên để đọc thông báo và slot dang dở hiện lại trong dashboard.
 - **Làm mới hạn mức**: đọc quota ở backend. Nếu nhà cung cấp không trả dữ liệu,
-  giao diện hiện `unknown`; lỗi quota không tự đổi route.
+  giao diện hiện `unknown`; lỗi quota không tự đổi route. Codex dùng phương thức
+  `account/rateLimits/read` của app-server chính thức. Dashboard tự đọc lại mỗi
+  5 phút, phân biệt đúng chu kỳ 5 giờ/tuần/tháng theo số phút OpenAI trả về và
+  không tự sử dụng reset credit.
 - **Mở terminal**: mở đúng route/model đã chọn trong cửa sổ mới.
 
 API key/endpoint Gemini, DeepSeek, OpenRouter, OpenAI API hoặc custom chỉ cấu
@@ -155,7 +160,7 @@ kiểm tra lại cho tới khi action refresh-model được đưa vào dashboar
 
 Trong Claude, menu `/model` vẫn hiện các vai trò Opus/Sonnet/Haiku. Đó là ba
 vai trò của harness Claude được ánh xạ vào route đã chọn, không phải ba model
-Codex khác nhau. Model upstream thật được chọn ở menu `RUN_CLAUDE.bat`.
+Codex khác nhau. Model upstream thật được chọn ở dashboard.
 
 - Nếu chỉ có một model hợp lệ, script tạo một route.
 - Nếu có nhiều model hợp lệ, mỗi model được tạo thành một route riêng.
@@ -197,7 +202,7 @@ Không thêm imported provider đó vào `providers` nếu muốn CCR UI tiếp 
 hữu credential của nó. Launcher sẽ giữ nguyên provider không có tiền tố
 `local-setting--`.
 
-## Menu RUN_CLAUDE.bat
+## Menu kỹ thuật/rollback
 
 - Số profile: chạy `bin/claude.exe` với route `Provider/model`.
 - `[S]`: đọc lại và đồng bộ `setting.json` ngay trong cửa sổ đang mở.
@@ -240,14 +245,15 @@ vẫn là dịch vụ mạng bên ngoài theo bản chất.
 
 ## Chạy song song và kiểm tra không tốn quota
 
-Double-click `RUN_CLAUDE.bat` lần nữa mở terminal Claude khác; router background
-được dùng chung. Từ terminal hiện có dùng `RUN_CLAUDE.bat --new-window`.
+Trong dashboard, mỗi lần bấm **Mở terminal** tạo đúng một cửa sổ Claude mới;
+router background được dùng chung. Nhiều cửa sổ có thể dùng cùng hoặc khác tài
+khoản, nhưng cùng tài khoản vẫn chia sẻ một quota.
 
 Các kiểm tra offline:
 
 ```text
-RUN_CLAUDE.bat --version
-RUN_CLAUDE.bat --router-version
+tools\RUN_CLAUDE_TECHNICAL.bat --version
+tools\RUN_CLAUDE_TECHNICAL.bat --router-version
 python tools/verify_router_integration.py .
 python tools/verify_setting_flow.py .
 pwsh -File tools/router_project_menu.ps1 -Root . -SelfTest

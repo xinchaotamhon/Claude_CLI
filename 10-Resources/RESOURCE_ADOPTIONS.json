@@ -9,10 +9,21 @@
       "source_commit": "ffc823b683861ad3f86c8dd38c0dbe61eef62f6c",
       "upstream_base_commit": "1347c868b493728a31c76098459584e0fcc23940",
       "license": "MIT",
-      "local_integration": "provider_router plus ignored setting.json and per-account folder-local Codex browser login homes in SIGN_ACCOUNT.bat/tools/router_project_menu.ps1",
+      "local_integration": "provider_router plus ignored setting.json and per-account folder-local Codex browser login homes behind DASHBOARD.bat/tools/router_project_menu.ps1",
       "reason": "multi-protocol provider gateway behind one Claude CLI harness",
-      "constraints": "loopback-only; project-local ignored state; provider-only fork patch prevents external Claude App/profile synchronization; pinned local Codex helper authorized for login only; no global auth/PATH discovery; no provider CLI harness; no automatic update",
+      "constraints": "loopback-only; project-local ignored state; provider-only fork patch prevents external Claude App/profile synchronization; pinned local Codex helper authorized for login and read-only official app-server quota snapshots only; no global auth/PATH discovery; no provider CLI harness; no automatic update",
       "verification_gate": "claude.router-local-layout"
+    },
+    {
+      "id": "official.openai-codex-app-server-rate-limits",
+      "name": "OpenAI Codex app-server rate-limit protocol",
+      "source_url": "https://github.com/openai/codex/blob/main/codex-rs/app-server/README.md",
+      "local_version": "codex-cli 0.149.0-alpha.4.1",
+      "local_binary_provenance": "provider_router/CODEX_LOGIN_SOURCE.json",
+      "adopted_scope": "account/rateLimits/read over JSONL stdio with per-account CODEX_HOME; primary/secondary windows, individual monthly limit and reset-credit count",
+      "reason": "use the first-party protocol instead of parsing auth tokens in the dashboard or relabeling undocumented payload fields",
+      "constraints": "read-only; no model turn; no automatic reset-credit redemption; missing weekly/5-hour buckets remain missing; account identifiers and tokens never enter the frontend",
+      "verification_gate": "claude.local-dashboard"
     },
     {
       "id": "pattern.clover-portable-entry-router",

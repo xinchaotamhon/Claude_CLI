@@ -13,7 +13,7 @@ license và reviewed commit nằm trong `provider_router/SOURCE.json`. Runtime
 Node và `node_modules` bị Git ignore nhưng có thể tái tạo bằng lệnh explicit:
 
 ```text
-RUN_CLAUDE.bat --install-router
+tools\RUN_CLAUDE_TECHNICAL.bat --install-router
 ```
 
 Lệnh trên cần Node/npm có sẵn đúng một lần và chỉ ghi vào `provider_router`.
@@ -22,8 +22,8 @@ Nó không cài global. Bình thường không cần Node/npm bên ngoài nữa.
 ## Review update
 
 ```text
-RUN_CLAUDE.bat --check-updates
-RUN_CLAUDE.bat --fetch-router-source
+tools\RUN_CLAUDE_TECHNICAL.bat --check-updates
+tools\RUN_CLAUDE_TECHNICAL.bat --fetch-router-source
 ```
 
 Lệnh đầu hiển thị local version/hash và release metadata. Lệnh thứ hai fetch

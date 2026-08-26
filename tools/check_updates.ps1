@@ -74,7 +74,7 @@ if ($null -ne $RouterRelease) {
 
 if (-not $FetchSource) {
     Write-Host ""
-    Write-Host "Use RUN_CLAUDE.bat --fetch-router-source to clone/fetch source in ignored .tmp and show the review diff." -ForegroundColor DarkGray
+    Write-Host "Use tools\RUN_CLAUDE_TECHNICAL.bat --fetch-router-source to clone/fetch source in ignored .tmp and show the review diff." -ForegroundColor DarkGray
     exit 0
 }
 

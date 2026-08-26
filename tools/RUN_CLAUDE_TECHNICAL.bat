@@ -2,7 +2,8 @@
 setlocal EnableExtensions DisableDelayedExpansion
 
 rem Resolve everything from this file so Explorer double-click is deterministic.
-set "ROOT=%~dp0"
+set "ROOT=%~dp0.."
+for %%I in ("%ROOT%") do set "ROOT=%%~fI"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 
 set "CLAUDE_BIN=%ROOT%\bin\claude.exe"
@@ -62,13 +63,13 @@ if /I "%~1"=="--install-router" goto INSTALL_ROUTER
 
 if not exist "%ROUTER_NODE%" (
     echo [ERROR] Project-local router runtime is missing.
-    echo Run: RUN_CLAUDE.bat --install-router
+    echo Run: tools\RUN_CLAUDE_TECHNICAL.bat --install-router
     set "EXIT_CODE=9011"
     goto AFTER_RUN
 )
 if not exist "%ROUTER_ENTRY%" (
     echo [ERROR] Pinned Claude Code Router package is missing.
-    echo Run: RUN_CLAUDE.bat --install-router
+    echo Run: tools\RUN_CLAUDE_TECHNICAL.bat --install-router
     set "EXIT_CODE=9012"
     goto AFTER_RUN
 )

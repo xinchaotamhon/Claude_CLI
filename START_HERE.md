@@ -57,7 +57,8 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 - `provider_router/SOURCE.json`: source, version, license and reviewed commit.
 - `provider_router/runtime/node.exe`: project-local Node runtime; ignored.
 - `provider_router/codex-login-runtime/codex.exe`: pinned project-local official
-  Codex helper used only to open ChatGPT login; ignored and never an agent.
+  Codex helper used for ChatGPT login and the read-only official app-server
+  quota method; ignored and never used as the coding harness.
 - `provider_router/CODEX_LOGIN_SOURCE.json`: tracked version, source and SHA-256
   provenance for that ignored login helper.
 - `provider_router/node_modules/`: installed pinned router package; ignored.
@@ -69,10 +70,10 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 - `DASHBOARD.bat`: the single normal owner-facing entry point. It opens the
   authenticated loopback control room for accounts, quota, routes and new
   Claude terminals.
-- `RUN_CLAUDE.bat`: retained technical/rollback launcher; normal use is through
-  the dashboard.
-- `RUN_CHALLENGER_PILOT.bat`: separate offline CLIProxyAPI fixture/status/stop
-  surface; it is not a normal Claude launcher and never signs into a provider.
+- `tools/RUN_CLAUDE_TECHNICAL.bat`: technical/rollback launcher; normal use is
+  through the dashboard.
+- `tools/RUN_CHALLENGER_PILOT_TECHNICAL.bat`: separate offline CLIProxyAPI
+  fixture/status/stop surface; it is not a normal Claude launcher.
 - `router_challenger/`: pinned CLIProxyAPI source/build metadata, tracked local
   isolation patch, deterministic fixture source and secret-free quota contract.
 - `dashboard_easycli_source/`: ignored inspect-only EasyCLIProxyAPI source at a
@@ -80,8 +81,6 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 - `setting.json`: ignored local source of truth for API URL/key/model routes;
   it may contain plaintext secrets and must never be read into project memory.
 - `setting.example.json`: tracked secret-free schema/example.
-- `SIGN_ACCOUNT.bat`: compatibility shortcut that only forwards to
-  `DASHBOARD.bat`; it has no separate account menu.
 - `dashboard/`: original local-only React UI plus zero-dependency Node server.
   Built assets are tracked so normal startup does not install or build.
 - `tools/router_project_menu.ps1`: validates/synchronizes `setting.json` through
@@ -96,9 +95,10 @@ or a parent directory. Prefer runtime evidence, then the canonical owner file.
 
 Use one canonical front door: double-click `DASHBOARD.bat`. Accounts, quota,
 route/model selection and separate Claude terminals are all handled there.
-`SIGN_ACCOUNT.bat` only redirects to the same dashboard; `RUN_CLAUDE.bat` is a
-technical rollback path. `RUN_CHALLENGER_PILOT.bat` is only for the isolated offline challenger
-self-test and must not be described as account/model use. Tool, provider or model availability never grants
+The project root intentionally contains only this one BAT. Technical rollback
+launchers live under `tools/`. The challenger technical launcher is only for
+an isolated offline self-test and must not be described as account/model use.
+Tool, provider or model availability never grants
 permission to install, update, consume quota, expose data or change an external
 account.
 
@@ -114,12 +114,13 @@ For a ChatGPT/Codex account, open `DASHBOARD.bat`, choose **Codex Free** or
 **Codex Plus**, then complete password/2FA in the official browser
 page. The wrapper runs only the pinned local login helper with a fresh
 `CODEX_HOME` under `provider_router/.ccr-local/codex-accounts`, imports that
-account into CCR, creates its RUN routes and removes temporary CCR staging.
+account into CCR, creates its dashboard routes and removes temporary CCR staging.
 Free candidates are Terra/Luna; Plus candidates are Sol/Terra/Luna, but actual
 entitlement is retained only after the bounded provider check. No global
 Codex/App login is read or changed.
 
-Choose one of the three Google AI Pro slot buttons. Each slot stores its ignored
+Choose **Thêm tài khoản Google**. The dashboard allocates the next bounded slot
+(up to 50); each slot stores its ignored
 OAuth result under `.runtime/challenger/accounts/google`, invokes only the
 hash-pinned local challenger binary, and binds its temporary OAuth callback to
 `127.0.0.1` on a fixed per-slot port. The wrapper never asks for or parses the
@@ -157,21 +158,19 @@ Useful explicit commands:
 
 ```text
 DASHBOARD.bat
-RUN_CLAUDE.bat --version
-RUN_CLAUDE.bat --router-version
-RUN_CLAUDE.bat --router-stop
-RUN_CLAUDE.bat --check-updates
-RUN_CLAUDE.bat --fetch-router-source
-RUN_CLAUDE.bat --install-router
-RUN_CLAUDE.bat --new-window
-SIGN_ACCOUNT.bat  (compatibility alias for DASHBOARD.bat)
-RUN_CHALLENGER_PILOT.bat
+tools\RUN_CLAUDE_TECHNICAL.bat --version
+tools\RUN_CLAUDE_TECHNICAL.bat --router-version
+tools\RUN_CLAUDE_TECHNICAL.bat --router-stop
+tools\RUN_CLAUDE_TECHNICAL.bat --check-updates
+tools\RUN_CLAUDE_TECHNICAL.bat --fetch-router-source
+tools\RUN_CLAUDE_TECHNICAL.bat --install-router
+tools\RUN_CHALLENGER_PILOT_TECHNICAL.bat
 ```
 
 `--install-router` is an explicit dependency operation, not a startup side
 effect. Normal operation uses only the copied Node runtime and installed package
 inside this folder. If the ignored Codex login binary is absent after cloning,
-explicitly run `tools\install_codex_login_runtime.ps1`; normal RUN/SIGN startup
+explicitly run `tools\install_codex_login_runtime.ps1`; normal dashboard startup
 never downloads or updates it.
 
 ## Safety and Git boundary

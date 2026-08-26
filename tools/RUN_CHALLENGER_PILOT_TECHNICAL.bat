@@ -1,13 +1,15 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+set "ROOT=%~dp0.."
+for %%I in ("%ROOT%") do set "ROOT=%%~fI"
+cd /d "%ROOT%"
 title Claude CLI - Isolated Challenger Pilot
 
 :menu
 cls
 echo ==============================================================
 echo   CLAUDE CLI - ISOLATED CHALLENGER PILOT
-echo   CCR remains the normal launcher: RUN_CLAUDE.bat
+echo   Normal owner entry: DASHBOARD.bat
 echo ==============================================================
 echo.
 echo   [1] Run offline protocol + isolation self-test
@@ -24,7 +26,7 @@ if errorlevel 1 set "PILOT_ACTION=SelfTest"& goto :run
 
 :run
 echo.
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\challenger_pilot.ps1" -Action "%PILOT_ACTION%"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\challenger_pilot.ps1" -Root "%ROOT%" -Action "%PILOT_ACTION%"
 set "PILOT_EXIT=%ERRORLEVEL%"
 echo.
 if not "%PILOT_EXIT%"=="0" echo [ERROR] Pilot action failed with code %PILOT_EXIT%.

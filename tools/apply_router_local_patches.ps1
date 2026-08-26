@@ -15,7 +15,7 @@ if (-not $RouterRoot.StartsWith($RootPath + [System.IO.Path]::DirectorySeparator
     throw "Router runtime resolved outside the project root."
 }
 if (-not (Test-Path -LiteralPath $Entry -PathType Leaf) -or -not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
-    throw "Pinned router runtime is missing; run RUN_CLAUDE.bat --install-router."
+    throw "Pinned router runtime is missing; run tools\RUN_CLAUDE_TECHNICAL.bat --install-router."
 }
 $Version = [string](Get-Content -Raw -LiteralPath $PackagePath | ConvertFrom-Json).version
 if ($Version -ne "3.0.21") {

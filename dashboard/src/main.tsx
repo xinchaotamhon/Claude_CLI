@@ -57,7 +57,7 @@ function Gauge({ window }: { window: UsageWindow }) {
   );
 }
 
-function AccountCard({ account, busy, onRefresh }: { account: Account; busy: boolean; onRefresh: (id: string) => void }) {
+function AccountCard({ account, busy, onRefresh, onResume }: { account: Account; busy: boolean; onRefresh: (id: string) => void; onResume: (account: Account) => void }) {
   const statusText = account.status === 'ready' ? 'Đã sẵn sàng' : account.status === 'incomplete' ? 'Đăng nhập chưa xong' : account.status === 'disabled' ? 'Đã tắt' : 'Chưa đăng nhập';
   const windows = account.usage.groups.flatMap((group) => group.windows.map((window) => ({ group, window })));
   return (
@@ -83,6 +83,12 @@ function AccountCard({ account, busy, onRefresh }: { account: Account; busy: boo
       <div className="model-list">
         {account.models.length ? account.models.map((model) => <span key={model}>{model}</span>) : <span className="muted-chip">Chưa có model</span>}
       </div>
+
+      {(account.status === 'incomplete' || account.status === 'not_signed_in') && account.kind !== 'api' && (
+        <button className="wide-button resume-button" disabled={busy} onClick={() => onResume(account)}>
+          {account.kind === 'codex' ? 'Hoàn tất nhập tài khoản' : 'Tiếp tục đăng nhập Google'}
+        </button>
+      )}
 
       <div className="usage-panel">
         {windows.map(({ group, window }) => (
@@ -111,8 +117,13 @@ function AccountCard({ account, busy, onRefresh }: { account: Account; busy: boo
                 : 'Không có'
               : 'Chưa xác định'}
           </strong>
+          {account.kind === 'codex' && typeof account.usage.resetCreditsAvailable === 'number' && (
+            <small>{account.usage.resetCreditsAvailable} reset credit khả dụng · không tự dùng</small>
+          )}
         </div>
       )}
+
+      {account.usage.message && windows.length > 0 && <p className="usage-note">{account.usage.message}</p>}
 
       <footer className="account-foot">
         <span>{account.usage.experimental ? 'Nguồn thử nghiệm, có thể thay đổi' : account.usage.source}</span>
@@ -211,8 +222,17 @@ function App() {
             <div><div className="eyebrow">TÀI KHOẢN & HẠN MỨC</div><h2>Tình trạng hiện tại</h2></div>
             <button className="quiet-button" disabled={busy !== null || !readyAccounts} onClick={() => void action('/api/usage/refresh-all', {}, 'Đã làm mới các hạn mức có thể đọc.')}>↻ Làm mới tất cả</button>
           </div>
+          <p className="section-note">Dashboard tự đọc lại mỗi 5 phút. Quota 5 giờ/tuần tự reset theo nhà cung cấp; bucket tín dụng tháng được hiển thị riêng và không bị gọi là quota tuần.</p>
           <div className="account-grid">
-            {state.accounts.map((account) => <AccountCard key={account.id} account={account} busy={busy === `/api/usage/refresh${JSON.stringify({ accountId: account.id })}`} onRefresh={(accountId) => void action('/api/usage/refresh', { accountId }, `Đã làm mới ${account.label}.`)} />)}
+            {state.accounts.map((account) => <AccountCard
+              key={account.id}
+              account={account}
+              busy={busy !== null}
+              onRefresh={(accountId) => void action('/api/usage/refresh', { accountId }, `Đã làm mới ${account.label}.`)}
+              onResume={(target) => void (target.kind === 'codex'
+                ? action('/api/accounts/codex/resume', { resumeKey: target.resumeKey }, `Đã mở cửa sổ hoàn tất ${target.label}.`)
+                : action('/api/accounts/google', { slot: target.id.replace('google:', '') }, `Đã mở lại đăng nhập ${target.label}.`))}
+            />)}
           </div>
         </section>
 
@@ -223,7 +243,7 @@ function App() {
           </article>
           <article className="manage-card">
             <div className="manage-head"><span className="badge google">G</span><div><h3>Thêm Google AI Pro</h3><p>Mỗi slot giữ OAuth riêng; quota có hai nhánh model.</p></div></div>
-            <div className="button-row three">{[1, 2, 3].map((slot) => <button key={slot} onClick={() => void action('/api/accounts/google', { slot: `google_pro_${slot}` }, `Đã mở đăng nhập Google Pro ${slot}.`)}>Slot {slot}</button>)}</div>
+            <button className="wide-button" onClick={() => void action('/api/accounts/google', {}, 'Đã mở đăng nhập cho slot Google kế tiếp.')}>＋ Thêm tài khoản Google</button>
           </article>
           <article className="manage-card compact">
             <div className="manage-head"><span className="badge api">{`{}`}</span><div><h3>API endpoint</h3><p>Key chỉ nằm trong setting.json bị Git bỏ qua.</p></div></div>

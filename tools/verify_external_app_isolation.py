@@ -24,7 +24,7 @@ def read(path: Path) -> str:
 def main() -> int:
     root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path.cwd().resolve()
     menu_path = root / "tools" / "router_project_menu.ps1"
-    launcher_path = root / "RUN_CLAUDE.bat"
+    launcher_path = root / "tools" / "RUN_CLAUDE_TECHNICAL.bat"
     start_path = root / "START_HERE.md"
     runbook_path = root / "docs" / "ROUTER_LOCAL.md"
     for path in (menu_path, launcher_path, start_path, runbook_path):

@@ -38,10 +38,11 @@ def main() -> int:
     script = read(script_path)
     required = (
         '$AccountsRoot = [System.IO.Path]::GetFullPath((Join-Path $RuntimeRoot "accounts\\google"))',
-        '$GoogleSlots = @("google_pro_1", "google_pro_2", "google_pro_3")',
-        "google_pro_1 = 51121",
-        "google_pro_2 = 51122",
-        "google_pro_3 = 51123",
+        "function Get-GoogleSlotNumber",
+        "function Get-GoogleCallbackPort",
+        "function Get-NextGoogleSlot",
+        "return (51120 + $Number)",
+        "if ($Number -lt 1 -or $Number -gt 50)",
         "function Protect-DirectoryForCurrentUser",
         "function Assert-AccountRuntime",
         "function Assert-CallbackPortFree",
@@ -118,9 +119,9 @@ def main() -> int:
 
     menu = read(menu_path)
     if "function Invoke-GoogleAccountMenu" not in menu or "challenger_account_menu.ps1" not in menu:
-        return fail("SIGN_ACCOUNT project menu does not expose the Google Pro helper")
+        return fail("project-local account menu does not expose the Google Pro helper")
 
-    print("PASS: three Google Pro OAuth slots use ignored project-local account directories")
+    print("PASS: dynamic Google Pro OAuth slots use ignored project-local account directories")
     print("PASS: callback ports and patched listener are loopback-only")
     print("PASS: binary/source/patch identity and current-user-only ACL controls are present")
     print("PASS: no global Codex App/account path or credential parser is used")

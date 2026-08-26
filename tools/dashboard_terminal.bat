@@ -7,6 +7,7 @@ if exist "%ProgramFiles%\PowerShell\7\pwsh.exe" set "PS_EXE=%ProgramFiles%\Power
 
 if /I "%~1"=="launch" goto LAUNCH
 if /I "%~1"=="codex" goto CODEX
+if /I "%~1"=="codex-resume" goto CODEX_RESUME
 if /I "%~1"=="google" goto GOOGLE
 echo [ERROR] Unknown dashboard terminal action.
 exit /b 2
@@ -14,23 +15,33 @@ exit /b 2
 :LAUNCH
 title Claude CLI - %~2
 "%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\router_project_menu.ps1" -Root "%ROOT%" -LaunchProfileId "%~2"
-goto DONE
+exit /b %ERRORLEVEL%
 
 :CODEX
 title Claude CLI - Codex account sign-in
 "%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\router_project_menu.ps1" -Root "%ROOT%" -AddCodexPlan "%~2"
+set "EXIT_CODE=%ERRORLEVEL%"
+goto DONE
+
+:CODEX_RESUME
+title Claude CLI - Finish Codex account import
+"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\router_project_menu.ps1" -Root "%ROOT%" -AddCodexPlan "%~2" -CodexAccountName "%~3"
+set "EXIT_CODE=%ERRORLEVEL%"
 goto DONE
 
 :GOOGLE
 title Claude CLI - Google account sign-in
 "%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\challenger_account_menu.ps1" -Root "%ROOT%" -AddSlot "%~2"
+set "EXIT_CODE=%ERRORLEVEL%"
 
 :DONE
-set "EXIT_CODE=%ERRORLEVEL%"
 echo.
 if "%EXIT_CODE%"=="0" (
-    echo [OK] Action finished. You may close this window.
+    echo [OK] Action finished. This window will close.
+    timeout /t 2 /nobreak >nul
 ) else (
     echo [ERROR] Action finished with code %EXIT_CODE%.
+    echo The window stays open so you can read the error.
+    pause
 )
 exit /b %EXIT_CODE%

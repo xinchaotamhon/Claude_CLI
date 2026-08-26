@@ -11,6 +11,7 @@ param(
     [switch]$WarmRouter,
     [ValidateSet("codex_free", "codex_plus")]
     [string]$AddCodexPlan,
+    [string]$CodexAccountName,
     [string]$LaunchProfileId,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$ClaudeArguments
@@ -113,17 +114,27 @@ function Set-JsonProperty {
     else { $Object.$Name = $Value }
 }
 
+function Get-ObjectPropertyValue {
+    param($Object, [Parameter(Mandatory = $true)][string]$Name)
+    if ($null -eq $Object) { return $null }
+    $Member = Get-Member -InputObject $Object -Name $Name -ErrorAction SilentlyContinue
+    if ($null -eq $Member) { return $null }
+    return $Object.$Name
+}
+
 function Get-StringProperty {
     param($Object, [string]$Name, [string]$Default = "")
-    if ($null -eq $Object -or $null -eq $Object.PSObject.Properties[$Name] -or $null -eq $Object.$Name) { return $Default }
-    return ([string]$Object.$Name).Trim()
+    $Value = Get-ObjectPropertyValue -Object $Object -Name $Name
+    if ($null -eq $Value) { return $Default }
+    return ([string]$Value).Trim()
 }
 
 function Get-BoolProperty {
     param($Object, [string]$Name, [bool]$Default = $true)
-    if ($null -eq $Object -or $null -eq $Object.PSObject.Properties[$Name] -or $null -eq $Object.$Name) { return $Default }
-    if ($Object.$Name -isnot [bool]) { throw "'$Name' must be true or false." }
-    return [bool]$Object.$Name
+    $Value = Get-ObjectPropertyValue -Object $Object -Name $Name
+    if ($null -eq $Value) { return $Default }
+    if ($Value -isnot [bool]) { throw "'$Name' must be true or false." }
+    return [bool]$Value
 }
 
 function Protect-SecureValue {
@@ -1080,7 +1091,10 @@ function Add-CodexAccountProfile {
 }
 
 function SignInAndImportCodexAccount {
-    param([ValidateSet("codex_free", "codex_plus")][string]$ExpectedPlan = "codex_free")
+    param(
+        [ValidateSet("codex_free", "codex_plus")][string]$ExpectedPlan = "codex_free",
+        [string]$RequestedName
+    )
     try {
         [void](Assert-VerifiedRouterService)
         throw "A Claude/router session is running. Close it or stop the router before importing an account."
@@ -1101,16 +1115,62 @@ function SignInAndImportCodexAccount {
         $State = Ensure-ManagementService
         $CurrentConfig = Invoke-RouterRpc -State $State -Method "getConfig"
         $DefaultName = Get-UniqueCodexAccountName -Providers @($CurrentConfig.Providers) -ExpectedPlan $ExpectedPlan
-        $ProviderName = (Read-Host "Account name [$DefaultName]").Trim()
+        $ProviderName = if ($RequestedName) { $RequestedName.Trim() } else { (Read-Host "Account name [$DefaultName]").Trim() }
         if (-not $ProviderName) { $ProviderName = $DefaultName }
         if ($ProviderName.Length -gt 100 -or $ProviderName -match '[\r\n/,]') { throw "The account name is invalid." }
-        if (@($CurrentConfig.Providers | Where-Object { ([string]$_.name).Equals($ProviderName, [System.StringComparison]::OrdinalIgnoreCase) }).Count -gt 0) {
+        $ExistingProvider = @($CurrentConfig.Providers | Where-Object { ([string]$_.name).Equals($ProviderName, [System.StringComparison]::OrdinalIgnoreCase) }) | Select-Object -First 1
+        if ($null -ne $ExistingProvider -and $RequestedName) {
+            $ExistingProviderId = Get-StringProperty -Object $ExistingProvider -Name "id"
+            $ExistingPlan = Get-StringProperty -Object $ExistingProvider -Name "local_expected_plan"
+            $ExistingModels = @($ExistingProvider.models | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ } | Select-Object -Unique)
+            $AllowedRecoveryModels = @($CodexChatGptModelsByPlan[$ExpectedPlan])
+            $UnexpectedRecoveryModels = @($ExistingModels | Where-Object { $AllowedRecoveryModels -notcontains $_ })
+            $RecoveryModelsMatch = $ExistingModels.Count -gt 0 -and $UnexpectedRecoveryModels.Count -eq 0
+            $ExistingPlugins = @(Get-CodexAccountProviderPlugins -Plugins @($CurrentConfig.providerPlugins) -ProviderName $ProviderName -ProviderId $ExistingProviderId)
+            $ExistingHome = if ($ExistingProviderId -match '^[a-z0-9][a-z0-9_.-]{0,62}$') { Assert-PathInside -Path (Join-Path $CodexAccountsRoot $ExistingProviderId) -BasePath $CodexAccountsRoot } else { "" }
+            $ExistingMarker = if ($ExistingHome) { Join-Path $ExistingHome "account-label.sha256" } else { "" }
+            $ExistingAuth = if ($ExistingHome) { Join-Path $ExistingHome "auth.json" } else { "" }
+            $ExistingPending = if ($ExistingHome) { Join-Path $ExistingHome "pending-account.json" } else { "" }
+            $ExistingPendingPlan = ""
+            if ($ExistingPending -and (Test-Path -LiteralPath $ExistingPending -PathType Leaf)) {
+                try {
+                    $PendingRecord = Get-Content -Raw -LiteralPath $ExistingPending | ConvertFrom-Json
+                    $ExistingPendingPlan = Get-StringProperty -Object $PendingRecord -Name "expectedPlan"
+                }
+                catch { $ExistingPendingPlan = "" }
+            }
+            $RecoveryPlanMatches = $ExistingPlan -eq $ExpectedPlan -or $ExistingPendingPlan -eq $ExpectedPlan
+            $MarkerMatches = $false
+            if ($ExistingMarker -and (Test-Path -LiteralPath $ExistingMarker -PathType Leaf)) {
+                $MarkerMatches = (Get-Content -Raw -LiteralPath $ExistingMarker).Trim().Equals((Get-TextSha256 -Text $ProviderName), [System.StringComparison]::OrdinalIgnoreCase)
+            }
+            if ($RecoveryPlanMatches -and $RecoveryModelsMatch -and $ExistingPlugins.Count -gt 0 -and $MarkerMatches -and (Test-Path -LiteralPath $ExistingAuth -PathType Leaf)) {
+                Set-CodexAccountProfiles -ProviderName $ProviderName -ProviderId $ExistingProviderId -Models $ExistingModels
+                $PendingMetadataPath = Join-Path $ExistingHome "pending-account.json"
+                if (Test-Path -LiteralPath $PendingMetadataPath -PathType Leaf) { Remove-Item -LiteralPath $PendingMetadataPath -Force }
+                Write-Host ("Recovered the already-persisted account '{0}' and created its dashboard routes." -f $ProviderName) -ForegroundColor Green
+                return
+            }
+        }
+        if ($null -ne $ExistingProvider) {
+            $RecoveryProblems = New-Object System.Collections.Generic.List[string]
+            if (-not $RecoveryPlanMatches) { $RecoveryProblems.Add("plan marker") }
+            if (-not $RecoveryModelsMatch) { $RecoveryProblems.Add("models") }
+            if ($ExistingPlugins.Count -eq 0) { $RecoveryProblems.Add("OAuth plugin") }
+            if (-not $MarkerMatches) { $RecoveryProblems.Add("account label marker") }
+            if (-not (Test-Path -LiteralPath $ExistingAuth -PathType Leaf)) { $RecoveryProblems.Add("project-local login") }
+            if ($RequestedName -and $RecoveryProblems.Count -gt 0) {
+                throw ("The account provider exists but recovery could not verify: " + ($RecoveryProblems -join ", ") + ".")
+            }
             throw "A provider/account with that name already exists."
         }
         $AccountSlot = Resolve-CodexAccountSlot -Name $ProviderName -Providers @($CurrentConfig.Providers)
         $ProviderId = [string]$AccountSlot.providerId
         $AccountHome = [string]$AccountSlot.accountHome
         Write-CodexAccountLabelMarker -Slot $AccountSlot
+        $PendingMetadataPath = Assert-PathInside -Path (Join-Path $AccountHome "pending-account.json") -BasePath $CodexAccountsRoot
+        $PendingMetadata = [ordered]@{ schema_version = 1; label = $ProviderName; expectedPlan = $ExpectedPlan; status = "pending" }
+        [System.IO.File]::WriteAllText($PendingMetadataPath, ($PendingMetadata | ConvertTo-Json -Depth 4), (New-Object System.Text.UTF8Encoding($false)))
         if ([bool]$AccountSlot.resume) {
             Write-Host ""
             Write-Host "Resuming the unfinished project-local sign-in for this account label." -ForegroundColor Cyan
@@ -1136,12 +1196,14 @@ function SignInAndImportCodexAccount {
         $ImportedPlugins = @($Imported.providerPlugins)
         $ImportedAccountId = ""
         foreach ($Plugin in $ImportedPlugins) {
-            if ($null -ne $Plugin.PSObject.Properties["codexOauth"] -and $null -ne $Plugin.codexOauth) { $ImportedAccountId = Get-StringProperty -Object $Plugin.codexOauth -Name "accountId"; if ($ImportedAccountId) { break } }
+            $CodexOauth = Get-ObjectPropertyValue -Object $Plugin -Name "codexOauth"
+            if ($null -ne $CodexOauth) { $ImportedAccountId = Get-StringProperty -Object $CodexOauth -Name "accountId"; if ($ImportedAccountId) { break } }
         }
         $CurrentProviderPlugins = if ($null -ne $CurrentConfig.PSObject.Properties["providerPlugins"] -and $null -ne $CurrentConfig.providerPlugins) { @($CurrentConfig.providerPlugins) } else { @() }
         if ($ImportedAccountId) {
             foreach ($Plugin in $CurrentProviderPlugins) {
-                if ($null -ne $Plugin.PSObject.Properties["codexOauth"] -and $null -ne $Plugin.codexOauth -and (Get-StringProperty -Object $Plugin.codexOauth -Name "accountId") -eq $ImportedAccountId) {
+                $CodexOauth = Get-ObjectPropertyValue -Object $Plugin -Name "codexOauth"
+                if ($null -ne $CodexOauth -and (Get-StringProperty -Object $CodexOauth -Name "accountId") -eq $ImportedAccountId) {
                     throw "This Codex account is already imported into the project."
                 }
             }
@@ -1173,11 +1235,27 @@ function SignInAndImportCodexAccount {
         if (-not (Get-StringProperty -Object $CurrentConfig -Name "preferredProvider")) { Set-JsonProperty -Object $CurrentConfig -Name "preferredProvider" -Value $ProviderName }
         $CurrentConfig = Enforce-SafeCcrConfig -Config $CurrentConfig
         $Options = [PSCustomObject]@{ applyProfile = $true }
-        [void](Invoke-RouterRpc -State $State -Method "saveConfig" -Arguments @($CurrentConfig, $Options))
+        try { [void](Invoke-RouterRpc -State $State -Method "saveConfig" -Arguments @($CurrentConfig, $Options)) }
+        catch {
+            # saveConfig persists before it starts/updates the gateway. A slow
+            # Windows cold start can therefore fail the RPC after the exact
+            # provider and OAuth plugins are already durable. Accept only that
+            # independently re-read, exact postcondition; every other failure
+            # remains fail-closed and is retried from the dashboard.
+            $PersistedConfig = Invoke-RouterRpc -State $State -Method "getConfig"
+            $PersistedProvider = @($PersistedConfig.Providers | Where-Object { ([string]$_.name).Equals($ProviderName, [System.StringComparison]::OrdinalIgnoreCase) }) | Select-Object -First 1
+            $PersistedModels = if ($null -ne $PersistedProvider) { @($PersistedProvider.models | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ } | Select-Object -Unique) } else { @() }
+            $PersistedPlugins = if ($null -ne $PersistedProvider) { @(Get-CodexAccountProviderPlugins -Plugins @($PersistedConfig.providerPlugins) -ProviderName $ProviderName -ProviderId $ProviderId) } else { @() }
+            $MissingModel = @($SupportedModels | Where-Object { $PersistedModels -notcontains $_ })
+            $UnexpectedModel = @($PersistedModels | Where-Object { $SupportedModels -notcontains $_ })
+            if ($null -eq $PersistedProvider -or (Get-StringProperty -Object $PersistedProvider -Name "id") -ne $ProviderId -or $MissingModel.Count -gt 0 -or $UnexpectedModel.Count -gt 0 -or $PersistedPlugins.Count -eq 0 -or @($PersistedConfig.profile.profiles).Count -ne 0) { throw }
+            Write-Host "CCR persisted the exact account config before its gateway update reported an error; continuing from the verified stored postcondition." -ForegroundColor Yellow
+        }
         Set-CodexAccountProfiles -ProviderName $ProviderName -ProviderId $ProviderId -Models $SupportedModels
+        if (Test-Path -LiteralPath $PendingMetadataPath -PathType Leaf) { Remove-Item -LiteralPath $PendingMetadataPath -Force }
         Write-Host ""
         Write-Host ("Imported '{0}' into this project. Its login and route are project-local." -f $ProviderName) -ForegroundColor Green
-        Write-Host "Each verified model will appear as a separate choice in RUN_CLAUDE.bat." -ForegroundColor Green
+        Write-Host "Each verified model will appear as a separate choice in DASHBOARD.bat." -ForegroundColor Green
     }
     finally {
         if ($StagedLocalAuth -and (Test-Path -LiteralPath $LocalAuthPath -PathType Leaf)) { Remove-Item -LiteralPath $LocalAuthPath -Force }
@@ -1312,7 +1390,7 @@ function Invoke-Menu {
         try { Clear-Host } catch { }
         Write-Host "==============================================================" -ForegroundColor Cyan
         Write-Host "  CLAUDE CLI - ROUTES FROM setting.json" -ForegroundColor Cyan
-        Write-Host "  Project-local accounts: SIGN_ACCOUNT.bat" -ForegroundColor DarkGray
+        Write-Host "  Project-local accounts and quota: DASHBOARD.bat" -ForegroundColor DarkGray
         Write-Host "==============================================================" -ForegroundColor Cyan
         $Profiles = @($Setting.profiles | Where-Object { $_.enabled }) + @(Read-AccountProfiles | Where-Object { $_.enabled })
         if ($Profiles.Count -eq 0) { Write-Host "  No enabled profile. Edit setting.json, then choose [S]." -ForegroundColor Yellow }
@@ -1490,7 +1568,7 @@ try {
     if ($WarmRouter) { [void](Ensure-Router); exit 0 }
     if ($SelfTest) { Invoke-SelfTest; exit 0 }
     if ($StopRouter) { Stop-RouterService; exit 0 }
-    if ($AddCodexPlan) { SignInAndImportCodexAccount -ExpectedPlan $AddCodexPlan; exit 0 }
+    if ($AddCodexPlan) { SignInAndImportCodexAccount -ExpectedPlan $AddCodexPlan -RequestedName $CodexAccountName; exit 0 }
     if ($LaunchProfileId) {
         if ($LaunchProfileId -notmatch '^[a-z0-9][a-z0-9_.-]{0,62}$') { throw "Invalid dashboard profile identifier." }
         $DashboardSetting = Ensure-SettingApplied
@@ -1507,6 +1585,7 @@ try {
     exit 0
 }
 catch {
-    Write-Error ("Router project menu failed: " + $_.Exception.Message)
+    $FailureLine = if ($null -ne $_.InvocationInfo -and $_.InvocationInfo.ScriptLineNumber -gt 0) { " (source line $($_.InvocationInfo.ScriptLineNumber))" } else { "" }
+    Write-Error ("Router project menu failed${FailureLine}: " + $_.Exception.Message)
     exit 1
 }

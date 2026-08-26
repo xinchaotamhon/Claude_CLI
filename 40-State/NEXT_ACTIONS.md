@@ -6,15 +6,16 @@ status: active
 
 # Next Actions
 
-1. **Use one entry only.** Double-click `DASHBOARD.bat`. `SIGN_ACCOUNT.bat` is
-   only a compatibility alias; do not add another account menu. Keep
-   `RUN_CLAUDE.bat` as technical rollback.
-2. **Complete owner-interactive Codex logins from the dashboard.** Use
-   **Codex Free** for the remaining Free accounts and **Codex Plus** for the Plus
+1. **Use one entry only.** Double-click `DASHBOARD.bat`; it is the only BAT at
+   project root. Keep technical rollback launchers under `tools/`.
+2. **Prove the recovered second account, then add the rest.** Run one short
+   Terra or Luna request from `codex_free_2`; its interrupted import is already
+   recovered into both routes without another browser login. Then use **Codex
+   Free** for the remaining Free account and **Codex Plus** for the Plus
    account. Enter password and 2FA only on the official browser page. Confirm
    the resulting models: Free must not receive Sol; Plus may retain
    Sol/Terra/Luna only after bounded provider checks pass.
-3. **Complete Google slots one at a time.** Start with Google AI Pro Slot 1,
+3. **Complete Google slots one at a time.** Start with **Thêm tài khoản Google**,
    finish official OAuth, return to the dashboard and refresh quota. Verify the
    `Gemini` and `Claude / GPT` groups independently before Slot 2 or 3.
 4. **Promote Google routes incrementally.** A completed OAuth slot is not yet a
@@ -24,8 +25,9 @@ status: active
    dashboard terminals with different routes, then two with the same route.
    Expected: each terminal keeps its selected model; same-account terminals
    share provider quota; neither changes Codex App/global state.
-6. **Treat quota display as advisory.** Codex and Google quota endpoints are
-   undocumented and may change. On 401/schema/network failure show
+6. **Treat quota display as advisory.** Codex uses the official app-server
+   method, but plan policy and response buckets can still change; Google quota
+   remains provider-internal. On auth/schema/network failure show
    `unknown`/reauthentication, preserve the last timestamped snapshot and never
    block manual route launch solely because quota refresh failed.
 7. **Keep Google branches separate.** `gemini_models` and
@@ -40,7 +42,7 @@ status: active
     dashboard button to open it, validate/reload through the existing route
     path and keep keys out of Git/docs/browser state.
 11. **Keep CCR as rollback champion.** Do not delete its ignored runtime/auth
-    state. If dashboard fails, stop its process and use `RUN_CLAUDE.bat`.
+    state. If dashboard fails, use `tools\RUN_CLAUDE_TECHNICAL.bat`.
 12. **Review updates conservatively.** Diff CCR/CLIProxyAPI source before merge;
     compare release notes/version/hash for the closed Claude binary. Never
     auto-download or auto-merge during dashboard startup.

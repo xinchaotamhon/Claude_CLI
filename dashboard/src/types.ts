@@ -18,6 +18,7 @@ export type Account = {
   id: string;
   kind: 'codex' | 'google' | 'api';
   label: string;
+  resumeKey?: string;
   plan: string;
   status: 'ready' | 'not_signed_in' | 'incomplete' | 'disabled';
   models: string[];
@@ -28,6 +29,8 @@ export type Account = {
     source: string;
     experimental: boolean;
     credits?: { balance: number | null; hasCredits: boolean };
+    resetCreditsAvailable?: number;
+    detectedPlan?: string | null;
     groups: UsageGroup[];
     message?: string;
   };

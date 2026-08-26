@@ -32,11 +32,10 @@ def main() -> int:
     root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path.cwd().resolve()
     actual = root / "setting.json"
     example = root / "setting.example.json"
-    sign = root / "SIGN_ACCOUNT.bat"
     dashboard = root / "DASHBOARD.bat"
-    run = root / "RUN_CLAUDE.bat"
+    dashboard_helper = root / "tools" / "dashboard_terminal.bat"
     menu = root / "tools" / "router_project_menu.ps1"
-    for path in (actual, example, sign, dashboard, run, menu):
+    for path in (actual, example, dashboard, dashboard_helper, menu):
         if not path.is_file():
             return fail(f"missing setting flow file: {path.relative_to(root).as_posix()}")
 
@@ -116,23 +115,17 @@ def main() -> int:
     ):
         return fail(f"unexpected interactive prompt remains in RUN menu: {read_host_lines}")
 
-    sign_text = read(sign)
-    if 'DASHBOARD.bat"' not in sign_text or re.search(
-        r"(?i)(?:codex|gemini|deepseek|openrouter|ollama)(?:\.exe)?\s+(?:login|auth)",
-        sign_text,
-    ):
-        return fail("SIGN_ACCOUNT.bat must be only a compatibility redirect to DASHBOARD.bat")
-    run_text = read(run)
-    if "--account-menu" not in run_text or "router_project_menu.ps1" not in run_text:
-        return fail("RUN_CLAUDE.bat does not route account setup through the project-local menu")
-    if "--router-ui" in run_text or "Open API provider UI" in menu_text:
+    helper_text = read(dashboard_helper)
+    if "-AddCodexPlan" not in helper_text or "-AddSlot" not in helper_text:
+        return fail("dashboard does not route account setup through project-local helpers")
+    if "--router-ui" in helper_text or "Open API provider UI" in menu_text:
         return fail("the project still exposes CCR agent-profile UI instead of isolated setting/account flows")
 
     print("PASS: setting.json exists and is ignored without being read")
     print("PASS: tracked example schema has no API key")
     print("PASS: RUN menu has no API/provider/profile entry prompts")
     print("PASS: settings merge uses authenticated CCR RPC and preserves safe defaults")
-    print("PASS: DASHBOARD.bat is the one account/settings UI and SIGN_ACCOUNT is only a compatibility redirect")
+    print("PASS: DASHBOARD.bat is the only root account/settings/launch UI")
     print("PASS: CCR agent profiles/UI cannot select System default or modify external Codex/Claude config")
     print("network: not used; provider/model requests were not run")
     return 0

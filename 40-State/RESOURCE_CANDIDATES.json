@@ -41,6 +41,30 @@
       "status": "comparison-only",
       "fit": "cross-platform multi-account quota and scheduling UI for CLIProxyAPI",
       "constraints": "smart scheduling, reset controls, agent reconfiguration and quota consumption behavior expand risk; not selected for the first pilot"
+    },
+    {
+      "id": "reference.codex-usage",
+      "name": "Tooblippe/codex-usage",
+      "source_url": "https://github.com/Tooblippe/codex-usage",
+      "status": "reference-only-first-party-protocol-already-adopted",
+      "fit": "Windows tray example using Codex app-server account/rateLimits/read",
+      "constraints": "do not vendor another UI/runtime; the project implements the same official read-only method with its pinned local Codex binary"
+    },
+    {
+      "id": "reference.ag-usage",
+      "name": "crsxmilitaru/ag-usage",
+      "source_url": "https://github.com/crsxmilitaru/ag-usage",
+      "status": "reference-only-external-antigravity-runtime-required",
+      "fit": "Google Antigravity quota presentation split into Gemini and Other model families",
+      "constraints": "depends on a separately installed/running Antigravity IDE process, which violates the current standalone-folder runtime boundary"
+    },
+    {
+      "id": "external.antigravity-quota-manager",
+      "name": "AntigravityQuotaManager",
+      "source_url": "https://github.com/devtint/AntigravityQuotaManager",
+      "status": "rejected-auto-wakeup-and-external-ide-dependency",
+      "fit": "Antigravity IDE RPC and Google Cloud Code quota reader",
+      "constraints": "auto-wakeup can consume quota and the primary path depends on external IDE state; do not integrate without a new bounded review and owner authorization"
     }
   ]
 }

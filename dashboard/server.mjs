@@ -16,6 +16,7 @@ const readyPath = path.join(runtimeRoot, 'ready.json');
 const terminalsPath = path.join(runtimeRoot, 'terminals.json');
 const accountProfilesPath = path.join(projectRoot, 'provider_router', '.ccr-local', 'account-profiles.json');
 const codexAccountsRoot = path.join(projectRoot, 'provider_router', '.ccr-local', 'codex-accounts');
+const codexBinary = path.join(projectRoot, 'provider_router', 'codex-login-runtime', 'codex.exe');
 const googleAccountsRoot = path.join(projectRoot, '.runtime', 'challenger', 'accounts', 'google');
 const settingPath = path.join(projectRoot, 'setting.json');
 const helperBat = path.join(projectRoot, 'tools', 'dashboard_terminal.bat');
@@ -23,6 +24,7 @@ const bootstrapToken = crypto.randomBytes(32).toString('base64url');
 const instanceId = crypto.randomBytes(24).toString('base64url');
 const sessionCookie = `claude_cli_dashboard=${bootstrapToken}`;
 const activeActions = new Set();
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
 fs.mkdirSync(usageRoot, { recursive: true });
 
@@ -76,6 +78,47 @@ function inferCodexPlan(label, models) {
   return 'Free';
 }
 
+function safeAccountKey(value) {
+  return typeof value === 'string' && /^[a-z0-9][a-z0-9_.-]{0,62}$/i.test(value) ? value : '';
+}
+
+function safeCodexLabel(value) {
+  return typeof value === 'string' && value.length <= 100 && /^[a-z0-9][a-z0-9_.+@ -]*$/i.test(value) ? value : '';
+}
+
+function codexHomeEntries() {
+  try {
+    return fs.readdirSync(codexAccountsRoot, { withFileTypes: true })
+      .filter((item) => item.isDirectory() && safeAccountKey(item.name))
+      .map((item) => ({ name: item.name, home: path.join(codexAccountsRoot, item.name) }));
+  } catch { return []; }
+}
+
+function googleSlotNumber(slot) {
+  const match = /^google_pro_([1-9][0-9]{0,2})$/.exec(String(slot));
+  const value = match ? Number(match[1]) : 0;
+  return value >= 1 && value <= 50 ? value : 0;
+}
+
+function googleSlots() {
+  const slots = [];
+  try {
+    for (const entry of fs.readdirSync(googleAccountsRoot, { withFileTypes: true })) {
+      if (entry.isDirectory() && googleSlotNumber(entry.name)) slots.push(entry.name);
+    }
+  } catch { }
+  return slots.sort((a, b) => googleSlotNumber(a) - googleSlotNumber(b));
+}
+
+function nextGoogleSlot() {
+  const occupied = new Set(googleSlots());
+  for (let index = 1; index <= 50; index += 1) {
+    const slot = `google_pro_${index}`;
+    if (!occupied.has(slot)) return slot;
+  }
+  throw new Error('Đã đạt giới hạn 50 tài khoản Google cục bộ.');
+}
+
 function googleSlotState(slot) {
   const slotRoot = path.join(googleAccountsRoot, slot);
   const authRoot = path.join(slotRoot, 'auth');
@@ -103,8 +146,22 @@ function buildAccounts(routes) {
     });
   }
 
-  for (let index = 1; index <= 3; index += 1) {
-    const slot = `google_pro_${index}`;
+  const activeCodexHomes = new Set([...codexGroups.keys()].map((provider) => findCodexHome(provider)).filter(Boolean).map((home) => path.resolve(home).toLowerCase()));
+  for (const entry of codexHomeEntries()) {
+    if (activeCodexHomes.has(path.resolve(entry.home).toLowerCase())) continue;
+    if (!fs.existsSync(path.join(entry.home, 'auth.json')) || !fs.existsSync(path.join(entry.home, 'account-label.sha256'))) continue;
+    const pending = readJson(path.join(entry.home, 'pending-account.json'), {});
+    const label = safeCodexLabel(pending?.label) || entry.name;
+    const expectedPlan = pending?.expectedPlan === 'codex_plus' ? 'Plus' : inferCodexPlan(label, []);
+    const id = `codex-pending:${entry.name}`;
+    accounts.push({
+      id, kind: 'codex', label, resumeKey: entry.name, plan: expectedPlan, status: 'incomplete', models: [], routes: [],
+      usage: emptyUsage('Đăng nhập đã được lưu trong dự án nhưng route chưa tạo xong. Bấm “Hoàn tất nhập” để tiếp tục, không cần đăng nhập lại nếu phiên còn hiệu lực.'),
+    });
+  }
+
+  for (const slot of googleSlots()) {
+    const index = googleSlotNumber(slot);
     const id = `google:${slot}`;
     const state = googleSlotState(slot);
     const fallback = emptyUsage(state.status === 'ready' ? 'Bấm làm mới để đọc hai nhóm Gemini và Claude/GPT.' : 'Chọn Slot bên dưới để đăng nhập Google AI Pro.');
@@ -198,10 +255,22 @@ function numberOrNull(value) {
 }
 
 function resetIso(window) {
-  const direct = numberOrNull(window?.reset_at ?? window?.resetAt);
+  const direct = numberOrNull(window?.reset_at ?? window?.resetAt ?? window?.resetsAt);
   if (direct !== null) return new Date(direct < 1e12 ? direct * 1000 : direct).toISOString();
   const after = numberOrNull(window?.reset_after_seconds ?? window?.resetAfterSeconds);
   return after !== null ? new Date(Date.now() + after * 1000).toISOString() : null;
+}
+
+function codexChildEnvironment(home, source = process.env) {
+  const env = {};
+  for (const [name, value] of Object.entries(source)) {
+    if (/^(OPENAI|CODEX|CHATGPT|AZURE_OPENAI)_/i.test(name)) continue;
+    env[name] = value;
+  }
+  env.CODEX_HOME = home;
+  env.CODEX_SQLITE_HOME = home;
+  env.NO_COLOR = '1';
+  return env;
 }
 
 function durationLabel(seconds, prefix = '') {
@@ -214,25 +283,35 @@ function durationLabel(seconds, prefix = '') {
 }
 
 function normalizeCodexUsage(payload) {
+  const byId = payload?.rateLimitsByLimitId && typeof payload.rateLimitsByLimitId === 'object' ? payload.rateLimitsByLimitId : null;
+  const rateLimit = byId?.codex ?? payload?.rateLimits ?? {};
   const windows = [];
-  const addRateLimit = (rateLimit, prefix = '') => {
-    if (!rateLimit || typeof rateLimit !== 'object') return;
-    for (const [key, raw] of [['primary', rateLimit.primary_window ?? rateLimit.primaryWindow], ['secondary', rateLimit.secondary_window ?? rateLimit.secondaryWindow]]) {
-      if (!raw || typeof raw !== 'object') continue;
-      const used = numberOrNull(raw.used_percent ?? raw.usedPercent);
-      const duration = numberOrNull(raw.limit_window_seconds ?? raw.limitWindowSeconds);
-      windows.push({ id: `${prefix || 'main'}-${key}`, label: durationLabel(duration, prefix), remainingPercent: used === null ? null : Math.max(0, Math.min(100, 100 - used)), resetAt: resetIso(raw) });
-    }
-  };
-  addRateLimit(payload.rate_limit ?? payload.rateLimit);
-  addRateLimit(payload.code_review_rate_limit ?? payload.codeReviewRateLimit, 'Code review · ');
-  const credits = payload.credits && typeof payload.credits === 'object' ? payload.credits : {};
+  for (const [key, raw] of [['primary', rateLimit?.primary], ['secondary', rateLimit?.secondary]]) {
+    if (!raw || typeof raw !== 'object') continue;
+    const used = numberOrNull(raw.usedPercent);
+    const durationMins = numberOrNull(raw.windowDurationMins);
+    const durationSeconds = durationMins === null ? null : durationMins * 60;
+    windows.push({ id: `codex-${key}`, label: durationLabel(durationSeconds), remainingPercent: used === null ? null : Math.max(0, Math.min(100, 100 - used)), resetAt: resetIso(raw) });
+  }
+  if (rateLimit?.individualLimit && typeof rateLimit.individualLimit === 'object') {
+    const individual = rateLimit.individualLimit;
+    windows.push({
+      id: 'codex-individual-credit', label: 'Tín dụng tháng',
+      remainingPercent: numberOrNull(individual.remainingPercent), resetAt: resetIso(individual),
+      detail: `Đã dùng ${individual.used ?? '—'} / ${individual.limit ?? '—'} · tự đặt lại theo nhà cung cấp`,
+    });
+  }
+  const credits = rateLimit?.credits && typeof rateLimit.credits === 'object' ? rateLimit.credits : {};
+  const resetCreditsAvailable = Math.max(0, Math.trunc(numberOrNull(payload?.rateLimitResetCredits?.availableCount) ?? 0));
+  const hasWeekly = windows.some((window) => window.label === 'Hàng tuần');
   return {
     status: windows.length ? 'available' : 'unknown', observedAt: new Date().toISOString(),
-    source: 'OpenAI account usage endpoint', experimental: true,
-    credits: { hasCredits: credits.has_credits === true, balance: numberOrNull(credits.balance) },
+    source: 'OpenAI Codex app-server (chính thức)', experimental: false,
+    credits: { hasCredits: credits.hasCredits === true, balance: numberOrNull(credits.balance) },
+    resetCreditsAvailable,
+    detectedPlan: typeof rateLimit?.planType === 'string' ? rateLimit.planType : null,
     groups: [{ id: 'codex', label: 'Codex', status: windows.length ? 'available' : 'unknown', windows }],
-    message: windows.length ? '' : 'OpenAI không trả về cửa sổ hạn mức có thể nhận dạng.',
+    message: windows.length ? (hasWeekly ? 'Quota tự đặt lại theo thời điểm OpenAI trả về; dashboard không tự dùng reset credit.' : 'OpenAI chưa trả về bucket tuần cho tài khoản này; dashboard không lấy bucket tháng giả làm quota tuần.') : 'OpenAI không trả về cửa sổ hạn mức có thể nhận dạng.',
   };
 }
 
@@ -249,14 +328,47 @@ async function fetchJson(url, options) {
 async function refreshCodex(account) {
   const home = findCodexHome(account.label);
   if (!home) throw new Error('Không tìm thấy phiên Codex cục bộ tương ứng. Hãy đăng nhập lại từ dashboard.');
-  const auth = readJson(path.join(home, 'auth.json'));
-  const tokens = auth?.tokens && typeof auth.tokens === 'object' ? auth.tokens : auth;
-  const accessToken = tokens?.access_token ?? tokens?.accessToken;
-  const accountId = tokens?.account_id ?? tokens?.accountId;
-  if (typeof accessToken !== 'string' || !accessToken) throw new Error('Phiên Codex không có access token hợp lệ; hãy đăng nhập lại.');
-  const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'User-Agent': 'codex_cli_rs/local-dashboard' };
-  if (typeof accountId === 'string' && accountId) headers['ChatGPT-Account-Id'] = accountId;
-  const payload = await fetchJson('https://chatgpt.com/backend-api/wham/usage', { method: 'GET', headers });
+  if (!fs.existsSync(codexBinary)) throw new Error('Thiếu Codex helper cục bộ để đọc hạn mức chính thức.');
+  const payload = await new Promise((resolve, reject) => {
+    const env = codexChildEnvironment(home);
+    const child = spawn(codexBinary, ['app-server', '--stdio'], { cwd: projectRoot, env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], shell: false });
+    let stdout = '';
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { child.kill(); } catch { }
+      if (error) reject(error); else resolve(value);
+    };
+    const send = (message) => child.stdin.write(`${JSON.stringify(message)}\n`);
+    const timer = setTimeout(() => finish(new Error('Codex app-server không trả về hạn mức trong 20 giây.')), 20_000);
+    child.on('error', (error) => finish(new Error(`Không thể mở Codex app-server: ${error.message}`)));
+    child.stderr.resume();
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString('utf8');
+      while (stdout.includes('\n')) {
+        const index = stdout.indexOf('\n');
+        const line = stdout.slice(0, index).trim();
+        stdout = stdout.slice(index + 1);
+        if (!line) continue;
+        let message;
+        try { message = JSON.parse(line); } catch { continue; }
+        if (message.id === 1 && message.result) {
+          send({ method: 'initialized', params: {} });
+          send({ id: 2, method: 'account/rateLimits/read', params: {} });
+        } else if (message.id === 1 && message.error) {
+          finish(new Error('Codex app-server từ chối khởi tạo.'));
+        } else if (message.id === 2 && message.result) {
+          finish(null, message.result);
+        } else if (message.id === 2 && message.error) {
+          finish(new Error('Codex app-server không đọc được hạn mức; phiên cục bộ có thể cần đăng nhập lại.'));
+        }
+      }
+    });
+    child.on('exit', (code) => { if (!settled) finish(new Error(`Codex app-server đóng sớm (mã ${code ?? 'không rõ'}).`)); });
+    send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'claude-cli-local-dashboard', version: '1.0.0' }, capabilities: { experimentalApi: true } } });
+  });
   return normalizeCodexUsage(payload);
 }
 
@@ -331,10 +443,10 @@ async function refreshUsage(accountId) {
   return usage;
 }
 
-function spawnTerminal(action, value) {
+function spawnTerminal(action, ...values) {
   if (!fs.existsSync(helperBat)) throw new Error('Thiếu công cụ mở terminal của dashboard.');
   const comspec = process.env.ComSpec || path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
-  const child = spawn(comspec, ['/d', '/k', 'call', helperBat, action, value], { cwd: projectRoot, detached: true, windowsHide: false, stdio: 'ignore', shell: false });
+  const child = spawn(comspec, ['/d', '/c', 'call', helperBat, action, ...values], { cwd: projectRoot, detached: true, windowsHide: false, stdio: 'ignore', shell: false });
   child.unref();
   return child.pid;
 }
@@ -417,10 +529,21 @@ async function handle(request, response) {
       spawnTerminal('codex', body.plan === 'plus' ? 'codex_plus' : 'codex_free');
       return json(response, 200, { ok: true });
     }
-    if (url.pathname === '/api/accounts/google') {
-      if (!/^google_pro_[1-3]$/.test(body.slot || '')) return json(response, 400, { error: 'Slot Google không hợp lệ.' });
-      spawnTerminal('google', body.slot);
+    if (url.pathname === '/api/accounts/codex/resume') {
+      if (!safeAccountKey(body.resumeKey)) return json(response, 400, { error: 'Tài khoản Codex chưa hoàn tất không hợp lệ.' });
+      const home = path.join(codexAccountsRoot, body.resumeKey);
+      if (!fs.existsSync(path.join(home, 'auth.json')) || !fs.existsSync(path.join(home, 'account-label.sha256'))) return json(response, 404, { error: 'Không còn phiên Codex chưa hoàn tất này.' });
+      const pending = readJson(path.join(home, 'pending-account.json'), {});
+      const label = safeCodexLabel(pending?.label) || body.resumeKey;
+      const plan = pending?.expectedPlan === 'codex_plus' || /plus|pro/i.test(label) ? 'codex_plus' : 'codex_free';
+      spawnTerminal('codex-resume', plan, label);
       return json(response, 200, { ok: true });
+    }
+    if (url.pathname === '/api/accounts/google') {
+      const slot = body.slot ? String(body.slot) : nextGoogleSlot();
+      if (!googleSlotNumber(slot)) return json(response, 400, { error: 'Slot Google không hợp lệ.' });
+      spawnTerminal('google', slot);
+      return json(response, 200, { ok: true, slot });
     }
     if (url.pathname === '/api/settings/open') {
       const notepad = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'notepad.exe');
@@ -450,6 +573,21 @@ async function handle(request, response) {
   return serveStatic(request, response, url.pathname);
 }
 
+function runSelfTest() {
+  if (!safeCodexLabel('cruxes_hermits7y+renewik@icloud.com')) throw new Error('email-style Codex label was rejected');
+  if (safeCodexLabel('unsafe&command')) throw new Error('command metacharacter was accepted in a Codex label');
+  if (resetIso({ resetsAt: 1_800_000_000 }) !== new Date(1_800_000_000 * 1000).toISOString()) throw new Error('official resetsAt timestamp was not normalized');
+  const isolated = codexChildEnvironment('D:\\project-local-account', { Path: 'safe-path', OPENAI_API_KEY: 'outside', CODEX_ACCESS_TOKEN: 'outside', CHATGPT_ACCESS_TOKEN: 'outside', AZURE_OPENAI_API_KEY: 'outside' });
+  if (isolated.OPENAI_API_KEY || isolated.CODEX_ACCESS_TOKEN || isolated.CHATGPT_ACCESS_TOKEN || isolated.AZURE_OPENAI_API_KEY) throw new Error('external credential environment was inherited');
+  if (isolated.Path !== 'safe-path' || isolated.CODEX_HOME !== 'D:\\project-local-account' || isolated.CODEX_SQLITE_HOME !== 'D:\\project-local-account') throw new Error('project-local Codex environment was not established');
+  process.stdout.write('PASS: dashboard Codex label, reset timestamp and child-environment self-test\n');
+}
+
+if (process.argv.includes('--self-test')) {
+  runSelfTest();
+  process.exit(0);
+}
+
 const server = http.createServer((request, response) => {
   handle(request, response).catch((error) => json(response, 500, { error: error instanceof Error ? error.message : 'Lỗi dashboard.' }));
 });
@@ -463,6 +601,22 @@ server.listen(PORT, HOST, () => {
   writeJson(readyPath, { schemaVersion: 1, pid: process.pid, host: HOST, port: PORT, loopbackOnly: true, instanceId, startedAt: new Date().toISOString(), url: `http://${HOST}:${PORT}/?session=${bootstrapToken}` });
   process.stdout.write(`Claude CLI dashboard ready at http://${HOST}:${PORT}\n`);
 });
+
+async function refreshReadyAccounts(onlyStale = false) {
+  const accounts = buildState().accounts.filter((account) => account.status === 'ready' && account.kind !== 'api');
+  for (const account of accounts) {
+    if (activeActions.has(account.id)) continue;
+    const cached = readJson(usagePath(account.id));
+    const observed = Date.parse(cached?.usage?.observedAt || '');
+    if (onlyStale && Number.isFinite(observed) && Date.now() - observed < AUTO_REFRESH_MS) continue;
+    activeActions.add(account.id);
+    try { await refreshUsage(account.id); } catch { }
+    finally { activeActions.delete(account.id); }
+  }
+}
+
+setTimeout(() => void refreshReadyAccounts(true), 750).unref();
+setInterval(() => void refreshReadyAccounts(false), AUTO_REFRESH_MS).unref();
 
 function shutdown() {
   try { if (readJson(readyPath)?.pid === process.pid) fs.unlinkSync(readyPath); } catch { }

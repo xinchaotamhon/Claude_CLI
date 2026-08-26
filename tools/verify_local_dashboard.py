@@ -23,7 +23,6 @@ def main() -> int:
     root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path.cwd().resolve()
     files = {
         "entry": root / "DASHBOARD.bat",
-        "compat": root / "SIGN_ACCOUNT.bat",
         "start": root / "tools" / "start_dashboard.ps1",
         "terminal": root / "tools" / "dashboard_terminal.bat",
         "server": root / "dashboard" / "server.mjs",
@@ -52,7 +51,14 @@ def main() -> int:
         "X-Frame-Options",
         "provider_router', '.ccr-local', 'codex-accounts'",
         "'.runtime', 'challenger', 'accounts', 'google'",
-        "https://chatgpt.com/backend-api/wham/usage",
+        "account/rateLimits/read",
+        "OpenAI Codex app-server (chính thức)",
+        "window?.resetsAt",
+        "/^(OPENAI|CODEX|CHATGPT|AZURE_OPENAI)_/i",
+        "env.CODEX_HOME = home",
+        "env.CODEX_SQLITE_HOME = home",
+        "AUTO_REFRESH_MS = 5 * 60 * 1000",
+        "codex-pending:",
         "retrieveUserQuotaSummary",
         "gemini_models",
         "claude_gpt_models",
@@ -64,7 +70,7 @@ def main() -> int:
     for marker in required_server:
         if marker not in server:
             return fail(f"dashboard server is missing safety/capability marker: {marker}")
-    for forbidden in ("0.0.0.0", "USERPROFILE", "GetFolderPath", "WindowsApps", "shell: true"):
+    for forbidden in ("0.0.0.0", "USERPROFILE", "GetFolderPath", "WindowsApps", "shell: true", "env = { ...process.env"):
         if forbidden.lower() in server.lower():
             return fail(f"dashboard server contains forbidden external/global behavior: {forbidden}")
 
@@ -76,19 +82,19 @@ def main() -> int:
             return fail(f"dashboard startup does not independently verify exact process/loopback identity: {marker}")
 
     entry = read(files["entry"])
-    compat = read(files["compat"])
     if "start_dashboard.ps1" not in entry:
         return fail("DASHBOARD.bat does not enter the bounded local startup helper")
-    if 'DASHBOARD.bat"' not in compat or "RUN_CLAUDE.bat" in compat:
-        return fail("SIGN_ACCOUNT.bat is not a pure compatibility redirect to DASHBOARD.bat")
+    root_batches = sorted(path.name for path in root.glob("*.bat"))
+    if root_batches != ["DASHBOARD.bat"]:
+        return fail(f"project root must expose only DASHBOARD.bat, found: {root_batches}")
 
     terminal = read(files["terminal"])
-    for marker in ("-LaunchProfileId", "-AddCodexPlan", "-AddSlot"):
+    for marker in ("-LaunchProfileId", "-AddCodexPlan", "-CodexAccountName", "-AddSlot"):
         if marker not in terminal:
             return fail(f"dashboard terminal dispatcher is missing {marker}")
     router = read(files["router"])
     google = read(files["google"])
-    if "$LaunchProfileId" not in router or "$AddCodexPlan" not in router:
+    if "$LaunchProfileId" not in router or "$AddCodexPlan" not in router or "$CodexAccountName" not in router:
         return fail("router helper lacks allowlisted dashboard route/account actions")
     if "$AddSlot" not in google:
         return fail("Google helper lacks the allowlisted dashboard slot action")
@@ -97,7 +103,7 @@ def main() -> int:
     css = read(files["css"])
     if "https://" in ui or "https://" in css or "http://" in ui or "http://" in css:
         return fail("browser UI has an external runtime dependency")
-    for marker in ("Mở terminal", "Codex Free", "Codex Plus", "Google AI Pro", "Làm mới tất cả", "Tín dụng bổ sung"):
+    for marker in ("Mở terminal", "Codex Free", "Codex Plus", "Google AI Pro", "Làm mới tất cả", "Tín dụng bổ sung", "Hoàn tất nhập tài khoản", "mỗi 5 phút"):
         if marker not in ui:
             return fail(f"dashboard UI is missing owner-facing action: {marker}")
 
@@ -120,6 +126,17 @@ def main() -> int:
     )
     if check.returncode != 0:
         return fail(f"dashboard server syntax check failed: {check.stderr.strip()}")
+    self_test = subprocess.run(
+        [str(files["node"]), str(files["server"]), "--self-test"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=15,
+    )
+    expected_self_test = "PASS: dashboard Codex label, reset timestamp and child-environment self-test"
+    if self_test.returncode != 0 or expected_self_test not in self_test.stdout:
+        return fail(f"dashboard server self-test failed: {(self_test.stderr or self_test.stdout).strip()}")
     static_index = read(files["static"])
     if not re.search(r"/assets/index-[A-Za-z0-9_-]+\.js", static_index):
         return fail("tracked production dashboard assets were not built")

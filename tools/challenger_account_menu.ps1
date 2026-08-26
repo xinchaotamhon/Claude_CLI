@@ -4,7 +4,6 @@
 param(
     [string]$Root = (Join-Path $PSScriptRoot ".."),
     [switch]$SelfTest,
-    [ValidateSet("google_pro_1", "google_pro_2", "google_pro_3")]
     [string]$AddSlot
 )
 
@@ -19,8 +18,42 @@ $BuildPath = Join-Path $ProjectRoot "router_challenger\BUILD.json"
 $SourcePath = Join-Path $ProjectRoot "router_challenger\SOURCE.json"
 $BatchPath = Join-Path $ProjectRoot "router_challenger\account-batch.example.json"
 $TemplatePath = Join-Path $ProjectRoot "router_challenger\account-config.template.yaml"
-$GoogleSlots = @("google_pro_1", "google_pro_2", "google_pro_3")
-$CallbackPorts = @{ google_pro_1 = 51121; google_pro_2 = 51122; google_pro_3 = 51123 }
+
+function Get-GoogleSlotNumber {
+    param([Parameter(Mandatory = $true)][string]$Slot)
+    if ($Slot -notmatch '^google_pro_([1-9][0-9]{0,2})$') { return 0 }
+    $Number = [int]$Matches[1]
+    if ($Number -lt 1 -or $Number -gt 50) { return 0 }
+    return $Number
+}
+
+function Get-GoogleCallbackPort {
+    param([Parameter(Mandatory = $true)][string]$Slot)
+    $Number = Get-GoogleSlotNumber -Slot $Slot
+    if ($Number -eq 0) { throw "Unknown Google Pro slot: $Slot" }
+    return (51120 + $Number)
+}
+
+function Get-GoogleSlots {
+    $Slots = @()
+    if (Test-Path -LiteralPath $AccountsRoot -PathType Container) {
+        $Slots = @(Get-ChildItem -LiteralPath $AccountsRoot -Directory -ErrorAction Stop |
+            Where-Object { (Get-GoogleSlotNumber -Slot $_.Name) -gt 0 } |
+            Sort-Object { Get-GoogleSlotNumber -Slot $_.Name } |
+            ForEach-Object { $_.Name })
+    }
+    return @($Slots)
+}
+
+function Get-NextGoogleSlot {
+    $Occupied = @{}
+    foreach ($Slot in @(Get-GoogleSlots)) { $Occupied[$Slot] = $true }
+    for ($Index = 1; $Index -le 50; $Index++) {
+        $Candidate = "google_pro_$Index"
+        if (-not $Occupied.ContainsKey($Candidate)) { return $Candidate }
+    }
+    throw "All 50 project-local Google slots are occupied."
+}
 
 function Assert-ProjectChild {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -124,7 +157,7 @@ function Assert-CallbackPortFree {
 
 function Add-GoogleAccount {
     param([Parameter(Mandatory = $true)][string]$Slot)
-    if ($GoogleSlots -notcontains $Slot) { throw "Unknown Google Pro slot: $Slot" }
+    if ((Get-GoogleSlotNumber -Slot $Slot) -eq 0) { throw "Unknown Google Pro slot: $Slot" }
     Assert-AccountRuntime
     $State = Get-SlotState -Slot $Slot
     if ($State.complete) {
@@ -132,7 +165,7 @@ function Add-GoogleAccount {
         return
     }
     if ($State.authFileCount -gt 0) { throw "Slot '$Slot' has incomplete credential state; inspect/remove only that slot before retrying." }
-    $Port = [int]$CallbackPorts[$Slot]
+    $Port = Get-GoogleCallbackPort -Slot $Slot
     Assert-CallbackPortFree -Port $Port
     $ConfigPath = Write-AccountConfig -State $State
     Write-Host ""
@@ -165,7 +198,9 @@ function Add-GoogleAccount {
 function Show-GoogleAccounts {
     Write-Host ""
     Write-Host "Google AI Pro project-local slots:" -ForegroundColor Cyan
-    foreach ($Slot in $GoogleSlots) {
+    $Slots = @(Get-GoogleSlots)
+    if ($Slots.Count -eq 0) { Write-Host "  (no Google account slot has been created yet)" -ForegroundColor DarkGray }
+    foreach ($Slot in $Slots) {
         $State = Get-SlotState -Slot $Slot
         $Status = if ($State.complete) { "signed in" } elseif ($State.authFileCount -gt 0) { "incomplete" } else { "not signed in" }
         Write-Host ("  - {0}: {1}" -f $Slot, $Status)
@@ -175,10 +210,13 @@ function Show-GoogleAccounts {
 function Select-GoogleSlot {
     Show-GoogleAccounts
     Write-Host ""
+    $GoogleSlots = @((Get-GoogleSlots) + (Get-NextGoogleSlot)) | Select-Object -Unique
     for ($Index = 0; $Index -lt $GoogleSlots.Count; $Index++) { Write-Host ("  [{0}] {1}" -f ($Index + 1), $GoogleSlots[$Index]) }
     $Choice = (Read-Host "Google Pro slot number").Trim()
-    if ($Choice -notmatch '^[1-3]$') { throw "Invalid Google Pro slot selection." }
-    return $GoogleSlots[[int]$Choice - 1]
+    if ($Choice -notmatch '^\d+$') { throw "Invalid Google Pro slot selection." }
+    $Selected = [int]$Choice
+    if ($Selected -lt 1 -or $Selected -gt $GoogleSlots.Count) { throw "Invalid Google Pro slot selection." }
+    return $GoogleSlots[$Selected - 1]
 }
 
 function Invoke-SelfTest {
@@ -187,7 +225,7 @@ function Invoke-SelfTest {
     foreach ($Required in @('host: "127.0.0.1"', 'auth-dir: "__AUTH_DIR__"', 'allow-remote: false', 'disable-control-panel: true', 'usage-statistics-enabled: false')) {
         if ($Template.IndexOf($Required, [System.StringComparison]::Ordinal) -lt 0) { throw "Account template safety marker is missing: $Required" }
     }
-    if ($GoogleSlots.Count -ne 3 -or $CallbackPorts.Values.Count -ne 3) { throw "Google Pro slot/callback contract is invalid." }
+    if ((Get-GoogleCallbackPort -Slot "google_pro_1") -ne 51121 -or (Get-GoogleCallbackPort -Slot "google_pro_50") -ne 51170) { throw "Google Pro slot/callback contract is invalid." }
     Write-Output "PASS: Google Pro OAuth account helper is project-local, hash-pinned and loopback-callback-only"
     Write-Output "PASS: self-test opened no browser and read no credential file"
 }
@@ -200,7 +238,7 @@ while ($true) {
     Write-Host "  GOOGLE AI PRO - PROJECT-LOCAL SIGN-IN" -ForegroundColor Cyan
     Write-Host "==============================================================" -ForegroundColor Cyan
     Write-Host "  [A] Add/sign in one Google AI Pro slot"
-    Write-Host "  [L] List three Google AI Pro slots"
+    Write-Host "  [L] List project-local Google AI Pro slots"
     Write-Host "  [Q] Back"
     Write-Host ""
     $Choice = (Read-Host "Select an action").Trim().ToLowerInvariant()

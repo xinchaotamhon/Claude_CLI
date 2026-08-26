@@ -34,8 +34,9 @@ for one Claude CLI to expose models backed by multiple native providers.
 
 - API providers are declared in ignored root `setting.json` and synchronized
   through authenticated loopback RPC; tracked `setting.example.json` has no key.
-- `SIGN_ACCOUNT.bat` runs a pinned local official Codex helper only for browser
-  login, with a unique `CODEX_HOME` under project state for each account. It
+- `DASHBOARD.bat` runs a pinned local official Codex helper for browser login
+  and official read-only app-server quota snapshots, with a unique `CODEX_HOME`
+  under project state for each account. It
   never reads a Windows/global Codex login or resolves an executable from PATH.
   Normal Add Provider remains for API keys/endpoints; arbitrary website sessions
   are not treated as model API auth.
@@ -53,6 +54,6 @@ for one Claude CLI to expose models backed by multiple native providers.
 
 `claude-code-router_proxy` is the owner's clean source fork at the same pinned
 commit, on local branch `claude`, with the official repository configured as
-`upstream`. `RUN_CLAUDE.bat --fetch-router-source` fetches upstream and shows a
+`upstream`. `tools\RUN_CLAUDE_TECHNICAL.bat --fetch-router-source` fetches upstream and shows a
 review diff; it never merges or changes the operational package. See
 `docs/ROUTER_UPDATES.md`.

@@ -33,12 +33,11 @@ def main() -> int:
     installer_path = root / "tools" / "install_codex_login_runtime.ps1"
     source_path = root / "provider_router" / "CODEX_LOGIN_SOURCE.json"
     binary_path = root / "provider_router" / "codex-login-runtime" / "codex.exe"
-    sign_path = root / "SIGN_ACCOUNT.bat"
     dashboard_path = root / "DASHBOARD.bat"
     dashboard_helper_path = root / "tools" / "dashboard_terminal.bat"
-    run_path = root / "RUN_CLAUDE.bat"
+    dashboard_server_path = root / "dashboard" / "server.mjs"
     ignore_path = root / ".gitignore"
-    for path in (menu_path, installer_path, source_path, binary_path, sign_path, dashboard_path, dashboard_helper_path, run_path, ignore_path):
+    for path in (menu_path, installer_path, source_path, binary_path, dashboard_path, dashboard_helper_path, dashboard_server_path, ignore_path):
         if not path.is_file():
             return fail(f"missing folder-local account-flow file: {path.relative_to(root).as_posix()}")
 
@@ -79,7 +78,13 @@ def main() -> int:
         'SignInAndImportCodexAccount -ExpectedPlan "codex_free"',
         'SignInAndImportCodexAccount -ExpectedPlan "codex_plus"',
         'function Invoke-GoogleAccountMenu',
-        "Each verified model will appear as a separate choice in RUN_CLAUDE.bat.",
+        "Each verified model will appear as a separate choice in DASHBOARD.bat.",
+        "pending-account.json",
+        "$RecoveryPlanMatches",
+        "$ExistingPendingPlan",
+        "Recovered the already-persisted account",
+        "CCR persisted the exact account config before its gateway update reported an error",
+        "$CodexAccountName",
         "A Claude/router session is running",
         "Remove-Item -LiteralPath $LocalAuthPath -Force",
         "account-profiles.json",
@@ -142,25 +147,27 @@ def main() -> int:
     ignore = read(ignore_path)
     if "/provider_router/codex-login-runtime/*" not in ignore:
         return fail("large Codex login binary is not Git-ignored")
-    sign = read(sign_path)
     dashboard_helper = read(dashboard_helper_path)
-    run = read(run_path)
-    if 'DASHBOARD.bat"' not in sign:
-        return fail("SIGN_ACCOUNT.bat is not a compatibility redirect to the project dashboard")
-    if "-AddCodexPlan" not in dashboard_helper or "router_project_menu.ps1" not in dashboard_helper:
+    dashboard_server = read(dashboard_server_path)
+    if "-AddCodexPlan" not in dashboard_helper or "-CodexAccountName" not in dashboard_helper or "router_project_menu.ps1" not in dashboard_helper:
         return fail("dashboard account action does not enter the project-local Codex import flow")
-    if "goto ACCOUNT_MENU" not in run or "-AccountMenu" not in run:
-        return fail("RUN_CLAUDE.bat lacks the account-menu dispatcher")
+    if '-AddCodexPlan "%~2" -CodexAccountName "%~3"' not in dashboard_helper:
+        return fail("dashboard resume wrapper does not pass the parsed plan and exact account label")
+    if "spawnTerminal('codex-resume', plan, label)" not in dashboard_server or "safeCodexLabel" not in dashboard_server:
+        return fail("dashboard does not preserve a safe email-style Codex account label during resume")
+    for marker in ("account/rateLimits/read", "codex-pending:", "/api/accounts/codex/resume"):
+        if marker not in dashboard_server:
+            return fail(f"dashboard does not preserve pending accounts or official usage reads: {marker}")
 
     print("PASS: Codex login binary, config, auth homes and staging are folder-local")
     print("PASS: each added account receives a separate CODEX_HOME inside router state")
     print("PASS: wrapper invokes the local Codex helper only for official browser login")
     print("PASS: no Windows/global Codex auth path is discovered or read")
     print("PASS: provenance hash, Git exclusion and project-scoped repair installer are present")
-    print("PASS: imported providers/plugins use unique identities and appear in RUN_CLAUDE")
+    print("PASS: imported providers/plugins use unique identities and appear in DASHBOARD")
     print("PASS: generated route IDs with slug-safe punctuation survive account-index reload")
     print("PASS: Free and Plus declared plans expose bounded candidate sets while rejected legacy fallback models stay excluded")
-    print("PASS: dashboard owns account onboarding while SIGN_ACCOUNT remains a compatibility redirect")
+    print("PASS: DASHBOARD.bat is the single owner-facing account and launch entry")
     print("PASS: an unfinished folder-local login can resume without repeating browser/2FA")
     print("network: not used; real auth files and setting.json were not read")
     return 0

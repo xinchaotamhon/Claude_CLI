@@ -6,6 +6,10 @@
 
 ## Current operational evidence
 
+- [2026-08-26 quota/account dashboard repair](2026-08-26-quota-account-dashboard-repair.md):
+  official Codex app-server quota reads, pending-account recovery, dynamic
+  Google slots, single-console spawn and one-root-BAT cleanup.
+
 - [Local dashboard and fallback decision](../60-Decisions/ADR-2026-08-25-local-dashboard-and-fallback.md):
   keeps CCR as rollback, defines five-hour-aware bounded fallback and records
   why EasyCLIProxyAPI v0.2.61 is inspect-only pending a license grant.

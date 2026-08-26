@@ -88,7 +88,7 @@ def main() -> int:
         / "claude-code-router"
         / "package.json"
     )
-    launcher_path = root / "RUN_CLAUDE.bat"
+    launcher_path = root / "tools" / "RUN_CLAUDE_TECHNICAL.bat"
     menu_path = root / "tools" / "router_project_menu.ps1"
     installer_path = root / "tools" / "install_router_runtime.ps1"
     lock_path = root / "provider_router" / "package-lock.json"
