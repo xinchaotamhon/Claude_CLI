@@ -8,6 +8,7 @@ param(
     [string]$Value,
     [string]$Extra,
     [string]$Label,
+    [string]$StatusPath,
     [string]$Root = (Join-Path $PSScriptRoot '..')
 )
 
@@ -16,16 +17,31 @@ $ErrorActionPreference = 'Stop'
 $ProjectRoot = (Resolve-Path -LiteralPath $Root).Path
 $RouterMenu = Join-Path $ProjectRoot 'tools\router_project_menu.ps1'
 $GoogleMenu = Join-Path $ProjectRoot 'tools\challenger_account_menu.ps1'
+$ActionsRoot = [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot '.runtime\dashboard\actions'))
+
+function Write-ActionStatus {
+    param([Parameter(Mandatory = $true)][string]$Status, [int]$ExitCode = 0)
+    if ([string]::IsNullOrWhiteSpace($StatusPath)) { return }
+    $Target = [System.IO.Path]::GetFullPath($StatusPath)
+    $Prefix = $ActionsRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $Target.StartsWith($Prefix, [System.StringComparison]::OrdinalIgnoreCase) -or [System.IO.Path]::GetExtension($Target) -ne '.json') { throw 'Invalid dashboard action status path.' }
+    [System.IO.Directory]::CreateDirectory($ActionsRoot) | Out-Null
+    $Temporary = "$Target.$PID.tmp"
+    $Payload = [ordered]@{ schemaVersion = 1; status = $Status; pid = $PID; exitCode = $ExitCode; observedAt = [DateTime]::UtcNow.ToString('o') }
+    [System.IO.File]::WriteAllText($Temporary, ($Payload | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+    Move-Item -LiteralPath $Temporary -Destination $Target -Force
+}
 
 try {
+    Write-ActionStatus -Status 'terminal_ready'
     switch ($Action) {
         'launch-new' {
             $Host.UI.RawUI.WindowTitle = "Claude CLI - $Value"
-            & $RouterMenu -Root $ProjectRoot -LaunchProfileId $Value -ClaudeSessionId $Extra -ClaudeSessionName $Label
+            & $RouterMenu -Root $ProjectRoot -LaunchProfileId $Value -ClaudeSessionId $Extra -ClaudeSessionName $Label -LaunchStatusPath $StatusPath
         }
         'launch-resume' {
             $Host.UI.RawUI.WindowTitle = "Claude CLI - tiếp tục $Label"
-            & $RouterMenu -Root $ProjectRoot -LaunchProfileId $Value -ClaudeSessionId $Extra -ClaudeSessionName $Label -ResumeClaudeSession
+            & $RouterMenu -Root $ProjectRoot -LaunchProfileId $Value -ClaudeSessionId $Extra -ClaudeSessionName $Label -ResumeClaudeSession -LaunchStatusPath $StatusPath
         }
         'codex' {
             $Host.UI.RawUI.WindowTitle = 'Claude CLI - đăng nhập Codex'
@@ -43,6 +59,7 @@ try {
     $ExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
 }
 catch {
+    try { Write-ActionStatus -Status 'failed' -ExitCode 1 } catch { }
     Write-Error $_
     $ExitCode = 1
 }

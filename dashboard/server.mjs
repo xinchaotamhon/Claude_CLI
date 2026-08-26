@@ -14,7 +14,9 @@ const projectRoot = path.resolve(dashboardRoot, '..');
 const staticRoot = path.join(dashboardRoot, 'static');
 const runtimeRoot = path.join(projectRoot, '.runtime', 'dashboard');
 const usageRoot = path.join(runtimeRoot, 'usage');
+const actionsRoot = path.join(runtimeRoot, 'actions');
 const readyPath = path.join(runtimeRoot, 'ready.json');
+const dashboardSessionPath = path.join(runtimeRoot, 'dashboard-session.json');
 const terminalsPath = path.join(runtimeRoot, 'terminals.json');
 const sessionsRoot = path.join(projectRoot, '.runtime', 'claude-sessions');
 const sessionsPath = path.join(sessionsRoot, 'index.json');
@@ -28,13 +30,13 @@ const codexBinary = path.join(projectRoot, 'provider_router', 'codex-login-runti
 const googleAccountsRoot = path.join(projectRoot, '.runtime', 'challenger', 'accounts', 'google');
 const settingPath = path.join(projectRoot, 'setting.json');
 const helperScript = path.join(projectRoot, 'tools', 'dashboard_terminal.ps1');
-const bootstrapToken = crypto.randomBytes(32).toString('base64url');
+const dispatcherScript = path.join(projectRoot, 'tools', 'dashboard_spawn_terminal.ps1');
 const instanceId = crypto.randomBytes(24).toString('base64url');
-const sessionCookie = `claude_cli_dashboard=${bootstrapToken}`;
 const activeActions = new Set();
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
 fs.mkdirSync(usageRoot, { recursive: true });
+fs.mkdirSync(actionsRoot, { recursive: true });
 fs.mkdirSync(sessionsRoot, { recursive: true });
 fs.mkdirSync(claudeHomeRoot, { recursive: true });
 
@@ -48,6 +50,31 @@ function writeJson(file, value) {
   fs.writeFileSync(temp, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
   fs.renameSync(temp, file);
 }
+
+function loadOrCreateBootstrapToken() {
+  const existing = readJson(dashboardSessionPath, {});
+  const createdAt = Date.parse(existing?.createdAt || '');
+  const reusable = Number.isFinite(createdAt) && Date.now() - createdAt < 30 * 24 * 60 * 60 * 1000;
+  if (reusable && typeof existing?.bootstrapToken === 'string' && /^[A-Za-z0-9_-]{40,80}$/.test(existing.bootstrapToken)) return existing.bootstrapToken;
+  const bootstrapToken = crypto.randomBytes(32).toString('base64url');
+  writeJson(dashboardSessionPath, { schemaVersion: 1, bootstrapToken, createdAt: new Date().toISOString() });
+  return bootstrapToken;
+}
+
+function pruneActionStatusFiles() {
+  let entries = [];
+  try { entries = fs.readdirSync(actionsRoot, { withFileTypes: true }); } catch { return; }
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  for (const entry of entries) {
+    if (!entry.isFile() || !/^[0-9a-f-]{36}\.json$/i.test(entry.name)) continue;
+    const candidate = path.join(actionsRoot, entry.name);
+    try { if (fs.statSync(candidate).mtimeMs < cutoff) fs.unlinkSync(candidate); } catch { }
+  }
+}
+
+const bootstrapToken = loadOrCreateBootstrapToken();
+const sessionCookie = `claude_cli_dashboard=${bootstrapToken}`;
+pruneActionStatusFiles();
 
 function safeSessionName(value) {
   if (typeof value !== 'string') return '';
@@ -218,11 +245,31 @@ function buildAccounts(routes) {
   return accounts;
 }
 
+function discoverTranscriptIds() {
+  const ids = new Set();
+  const pending = [claudeHomeRoot];
+  while (pending.length) {
+    const directory = pending.pop();
+    let entries = [];
+    try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      const candidate = path.join(directory, entry.name);
+      if (entry.isDirectory()) pending.push(candidate);
+      else if (entry.isFile() && entry.name.toLowerCase().endsWith('.jsonl')) {
+        const id = safeSessionId(path.basename(entry.name, '.jsonl'));
+        if (id) ids.add(id);
+      }
+    }
+  }
+  return ids;
+}
+
 function sessionRecords() {
   const records = readJson(sessionsPath, []);
   if (!Array.isArray(records)) return [];
+  const transcripts = discoverTranscriptIds();
   return records
-    .filter((record) => safeSessionId(record?.id) && typeof record?.routeId === 'string')
+    .filter((record) => transcripts.has(safeSessionId(record?.id)) && typeof record?.routeId === 'string')
     .map((record) => ({
       id: safeSessionId(record.id),
       name: safeSessionName(record.name) || `Phiên ${safeSessionId(record.id).slice(0, 8)}`,
@@ -331,7 +378,7 @@ function versionKey(value) {
 let localUpdateSnapshot = null;
 
 function localUpdateState() {
-  const cached = readJson(updatesPath, { checkedAt: null, latest: {} });
+  const cached = readJson(updatesPath, { checkedAt: null, latest: {}, errors: {} });
   if (!localUpdateSnapshot) {
     const challengerSource = readJson(path.join(projectRoot, 'router_challenger', 'SOURCE.json'), {});
     const challengerBuild = readJson(path.join(projectRoot, 'router_challenger', 'BUILD.json'), {});
@@ -353,11 +400,15 @@ function localUpdateState() {
       ],
     };
   }
-  const components = localUpdateSnapshot.components.map((component) => ({
-    ...component,
-    latestVersion: cached?.latest?.[component.id] || null,
-    status: cached?.latest?.[component.id] ? (versionKey(cached.latest[component.id]) === versionKey(component.localVersion) ? 'current' : 'available') : 'unchecked',
-  }));
+  const components = localUpdateSnapshot.components.map((component) => {
+    const errorMessage = typeof cached?.errors?.[component.id] === 'string' ? cached.errors[component.id] : null;
+    return {
+      ...component,
+      latestVersion: cached?.latest?.[component.id] || null,
+      errorMessage,
+      status: errorMessage ? 'error' : cached?.latest?.[component.id] ? (versionKey(cached.latest[component.id]) === versionKey(component.localVersion) ? 'current' : 'available') : 'unchecked',
+    };
+  });
   return { checkedAt: cached?.checkedAt || null, lastProjectUpdateAt: localUpdateSnapshot.lastProjectUpdateAt, components };
 }
 
@@ -368,16 +419,18 @@ async function checkUpdates() {
     codex: 'openai/codex',
     challenger: 'router-for-me/CLIProxyAPI',
   };
-  const latest = {};
+  const previous = readJson(updatesPath, { latest: {} });
+  const latest = { ...(previous?.latest || {}) };
   const errors = {};
-  for (const [id, repository] of Object.entries(repositories)) {
-    try {
-      const release = await fetchJson(`https://api.github.com/repos/${repository}/releases/latest`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'claude-cli-local-dashboard' } });
-      latest[id] = String(release.tag_name || release.name || '').trim() || null;
-    } catch (error) {
-      errors[id] = error instanceof Error ? error.message : String(error);
-    }
-  }
+  const entries = Object.entries(repositories);
+  const settled = await Promise.allSettled(entries.map(([, repository]) =>
+    fetchJson(`https://api.github.com/repos/${repository}/releases/latest`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'claude-cli-local-dashboard' } })
+  ));
+  settled.forEach((result, index) => {
+    const id = entries[index][0];
+    if (result.status === 'fulfilled') latest[id] = String(result.value.tag_name || result.value.name || '').trim() || null;
+    else errors[id] = result.reason instanceof Error ? result.reason.message : String(result.reason);
+  });
   writeJson(updatesPath, { schemaVersion: 1, checkedAt: new Date().toISOString(), latest, errors });
   return localUpdateState();
 }
@@ -614,23 +667,45 @@ async function refreshUsage(accountId) {
 }
 
 function spawnTerminal(action, ...values) {
-  if (!fs.existsSync(helperScript)) throw new Error('Thiếu công cụ mở terminal của dashboard.');
+  if (!fs.existsSync(helperScript) || !fs.existsSync(dispatcherScript)) throw new Error('Thiếu công cụ mở terminal của dashboard.');
   const candidates = [
     path.join(process.env.ProgramFiles || 'C:\\Program Files', 'PowerShell', '7', 'pwsh.exe'),
     path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
   ];
   const powershell = candidates.find((candidate) => fs.existsSync(candidate));
   if (!powershell) throw new Error('Máy này thiếu PowerShell để mở terminal Claude.');
-  const args = ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helperScript, '-Action', action, '-Root', projectRoot];
+  const statusPath = path.join(actionsRoot, `${crypto.randomUUID()}.json`);
+  const args = ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', dispatcherScript, '-Action', action, '-Root', projectRoot, '-StatusPath', statusPath];
   if (values[0] !== undefined) args.push('-Value', String(values[0]));
   if (values[1] !== undefined) args.push('-Extra', String(values[1]));
   if (values[2] !== undefined) args.push('-Label', String(values[2]));
-  const child = spawn(powershell, args, { cwd: projectRoot, detached: true, windowsHide: false, stdio: 'ignore', shell: false });
-  child.unref();
-  return child.pid;
+  const result = spawnSync(powershell, args, { cwd: projectRoot, windowsHide: true, encoding: 'utf8', timeout: 10_000, shell: false });
+  if (result.status !== 0) throw new Error('Không thể mở terminal riêng của dự án.');
+  let launched;
+  try { launched = JSON.parse(String(result.stdout || '').trim().split(/\r?\n/).filter(Boolean).at(-1)); } catch { }
+  if (!Number.isInteger(launched?.pid) || launched.pid <= 0) throw new Error('Terminal mới không trả về PID hợp lệ.');
+  return { pid: launched.pid, statusPath };
 }
 
-function launchRoute(route, options = {}) {
+async function waitForActionStatus(launch, expected, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const status = readJson(launch.statusPath, {});
+    if (status?.status === 'failed') throw new Error('Terminal dự án đã báo lỗi trước khi khởi động xong.');
+    if (expected.includes(status?.status)) {
+      await new Promise((resolve) => setTimeout(resolve, 650));
+      const stable = readJson(launch.statusPath, {});
+      if (stable?.status === 'failed' || !processRunning(launch.pid)) throw new Error('Terminal dự án đã đóng ngay sau tín hiệu khởi động.');
+      setTimeout(() => { try { fs.unlinkSync(launch.statusPath); } catch { } }, 30_000).unref();
+      return stable;
+    }
+    if (!processRunning(launch.pid)) throw new Error('Terminal dự án đã đóng trước khi khởi động xong.');
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  throw new Error('Terminal dự án chưa xác nhận khởi động trong thời gian cho phép.');
+}
+
+async function launchRoute(route, options = {}) {
   const resumeId = safeSessionId(options.resumeId);
   let record;
   if (resumeId) {
@@ -650,13 +725,14 @@ function launchRoute(route, options = {}) {
       migrated: false,
     };
   }
+  const launch = spawnTerminal(resumeId ? 'launch-resume' : 'launch-new', route.id, record.id, record.name);
+  await waitForActionStatus(launch, ['claude_starting'], 70_000);
   saveSessionRecord(record);
-  const pid = spawnTerminal(resumeId ? 'launch-resume' : 'launch-new', route.id, record.id, record.name);
   const records = readJson(terminalsPath, []);
   const next = Array.isArray(records) ? records.slice(-39) : [];
-  next.push({ pid, sessionId: record.id, sessionName: record.name, routeId: route.id, routeName: route.name, model: route.model, startedAt: new Date().toISOString(), running: true });
+  next.push({ pid: launch.pid, sessionId: record.id, sessionName: record.name, routeId: route.id, routeName: route.name, model: route.model, startedAt: new Date().toISOString(), running: true });
   writeJson(terminalsPath, next);
-  return { pid, session: record };
+  return { pid: launch.pid, session: record };
 }
 
 function securityHeaders(response) {
@@ -723,7 +799,7 @@ async function handle(request, response) {
       if (!route) return json(response, 400, { error: 'Route không hợp lệ hoặc đã bị xóa.' });
       const name = body.name === undefined ? '' : safeSessionName(body.name);
       if (body.name && !name) return json(response, 400, { error: 'Tên session phải từ 1 đến 80 ký tự và không được xuống dòng.' });
-      return json(response, 200, { ok: true, ...launchRoute(route, { name }) });
+      return json(response, 200, { ok: true, ...await launchRoute(route, { name }) });
     }
     if (url.pathname === '/api/sessions/resume') {
       const sessionId = safeSessionId(body.sessionId);
@@ -732,11 +808,11 @@ async function handle(request, response) {
       if (!session) return json(response, 404, { error: 'Session Claude không còn trong chỉ mục cục bộ.' });
       const route = readRoutes().find((item) => item.id === (body.routeId || session.routeId));
       if (!route) return json(response, 400, { error: 'Route cũ không còn dùng được; hãy chọn một route hiện có để mở lại session.' });
-      return json(response, 200, { ok: true, ...launchRoute(route, { resumeId: sessionId }) });
+      return json(response, 200, { ok: true, ...await launchRoute(route, { resumeId: sessionId }) });
     }
     if (url.pathname === '/api/accounts/codex') {
       if (!['free', 'plus'].includes(body.plan)) return json(response, 400, { error: 'Gói Codex không hợp lệ.' });
-      spawnTerminal('codex', body.plan === 'plus' ? 'codex_plus' : 'codex_free');
+      await waitForActionStatus(spawnTerminal('codex', body.plan === 'plus' ? 'codex_plus' : 'codex_free'), ['terminal_ready'], 12_000);
       return json(response, 200, { ok: true });
     }
     if (url.pathname === '/api/accounts/codex/resume') {
@@ -746,7 +822,7 @@ async function handle(request, response) {
       const pending = readJson(path.join(home, 'pending-account.json'), {});
       const label = safeCodexLabel(pending?.label) || body.resumeKey;
       const plan = pending?.expectedPlan === 'codex_plus' || /plus|pro/i.test(label) ? 'codex_plus' : 'codex_free';
-      spawnTerminal('codex-resume', plan, label);
+      await waitForActionStatus(spawnTerminal('codex-resume', plan, label), ['terminal_ready'], 12_000);
       return json(response, 200, { ok: true });
     }
     if (url.pathname === '/api/accounts/google') {
@@ -754,7 +830,7 @@ async function handle(request, response) {
       if (!googleSlotNumber(slot)) return json(response, 400, { error: 'Slot Google không hợp lệ.' });
       const loginHint = safeGoogleLoginHint(body.loginHint);
       if (loginHint === null) return json(response, 400, { error: 'Email Google không hợp lệ.' });
-      spawnTerminal('google', slot, loginHint);
+      await waitForActionStatus(spawnTerminal('google', slot, loginHint), ['terminal_ready'], 12_000);
       return json(response, 200, { ok: true, slot });
     }
     if (url.pathname === '/api/settings/open') {
@@ -855,3 +931,10 @@ function shutdown() {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+process.on('uncaughtException', (error) => {
+  process.stderr.write(`Dashboard uncaught error: ${error instanceof Error ? error.message : 'unknown'}\n`);
+  shutdown();
+});
+process.on('unhandledRejection', (error) => {
+  process.stderr.write(`Dashboard rejected operation: ${error instanceof Error ? error.message : 'unknown'}\n`);
+});

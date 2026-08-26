@@ -59,7 +59,7 @@ function Gauge({ window }: { window: UsageWindow }) {
   );
 }
 
-function AccountCard({ account, busy, onRefresh, onResume, onOpenQuota }: { account: Account; busy: boolean; onRefresh: (id: string) => void; onResume: (account: Account) => void; onOpenQuota: (account: Account) => void }) {
+function AccountCard({ account, busy, connected, onRefresh, onResume, onOpenQuota }: { account: Account; busy: boolean; connected: boolean; onRefresh: (id: string) => void; onResume: (account: Account) => void; onOpenQuota: (account: Account) => void }) {
   const statusText = account.status === 'ready' ? 'Đã sẵn sàng' : account.status === 'incomplete' ? 'Đăng nhập chưa xong' : account.status === 'disabled' ? 'Đã tắt' : 'Chưa đăng nhập';
   const windows = account.usage.groups.flatMap((group) => group.windows.map((window) => ({ group, window })));
   return (
@@ -77,7 +77,7 @@ function AccountCard({ account, busy, onRefresh, onResume, onOpenQuota }: { acco
             <span className="chip">{account.plan}</span>
           </div>
         </div>
-        <button className="icon-button" disabled={busy || account.status !== 'ready' || account.kind === 'api'} onClick={() => onRefresh(account.id)} title="Làm mới hạn mức">
+        <button className="icon-button" disabled={!connected || busy || account.status !== 'ready' || account.kind === 'api'} onClick={() => onRefresh(account.id)} title="Làm mới hạn mức">
           <span className={busy ? 'spin' : ''}>↻</span>
         </button>
       </div>
@@ -87,12 +87,12 @@ function AccountCard({ account, busy, onRefresh, onResume, onOpenQuota }: { acco
       </div>
 
       {(account.status === 'incomplete' || account.status === 'not_signed_in') && account.kind !== 'api' && (
-        <button className="wide-button resume-button" disabled={busy} onClick={() => onResume(account)}>
+        <button className="wide-button resume-button" disabled={!connected || busy} onClick={() => onResume(account)}>
           {account.kind === 'codex' ? 'Hoàn tất nhập tài khoản' : 'Tiếp tục đăng nhập Google'}
         </button>
       )}
       {account.kind === 'api' && account.quotaPageAvailable && (
-        <button className="wide-button resume-button" disabled={busy} onClick={() => onOpenQuota(account)}>Mở trang quota của provider</button>
+        <button className="wide-button resume-button" disabled={!connected || busy} onClick={() => onOpenQuota(account)}>Mở trang quota của provider</button>
       )}
 
       <div className="usage-panel">
@@ -141,20 +141,37 @@ function AccountCard({ account, busy, onRefresh, onResume, onOpenQuota }: { acco
 function App() {
   const [state, setState] = useState<DashboardState>(EMPTY);
   const [selectedRoute, setSelectedRoute] = useState('');
+  const [resumeRoutes, setResumeRoutes] = useState<Record<string, string>>({});
   const [sessionName, setSessionName] = useState('');
   const [googleLoginHint, setGoogleLoginHint] = useState('');
   const [loading, setLoading] = useState(true);
+  const [dashboardConnected, setDashboardConnected] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   const reload = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const next = await api<DashboardState>('/api/state');
-      setState(next);
-      setSelectedRoute((current) => current && next.routes.some((route) => route.id === current) ? current : next.routes[0]?.id || '');
+      const snapshot = await api<DashboardState>('/api/state');
+      setState(snapshot);
+      setDashboardConnected(true);
+      setSelectedRoute((current) => current && snapshot.routes.some((route) => route.id === current) ? current : snapshot.routes[0]?.id || '');
+      setResumeRoutes((current) => {
+        const updated: Record<string, string> = { ...current };
+        for (const session of snapshot.sessions) {
+          const selected = updated[session.id];
+          if (!selected || !snapshot.routes.some((route) => route.id === selected)) {
+            updated[session.id] = snapshot.routes.find((route) => route.id === session.routeId)?.id || snapshot.routes[0]?.id || '';
+          }
+        }
+        for (const sessionId of Object.keys(updated)) {
+          if (!snapshot.sessions.some((session) => session.id === sessionId)) delete updated[sessionId];
+        }
+        return updated;
+      });
     } catch (error) {
-      setNotice({ tone: 'error', text: error instanceof Error ? error.message : String(error) });
+      setDashboardConnected(false);
+      if (!quiet) setNotice({ tone: 'error', text: 'Dashboard mất kết nối; đang tự kết nối lại. ' + (error instanceof Error ? error.message : String(error)) });
     } finally {
       if (!quiet) setLoading(false);
     }
@@ -171,6 +188,10 @@ function App() {
   const activeTerminals = state.terminals.filter((terminal) => terminal.running).length;
 
   async function action(path: string, body?: unknown, success?: string) {
+    if (!dashboardConnected) {
+      setNotice({ tone: 'error', text: 'Dashboard mất kết nối; đang tự kết nối lại. Vui lòng thử lại sau khi kết nối phục hồi.' });
+      return;
+    }
     const key = path + JSON.stringify(body ?? {});
     setBusy(key);
     try {
@@ -193,11 +214,13 @@ function App() {
           <div><strong>Claude CLI Control Room</strong><small>Độc lập trong claude_CLI-V · localhost</small></div>
         </div>
         <div className="service-pills">
-          <span><i className="live" /> Dashboard</span>
+          <span><i className={dashboardConnected ? 'live' : 'idle'} /> Dashboard {dashboardConnected ? 'đang kết nối' : 'mất kết nối'}</span>
           <span><i className={state.services.router === 'running' ? 'live' : 'idle'} /> Router {state.services.router === 'running' ? 'đang chạy' : 'đang nghỉ'}</span>
           <button className="quiet-button" onClick={() => void reload()} disabled={loading}>↻ Đồng bộ</button>
         </div>
       </header>
+
+      {!dashboardConnected && <div className="connection-banner" role="alert"><strong>Dashboard mất kết nối</strong><span>{loading ? 'Đang kết nối…' : 'Đang tự kết nối lại… Các nút hành động sẽ mở lại khi kết nối phục hồi.'}</span></div>}
 
       <main>
         <section className="hero">
@@ -221,14 +244,14 @@ function App() {
           <div className="launch-controls">
             <label><span>TÊN SESSION (TÙY CHỌN)</span><input value={sessionName} maxLength={80} placeholder="Ví dụ: sửa website buổi sáng" onChange={(event) => setSessionName(event.target.value)} /></label>
             <label><span>TÀI KHOẢN / MODEL</span><select value={selectedRoute} onChange={(event) => setSelectedRoute(event.target.value)} disabled={!state.routes.length}>{state.routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label>
-            <button className="primary-button" disabled={!selected || busy !== null} onClick={() => void action('/api/launch', { routeId: selected?.id, name: sessionName }, `Đã mở terminal với ${selected?.model}.`)}><span>＋</span> Mở terminal</button>
+            <button className="primary-button" disabled={!dashboardConnected || !selected || busy !== null} onClick={() => void action('/api/launch', { routeId: selected?.id, name: sessionName }, `Đã mở terminal với ${selected?.model}.`)}><span>＋</span> Mở terminal</button>
           </div>
         </section>
 
         <section className="section-block">
           <div className="section-heading">
             <div><div className="eyebrow">TÀI KHOẢN & HẠN MỨC</div><h2>Tình trạng hiện tại</h2></div>
-            <button className="quiet-button" disabled={busy !== null || !readyAccounts} onClick={() => void action('/api/usage/refresh-all', {}, 'Đã làm mới các hạn mức có thể đọc.')}>↻ Làm mới tất cả</button>
+            <button className="quiet-button" disabled={!dashboardConnected || busy !== null || !readyAccounts} onClick={() => void action('/api/usage/refresh-all', {}, 'Đã làm mới các hạn mức có thể đọc.')}>↻ Làm mới tất cả</button>
           </div>
           <p className="section-note">Dashboard tự đọc lại mỗi 5 phút. Quota 5 giờ/tuần tự reset theo nhà cung cấp; bucket tín dụng tháng được hiển thị riêng và không bị gọi là quota tuần.</p>
           <div className="account-grid">
@@ -236,6 +259,7 @@ function App() {
               key={account.id}
               account={account}
               busy={busy !== null}
+              connected={dashboardConnected}
               onRefresh={(accountId) => void action('/api/usage/refresh', { accountId }, `Đã làm mới ${account.label}.`)}
               onResume={(target) => void (target.kind === 'codex'
                 ? action('/api/accounts/codex/resume', { resumeKey: target.resumeKey }, `Đã mở cửa sổ hoàn tất ${target.label}.`)
@@ -248,16 +272,16 @@ function App() {
         <section className="management-grid">
           <article className="manage-card">
             <div className="manage-head"><span className="badge openai">O</span><div><h3>Thêm tài khoản Codex</h3><p>Đăng nhập chính thức bằng trình duyệt và 2FA.</p></div></div>
-            <div className="button-row"><button onClick={() => void action('/api/accounts/codex', { plan: 'free' }, 'Đã mở cửa sổ đăng nhập Codex Free.')}>＋ Codex Free</button><button onClick={() => void action('/api/accounts/codex', { plan: 'plus' }, 'Đã mở cửa sổ đăng nhập Codex Plus.')}>＋ Codex Plus</button></div>
+            <div className="button-row"><button disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/codex', { plan: 'free' }, 'Đã mở cửa sổ đăng nhập Codex Free.')}>＋ Codex Free</button><button disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/codex', { plan: 'plus' }, 'Đã mở cửa sổ đăng nhập Codex Plus.')}>＋ Codex Plus</button></div>
           </article>
           <article className="manage-card">
             <div className="manage-head"><span className="badge google">G</span><div><h3>Thêm Google AI Pro</h3><p>Nhập email để trang Google ưu tiên đúng tài khoản; mật khẩu và 2FA chỉ nhập trên Google.</p></div></div>
             <input value={googleLoginHint} placeholder="ten-tai-khoan@gmail.com (tùy chọn)" onChange={(event) => setGoogleLoginHint(event.target.value)} />
-            <button className="wide-button" onClick={() => void action('/api/accounts/google', { loginHint: googleLoginHint }, 'Đã mở đăng nhập cho slot Google kế tiếp.')}>＋ Thêm tài khoản Google</button>
+            <button className="wide-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/google', { loginHint: googleLoginHint }, 'Đã mở đăng nhập cho slot Google kế tiếp.')}>＋ Thêm tài khoản Google</button>
           </article>
           <article className="manage-card compact">
             <div className="manage-head"><span className="badge api">{`{}`}</span><div><h3>API endpoint</h3><p>Key chỉ nằm trong setting.json bị Git bỏ qua.</p></div></div>
-            <button className="wide-button" onClick={() => void action('/api/settings/open', {}, 'Đã mở setting.json.')}>Mở setting.json</button>
+            <button className="wide-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/settings/open', {}, 'Đã mở setting.json.')}>Mở setting.json</button>
           </article>
         </section>
 
@@ -266,16 +290,16 @@ function App() {
           <p className="section-note">Nội dung session nằm trong <code>.runtime/claude-home</code> và không được đưa lên Git. Các session cũ đã được sao chép vào đây mà không xóa bản gốc.</p>
           <div className="terminal-table">
             {state.sessions.length === 0 ? <div className="table-empty">Chưa có session Claude nào trong dự án.</div> : state.sessions.slice(0, 20).map((session) => (
-              <div className="terminal-row session-row" key={session.id}><span className="terminal-state ended" /><strong>{session.name}</strong><span>{session.model || session.routeName}</span><span>{session.migrated ? 'Đã nhập từ cấu hình cũ' : 'Session mới'}</span><time>{new Date(session.lastOpenedAt).toLocaleString('vi-VN')}</time><button disabled={busy !== null} onClick={() => void action('/api/sessions/resume', { sessionId: session.id, routeId: session.routeId }, `Đã mở lại ${session.name}.`)}>Mở lại</button></div>
+              <div className="terminal-row session-row" key={session.id}><span className="terminal-state ended" /><strong>{session.name}</strong><span>{session.model || session.routeName}</span><span>{session.migrated ? 'Đã nhập từ cấu hình cũ' : 'Session mới'}</span><time>{new Date(session.lastOpenedAt).toLocaleString('vi-VN')}</time><label className="session-route-choice"><span>Mở lại bằng</span><select value={resumeRoutes[session.id] || ''} aria-label={`Mở lại bằng ${session.name}`} disabled={!dashboardConnected || busy !== null || !state.routes.length} onChange={(event) => setResumeRoutes((current) => ({ ...current, [session.id]: event.target.value }))}><option value="" disabled>Chọn route</option>{state.routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label><button disabled={!dashboardConnected || busy !== null || !resumeRoutes[session.id]} onClick={() => void action('/api/sessions/resume', { sessionId: session.id, routeId: resumeRoutes[session.id] }, `Đã mở lại ${session.name}.`)}>Mở lại</button></div>
             ))}
           </div>
         </section>
 
         <section className="terminal-section update-section">
-          <div className="section-heading"><div><div className="eyebrow">CẬP NHẬT CÓ KIỂM SOÁT</div><h2>Chỉ kiểm tra, không tự merge</h2></div><button className="quiet-button" disabled={busy !== null} onClick={() => void action('/api/updates/check', {}, 'Đã kiểm tra bản phát hành mới; không có gì được tự cập nhật.')}>↻ Kiểm tra cập nhật</button></div>
+          <div className="section-heading"><div><div className="eyebrow">CẬP NHẬT CÓ KIỂM SOÁT</div><h2>Chỉ kiểm tra, không tự merge</h2></div><button className="quiet-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/updates/check', {}, 'Đã kiểm tra bản phát hành mới; không có gì được tự cập nhật.')}>↻ Kiểm tra cập nhật</button></div>
           <p className="section-note">Lần cập nhật project gần nhất: {state.updates.lastProjectUpdateAt ? new Date(state.updates.lastProjectUpdateAt).toLocaleString('vi-VN') : 'chưa xác định'}. Lần kiểm tra mạng: {state.updates.checkedAt ? new Date(state.updates.checkedAt).toLocaleString('vi-VN') : 'chưa kiểm tra'}.</p>
           <div className="update-grid">
-            {state.updates.components.map((component) => <article className="update-card" key={component.id}><div><strong>{component.label}</strong><small>{component.source}</small></div><span className={`update-status ${component.status}`}>{component.status === 'available' ? 'Có bản mới' : component.status === 'current' ? 'Đang mới nhất' : 'Chưa kiểm tra'}</span><dl><div><dt>Đang dùng</dt><dd>{component.localVersion}</dd></div><div><dt>Mới nhất</dt><dd>{component.latestVersion || '—'}</dd></div><div><dt>Đã duyệt/build</dt><dd>{component.lastUpdatedAt || '—'}</dd></div></dl></article>)}
+            {state.updates.components.map((component) => <article className="update-card" key={component.id}><div><strong>{component.label}</strong><small>{component.source}</small></div><span className={`update-status ${component.status}`} title={component.errorMessage || undefined}>{component.status === 'available' ? 'Có bản mới' : component.status === 'current' ? 'Đang mới nhất' : component.status === 'error' ? 'Lỗi kiểm tra' : 'Chưa kiểm tra'}</span>{component.errorMessage && <p className="update-error-note" title={component.errorMessage}>{component.errorMessage}</p>}<dl><div><dt>Đang dùng</dt><dd>{component.localVersion}</dd></div><div><dt>Mới nhất</dt><dd>{component.latestVersion || '—'}</dd></div><div><dt>Đã duyệt/build</dt><dd>{component.lastUpdatedAt || '—'}</dd></div></dl></article>)}
           </div>
         </section>
 

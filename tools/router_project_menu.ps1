@@ -15,6 +15,7 @@ param(
     [string]$LaunchProfileId,
     [string]$ClaudeSessionId,
     [string]$ClaudeSessionName,
+    [string]$LaunchStatusPath,
     [switch]$ResumeClaudeSession,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$ClaudeArguments
@@ -854,6 +855,17 @@ function Start-Profile {
         $env:CCR_INTERNAL_USER_DATA_DIR = $CcrUserDataPath
         $env:DISABLE_AUTOUPDATER = "1"
         Write-Host ("Launching Claude: {0} -> {1}" -f $Profile.name, $env:ANTHROPIC_MODEL) -ForegroundColor Green
+        if ($LaunchStatusPath) {
+            $ActionsRoot = [System.IO.Path]::GetFullPath((Join-Path $RootPath '.runtime\dashboard\actions'))
+            $Target = [System.IO.Path]::GetFullPath($LaunchStatusPath)
+            $Prefix = $ActionsRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+            if (-not $Target.StartsWith($Prefix, [System.StringComparison]::OrdinalIgnoreCase) -or [System.IO.Path]::GetExtension($Target) -ne '.json') { throw 'Invalid dashboard launch status path.' }
+            [System.IO.Directory]::CreateDirectory($ActionsRoot) | Out-Null
+            $Temporary = "$Target.$PID.tmp"
+            $Payload = [ordered]@{ schemaVersion = 1; status = 'claude_starting'; pid = $PID; observedAt = [DateTime]::UtcNow.ToString('o') }
+            [System.IO.File]::WriteAllText($Temporary, ($Payload | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+            Move-Item -LiteralPath $Temporary -Destination $Target -Force
+        }
         & $ClaudeBinary @EffectiveClaudeArguments
         $script:MenuExitCode = $LASTEXITCODE
     }

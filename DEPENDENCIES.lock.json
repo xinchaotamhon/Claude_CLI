@@ -65,7 +65,7 @@
   ],
   "external_requirements": [
     "Windows 10 or newer",
-    "PowerShell 5.1 or newer",
+    "PowerShell 7.0 or newer",
     "Git for Windows",
     "a browser and provider network access for OAuth/model use"
   ]

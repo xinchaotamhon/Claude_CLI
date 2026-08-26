@@ -51,6 +51,6 @@ mode CCR vào vùng này mà không đọc nội dung và không xóa nguồn. T
 bị ignore vì session có thể chứa mã nguồn, hội thoại và dữ liệu riêng tư.
 
 “Độc lập” nghĩa là launcher chọn executable/config/state trong project. Git,
-PowerShell, browser, chứng thư TLS và dịch vụ OpenAI/Google/Anthropic vẫn là phụ
+PowerShell 7+, browser, chứng thư TLS và dịch vụ OpenAI/Google/Anthropic vẫn là phụ
 thuộc hệ điều hành hoặc mạng và được khai báo rõ; chúng không thể được nhúng an
 toàn vào repository.

@@ -14,14 +14,23 @@ the secret in output.
 - `DASHBOARD.bat` is the single owner-facing entry. It starts the original
   local dashboard on authenticated `127.0.0.1:18320` using the project Node.
   Static assets are tracked; normal startup downloads/builds nothing.
-- `SIGN_ACCOUNT.bat` is only a compatibility alias to the dashboard.
-  `RUN_CLAUDE.bat` remains the technical rollback menu.
+- Root contains only `DASHBOARD.bat`. Technical rollback is
+  `tools/RUN_CLAUDE_TECHNICAL.bat`; do not recreate duplicate root BAT files.
 - Dashboard discovers Codex/custom API routes dynamically and exposes three
   pinned Google Pro OAuth slots. Browser actions call only reviewed project
   helpers; password and 2FA remain on provider pages.
-- Exact route ID launch opens a separate terminal. Existing terminals retain
-  their own process-local route. Same-account terminals share quota; different
-  accounts do not intentionally share credentials.
+- Exact route ID launch opens one separately acknowledged visible terminal.
+  Dashboard success requires `terminal_ready` and, for a model launch,
+  `claude_starting`. Existing terminals retain their own process-local route.
+  Same-account terminals share quota; different accounts do not intentionally
+  share credentials.
+- A mutex-guarded supervisor restarts the localhost Node server while an ignored
+  persistent HttpOnly browser session lets an open page reconnect. Session rows
+  are shown only for real transcript JSONL IDs and **Mở lại bằng** can select any
+  current route against the common ignored Claude home.
+- Dashboard process orchestration explicitly requires PowerShell 7+. Do not
+  reintroduce Windows PowerShell 5.1 fallback around `ArgumentList` or
+  `Convert.ToHexString`; reconstruction documents this host prerequisite.
 - Codex Free candidates are Terra/Luna; Plus candidates are Sol/Terra/Luna.
   Current imported Free account has two proved routes: Terra and Luna. Legacy
   `gpt-5-codex` and Sol were rejected for that account.
@@ -37,12 +46,12 @@ the secret in output.
   allowlists, session affinity and no retry after output/tool side effects.
 - EasyCLIProxyAPI remains ignored inspect-only at a pinned revision because its
   tree has no license grant and unsafe global/update paths. No source was copied.
-- Pre-change owner-profile baseline: 17/17 pass
-  `20260825T164233Z-42021e6c`. Pre-change sandbox run
-  `20260826T002435Z-578682a6` passed 15/17; only the known DPAPI profile boundary
-  and a sandbox timeout/child-termination ACL failed.
-- Dashboard focused evidence is
-  `50-Evidence/2026-08-26-one-door-local-dashboard.md`.
+- Current owner-profile baseline: 19/19 pass
+  `20260826T190051Z-3f7f3930`. Kiro `claude-opus-5` has a bounded full
+  Claude CLI -> CCR -> provider smoke with exact output `OK`; this proves one
+  request, not provider identity, privacy or future availability.
+- Current dashboard focused evidence is
+  `50-Evidence/2026-08-27-dashboard-lifecycle-and-kiro-opus5.md`.
 
 ## Allowed Next Work
 
@@ -51,7 +60,8 @@ the secret in output.
 2. After one Google slot completes, refresh both quota groups, inspect only the
    normalized response and prove one explicit model/tool loop before route
    promotion.
-3. Prove parallel terminals with same and different account routes.
+3. Prove owner-visible cross-route resume, then parallel terminals with same
+   and different account routes.
 4. Improve quota refresh/reauth degradation without making quota a hard launch
    dependency.
 5. Add automatic fallback only as a separately approved, bounded and
@@ -67,5 +77,5 @@ the secret in output.
 - No hidden account rotation or claim that multiple accounts increase an
   account's allowed quota.
 - No automatic merge/update of CCR, CLIProxyAPI or closed Claude binaries.
-- Rollback means stop dashboard and use `RUN_CLAUDE.bat`; never delete account
-  state merely to roll back the UI.
+- Rollback means stop dashboard and use `tools/RUN_CLAUDE_TECHNICAL.bat`; never
+  delete account state merely to roll back the UI.

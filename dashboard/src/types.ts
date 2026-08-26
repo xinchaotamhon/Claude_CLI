@@ -75,7 +75,8 @@ export type UpdateComponent = {
   latestVersion: string | null;
   lastUpdatedAt: string | null;
   source: string;
-  status: 'unchecked' | 'current' | 'available';
+  status: 'unchecked' | 'current' | 'available' | 'error';
+  errorMessage?: string;
 };
 
 export type DashboardState = {

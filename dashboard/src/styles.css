@@ -91,3 +91,18 @@ input::placeholder { color: #5f6d80; }
 @media (max-width: 760px) {
   .topbar { height: auto; min-height: 72px; padding: 12px 20px; }.brand small, .service-pills > span { display: none; } main { width: calc(100% - 32px); }.hero h1 { font-size: 36px; }.summary-grid { grid-template-columns: 1fr; }.summary-grid div { min-height: 85px; border-right: 0; border-bottom: 1px solid var(--line); }.launch-controls, .account-grid, .management-grid, .update-grid { grid-template-columns: 1fr; }.manage-card.compact { grid-column: auto; }.account-foot, .app-footer { flex-direction: column; align-items: flex-start; }.app-footer { padding: 16px 20px; }.terminal-row { grid-template-columns: 12px 1fr; padding: 12px 14px; gap: 8px; }.terminal-row > span:not(.terminal-state), .terminal-row time, .terminal-row em { display: none; }
 }
+
+.connection-banner { width: min(1440px, calc(100% - clamp(32px, 8vw, 128px))); margin: 14px auto -14px; padding: 11px 15px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(239, 195, 92, .55); border-radius: 10px; background: rgba(66, 52, 18, .48); color: #f3d98a; font-size: 12px; }
+.connection-banner strong { color: #ffe4a2; }.connection-banner span { color: #cdbb83; }
+.session-row { grid-template-columns: 12px 1.35fr .85fr .8fr 1.1fr .92fr .55fr; gap: 12px; }
+.session-route-choice { min-width: 0; display: flex; align-items: center; gap: 6px; color: #718095; font-size: 9px; }.session-route-choice span { white-space: nowrap; }.session-route-choice select { height: 30px; min-width: 0; padding: 0 25px 0 8px; font-size: 9px; }
+.update-status.error { color: var(--danger); background: rgba(255, 111, 118, .1); }.update-error-note { margin: -6px 0 12px; color: #ffacb0; font-size: 9px; line-height: 1.4; overflow-wrap: anywhere; }
+.button-row button:disabled, .wide-button:disabled { opacity: .42; cursor: default; }.session-route-choice select:disabled { opacity: .55; cursor: default; }
+
+@media (max-width: 1050px) {
+  .session-row { grid-template-columns: 12px 1.6fr 1fr .6fr; }.session-route-choice { grid-column: 2 / -1; }
+}
+
+@media (max-width: 760px) {
+  .connection-banner { width: calc(100% - 32px); margin-top: 10px; flex-direction: column; align-items: flex-start; gap: 3px; }.session-route-choice { grid-column: 2; }
+}

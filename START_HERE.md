@@ -146,12 +146,19 @@ its own account chooser and owns password/2FA. The project never stores that
 email as a credential.
 
 After a route is selected and **Mở terminal** is pressed, the launcher starts
-that exact route in a new terminal. Existing terminals keep their process-local
+that exact route in one new visible terminal. The dashboard does not report
+success until the local terminal has acknowledged startup and the router wrapper
+has reached Claude itself. Failed starts are not shown as resumable sessions.
+Existing terminals keep their process-local
 route; multiple terminals may share one account or use different accounts.
 Every dashboard launch receives a UUID and optional friendly name. Use
-**Mở lại công việc cũ** to resume it; Claude transcript files remain only under
+**Mở lại bằng** under **Mở lại công việc cũ** to resume it through any currently
+enabled route; Claude transcript files remain only under
 ignored `.runtime/claude-home`. Legacy mode sessions are copied there once,
 without reading content or deleting the original files.
+The dashboard server is supervised locally and reuses an ignored persistent
+browser-session token, so an already-open localhost page reconnects after a
+bounded server restart instead of remaining a dead-looking page.
 The launcher may warm the router in a hidden
 project-local process. Before the profile's DPAPI client key is read, route
 selection still verifies that router state belongs to the exact local Node/CCR
@@ -230,7 +237,7 @@ never downloads or updates it.
 account state and temporary files are selected from this project only. Browser
 login and model use still require the corresponding provider's network service;
 the folder cannot make OpenAI/Google/other providers offline or self-hosted.
-Git for Windows, PowerShell and a browser are explicit host dependencies. A
+Git for Windows, PowerShell 7+ and a browser are explicit host dependencies. A
 fresh clone is reconstructed from `DEPENDENCIES.lock.json` and
 `docs/RECONSTRUCT_ON_NEW_MACHINE.md`; OAuth/API secrets and sessions are not
 silently published as a portability shortcut.

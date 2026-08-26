@@ -371,6 +371,23 @@
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 20
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_dashboard_action_lifecycle.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Dashboard button actions acknowledge real launcher startup, suppress phantom sessions, survive bounded server restarts and resume through a selected route",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.dashboard-action-lifecycle",
+      "introduced_by": "owner-observed-dead-dashboard-and-phantom-sessions",
+      "invariant": "A visible dashboard cannot claim an account/model terminal opened before its project-local helper acknowledges startup; only sessions with local transcripts are listed, the authenticated loopback browser session survives a supervised server restart, updates settle independently, and resume may use any currently allowlisted route",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 20
     }
   ],
   "project": "Claude CLI Local",

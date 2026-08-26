@@ -29,13 +29,23 @@ status: active
   authenticated loopback RPC, preserving account providers. The former
   command-line launcher is retained only as
   `tools\RUN_CLAUDE_TECHNICAL.bat` for bounded rollback/diagnostics.
-- Dashboard terminal dispatch is now direct Node -> PowerShell -> Claude; the
-  intermediate CMD/batch launcher was removed to eliminate the extra blank
-  console observed on the first launch.
+- Dashboard terminal dispatch now uses a hidden, bounded dispatcher to create
+  exactly one visible PowerShell terminal. The browser receives success only
+  after that terminal writes a project-local lifecycle acknowledgement; model
+  launches wait for the router wrapper's later `claude_starting` signal.
+- A mutex-guarded project-local supervisor restarts only `dashboard/server.mjs`
+  after an unexpected exit. The ignored browser bootstrap token persists in
+  `.runtime/dashboard/dashboard-session.json` for at most 30 days, so an
+  already-open page can reconnect after a bounded restart without reopening
+  `DASHBOARD.bat`. PowerShell 7+ is an explicit host prerequisite for the safe
+  argument-list dispatcher and supervisor.
 - Dashboard launches now use a common ignored `.runtime/claude-home`, UUID and
   optional friendly name. The ignored session index supports **Mở lại** via
   Claude's `--resume`; legacy per-route JSONL files are copied once without
-  reading transcript content, overwriting or deleting the source.
+  reading transcript content, overwriting or deleting the source. Dashboard
+  lists only IDs with a real JSONL transcript and allows **Mở lại bằng** any
+  currently enabled route; failed starts no longer create visible phantom
+  sessions.
 - Codex login is two-phase when CCR is already serving Claude: official browser
   auth is saved to its project-local account home, while CCR provider/config
   mutation stays pending until active sessions close. Dashboard recovery then
@@ -51,15 +61,23 @@ status: active
   `tools/audit_reconstruction.ps1` define fresh-machine reconstruction. Runtime,
   auth, DPAPI, keys and sessions remain intentionally outside Git.
 - Owner-supplied Kiro Pix4K test access is configured only in ignored
-  `setting.json`. Authenticated catalog discovery returned HTTP 200 and exact
-  model `claude-opus-4.7`. A non-sensitive completion probe first received a
-  transient HTTP 429 and one bounded retry was accepted with 2xx. `/quota` is
+  `setting.json`. Authenticated catalog discovery returned HTTP 200 and includes
+  both `claude-opus-4.7` and `claude-opus-5`. A direct non-sensitive completion
+  probe first received a transient HTTP 429 and one bounded retry was accepted
+  with 2xx; a full Claude CLI -> CCR -> Kiro `claude-opus-5` smoke then returned
+  exact text `OK` with exit 0. `/quota` is
   an HTML provider page while `/quotaBase` is not an API endpoint. Dashboard
   can open that same-host HTTPS quota page without placing the key in its URL.
-- All 18 enabled smoke gates passed on the integrated dashboard/session/account,
-  Google patch, reconstruction and Kiro schema changes in
-  `20260826T173407Z-7144aa82`. The run used the owner Windows profile only so
-  the DPAPI self-test could execute; no provider/model request was made.
+- All 19 enabled smoke gates passed under the owner Windows profile in
+  `20260826T190051Z-3f7f3930`, including the new acknowledged-action,
+  transcript-backed-session, supervised-restart, selectable-resume-route and
+  concurrent-update gate. The gate run itself made no provider/model request.
+- Live lifecycle evidence observed a Codex Free account terminal acknowledge in
+  about 3.0 seconds with an exact verified helper PID; the test terminal was
+  then closed. Killing the exact verified dashboard Node process caused the
+  supervisor to restore service with a new PID in about 1.7 seconds, and the
+  pre-existing browser cookie still authorized `/api/state`. Concurrent release
+  checking completed all four components in about 0.95 seconds.
 - Dashboard ready state now records the exact `server.mjs` SHA-256. On the next
   `DASHBOARD.bat` click after a reviewed source update, startup stops/replaces
   only the independently verified outdated dashboard Node process; router and

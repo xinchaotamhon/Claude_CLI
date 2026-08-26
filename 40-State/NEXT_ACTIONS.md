@@ -20,9 +20,10 @@ status: active
 4. **Promote Google routes incrementally.** A completed OAuth slot is not yet a
    Claude route. Prove one explicit account/model request and full tool loop,
    then add only that route to the selector. Keep automatic fallback off.
-5. **Prove direct and resumable terminals.** Open one named session and verify
-   exactly one console appears, close it, then use **Mở lại** and confirm prior
-   Claude context is offered. After a second account exists, open two
+5. **Finish owner-visible resume proof.** Dispatcher/PID acknowledgement,
+   transcript filtering and a full Kiro Opus 5 Claude request are proved. Open
+   one named interactive session, close it, then choose another route under
+   **Mở lại bằng** and confirm prior Claude context is offered. After a second account exists, open two
    dashboard terminals with different routes, then two with the same route.
    Expected: each terminal keeps its selected model; same-account terminals
    share provider quota; neither changes Codex App/global state.
@@ -44,7 +45,9 @@ status: active
     path and keep keys out of Git/docs/browser state.
 11. **Keep CCR as rollback champion.** Do not delete its ignored runtime/auth
     state. If dashboard fails, use `tools\RUN_CLAUDE_TECHNICAL.bat`.
-12. **Review updates conservatively.** Diff CCR/CLIProxyAPI source before merge;
+12. **Review updates conservatively.** The four release checks now run
+    independently and concurrently; a failed repository is marked as an error
+    without hiding the others. Diff CCR/CLIProxyAPI source before merge;
     compare release notes/version/hash for the closed Claude binary. Never
     auto-download or auto-merge during dashboard startup. Dashboard update
     cards are advisory metadata, not approval.
