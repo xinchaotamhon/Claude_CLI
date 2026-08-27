@@ -422,6 +422,23 @@
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "{python}",
+        "tools/verify_dashboard_account_management.py",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Dashboard discovers Google models dynamically and removes exact accounts/providers into recoverable local trash",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.dashboard-account-management",
+      "introduced_by": "owner-requested-dynamic-google-and-self-service-removal",
+      "invariant": "Transient Antigravity model IDs are never hard-coded; account removal requires exact confirmation, refuses active routes and moves only the selected project-local account/provider state into ignored recoverable trash",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
     }
   ],
   "project": "Claude CLI Local",

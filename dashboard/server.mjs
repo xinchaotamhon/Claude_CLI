@@ -14,6 +14,8 @@ const projectRoot = path.resolve(dashboardRoot, '..');
 const staticRoot = path.join(dashboardRoot, 'static');
 const runtimeRoot = path.join(projectRoot, '.runtime', 'dashboard');
 const usageRoot = path.join(runtimeRoot, 'usage');
+const googleCatalogRoot = path.join(runtimeRoot, 'google-models');
+const accountTrashRoot = path.join(projectRoot, '.runtime', 'account-trash');
 const actionsRoot = path.join(runtimeRoot, 'actions');
 const readyPath = path.join(runtimeRoot, 'ready.json');
 const dashboardSessionPath = path.join(runtimeRoot, 'dashboard-session.json');
@@ -30,6 +32,8 @@ const codexAccountsRoot = path.join(projectRoot, 'provider_router', '.ccr-local'
 const codexBinary = path.join(projectRoot, 'provider_router', 'codex-login-runtime', 'codex.exe');
 const googleAccountsRoot = path.join(projectRoot, '.runtime', 'challenger', 'accounts', 'google');
 const settingPath = path.join(projectRoot, 'setting.json');
+const removedAccountsPath = path.join(projectRoot, 'provider_router', '.ccr-local', 'removed-accounts.json');
+const appliedSettingHashPath = path.join(projectRoot, 'provider_router', '.ccr-local', 'setting.applied.sha256');
 const helperScript = path.join(projectRoot, 'tools', 'dashboard_terminal.ps1');
 const dispatcherScript = path.join(projectRoot, 'tools', 'dashboard_spawn_terminal.ps1');
 const instanceId = crypto.randomBytes(24).toString('base64url');
@@ -37,6 +41,8 @@ const activeActions = new Set();
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
 fs.mkdirSync(usageRoot, { recursive: true });
+fs.mkdirSync(googleCatalogRoot, { recursive: true });
+fs.mkdirSync(accountTrashRoot, { recursive: true });
 fs.mkdirSync(actionsRoot, { recursive: true });
 fs.mkdirSync(sessionsRoot, { recursive: true });
 fs.mkdirSync(sessionTrashRoot, { recursive: true });
@@ -94,6 +100,22 @@ function safeId(value) {
 
 function usagePath(accountId) {
   return path.join(usageRoot, `${safeId(accountId)}.json`);
+}
+
+function googleCatalogPath(accountId) {
+  return path.join(googleCatalogRoot, `${safeId(accountId)}.json`);
+}
+
+function cachedGoogleModels(accountId) {
+  const value = readJson(googleCatalogPath(accountId), {});
+  return Array.isArray(value?.models)
+    ? value.models.map((model) => typeof model?.displayName === 'string' && model.displayName.trim() ? model.displayName.trim() : String(model?.id || '')).filter(Boolean)
+    : [];
+}
+
+function cachedGoogleCatalog(accountId) {
+  const value = readJson(googleCatalogPath(accountId), {});
+  return Array.isArray(value?.models) ? value.models : [];
 }
 
 function emptyUsage(message = '') {
@@ -225,7 +247,7 @@ function buildAccounts(routes) {
       { id: 'gemini_models', label: 'Gemini', status: 'unknown', windows: [] },
       { id: 'claude_gpt_models', label: 'Claude / GPT', status: 'unknown', windows: [] },
     ];
-    accounts.push({ id, kind: 'google', label: `Google AI Pro ${index}`, plan: 'Google AI Pro', status: state.status, models: [], routes: [], usage: cachedUsage(id, fallback) });
+    accounts.push({ id, kind: 'google', label: `Google AI Pro ${index}`, plan: 'Google AI Pro', status: state.status, models: cachedGoogleModels(id), routes: [], usage: cachedUsage(id, fallback) });
   }
 
   const setting = readJson(settingPath, { providers: [] });
@@ -427,6 +449,104 @@ function clearClosedTerminalHistory() {
   }
   writeJson(terminalsPath, retained);
   return { removed, retained: retained.length };
+}
+
+function activeRouteIds() {
+  return new Set(readTerminals().filter((terminal) => terminal.running).map((terminal) => terminal.routeId));
+}
+
+function accountTrashDirectory(kind, id) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const target = path.join(accountTrashRoot, `${stamp}-${kind}-${safeId(id).slice(0, 12)}`);
+  fs.mkdirSync(target, { recursive: false, mode: 0o700 });
+  return target;
+}
+
+function assertAccountIdle(account) {
+  const active = activeRouteIds();
+  const used = account.routes.filter((routeId) => active.has(routeId));
+  if (used.length) throw new Error('Hãy đóng terminal đang dùng tài khoản/provider này trước khi xóa.');
+  if (readTerminals().some((terminal) => terminal.running)) throw new Error('Để xóa an toàn, hãy đóng mọi terminal Claude đang chạy rồi thử lại.');
+}
+
+function syncRouterSettings() {
+  const powershell = path.join(process.env.ProgramFiles || 'C:\\Program Files', 'PowerShell', '7', 'pwsh.exe');
+  const router = path.join(projectRoot, 'tools', 'router_project_menu.ps1');
+  if (!fs.existsSync(powershell) || !fs.existsSync(router)) throw new Error('Thiếu công cụ đồng bộ router cục bộ.');
+  const result = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', router, '-Root', projectRoot, '-SyncSettings'], { cwd: projectRoot, encoding: 'utf8', windowsHide: true, timeout: 45_000, shell: false });
+  if (result.status !== 0) throw new Error('Router không xác nhận việc gỡ provider; dữ liệu nguồn chưa bị xóa.');
+}
+
+function moveGoogleAccountToTrash(account) {
+  const slot = account.id.slice('google:'.length);
+  if (!googleSlotNumber(slot)) throw new Error('Slot Google không hợp lệ.');
+  const state = googleSlotState(slot);
+  if (!fs.existsSync(state.slotRoot)) throw new Error('Slot Google không còn tồn tại.');
+  assertAccountIdle(account);
+  const trash = accountTrashDirectory('google', slot);
+  fs.renameSync(state.slotRoot, path.join(trash, slot));
+  for (const cache of [usagePath(account.id), googleCatalogPath(account.id)]) {
+    if (fs.existsSync(cache)) fs.renameSync(cache, path.join(trash, path.basename(cache)));
+  }
+  writeJson(path.join(trash, 'manifest.json'), { schemaVersion: 1, kind: 'google', accountId: account.id, label: account.label, removedAt: new Date().toISOString(), recoverable: true });
+  return { trash: path.relative(projectRoot, trash).replaceAll('\\', '/') };
+}
+
+function moveApiProviderToTrash(account) {
+  if (!account.providerKey) throw new Error('Provider API không có ID ổn định.');
+  assertAccountIdle(account);
+  const setting = readJson(settingPath);
+  if (!setting || !Array.isArray(setting.providers) || !Array.isArray(setting.profiles)) throw new Error('setting.json không hợp lệ.');
+  const provider = setting.providers.find((item) => item?.id === account.providerKey);
+  if (!provider) throw new Error('Provider API không còn trong setting.json.');
+  const next = {
+    ...setting,
+    providers: setting.providers.filter((item) => item?.id !== account.providerKey),
+    profiles: setting.profiles.filter((profile) => profile?.provider !== provider.name),
+  };
+  const trash = accountTrashDirectory('api', account.providerKey);
+  writeJson(path.join(trash, 'setting.before.json'), setting);
+  writeJson(path.join(trash, 'manifest.json'), { schemaVersion: 1, kind: 'api', accountId: account.id, label: account.label, removedAt: new Date().toISOString(), recoverable: true });
+  writeJson(settingPath, next);
+  try {
+    try { fs.unlinkSync(appliedSettingHashPath); } catch { }
+    syncRouterSettings();
+  } catch (error) {
+    writeJson(settingPath, setting);
+    throw error;
+  }
+  return { trash: path.relative(projectRoot, trash).replaceAll('\\', '/') };
+}
+
+function moveCodexAccountToTrash(account) {
+  assertAccountIdle(account);
+  const pending = account.id.startsWith('codex-pending:');
+  const providerName = pending ? '' : account.label;
+  const home = pending && account.resumeKey ? path.join(codexAccountsRoot, account.resumeKey) : findCodexHome(account.label);
+  if (!home || !fs.existsSync(home)) throw new Error('Không tìm thấy thư mục đăng nhập Codex cục bộ.');
+  const profileIndex = readJson(accountProfilesPath, { schemaVersion: 1, profiles: [] });
+  const trash = accountTrashDirectory('codex', pending ? account.resumeKey : account.label);
+  writeJson(path.join(trash, 'account-profiles.before.json'), profileIndex);
+  writeJson(path.join(trash, 'manifest.json'), { schemaVersion: 1, kind: 'codex', accountId: account.id, label: account.label, removedAt: new Date().toISOString(), recoverable: true });
+  if (providerName) {
+    const removed = readJson(removedAccountsPath, { schemaVersion: 1, providers: [] });
+    const providers = Array.isArray(removed?.providers) ? removed.providers.filter((item) => item?.name !== providerName) : [];
+    providers.push({ name: providerName, removedAt: new Date().toISOString() });
+    writeJson(removedAccountsPath, { schemaVersion: 1, providers });
+    syncRouterSettings();
+  }
+  const profiles = Array.isArray(profileIndex?.profiles) ? profileIndex.profiles.filter((profile) => profile?.provider !== providerName) : [];
+  writeJson(accountProfilesPath, { schemaVersion: 1, profiles });
+  fs.renameSync(home, path.join(trash, path.basename(home)));
+  if (fs.existsSync(usagePath(account.id))) fs.renameSync(usagePath(account.id), path.join(trash, path.basename(usagePath(account.id))));
+  return { trash: path.relative(projectRoot, trash).replaceAll('\\', '/') };
+}
+
+function moveAccountToTrash(account) {
+  if (account.kind === 'google') return moveGoogleAccountToTrash(account);
+  if (account.kind === 'api') return moveApiProviderToTrash(account);
+  if (account.kind === 'codex') return moveCodexAccountToTrash(account);
+  throw new Error('Loại tài khoản không được hỗ trợ.');
 }
 
 function binaryVersion() {
@@ -678,6 +798,48 @@ function firstString(record, names) {
   return '';
 }
 
+function googleAuthContext(state) {
+  if (state.status !== 'ready' || state.authFiles.length !== 1) throw new Error('Slot Google này chưa đăng nhập hoàn chỉnh.');
+  const auth = readJson(state.authFiles[0]);
+  const nested = auth?.metadata && typeof auth.metadata === 'object' ? auth.metadata : {};
+  const accessToken = firstString(auth, ['access_token', 'accessToken']) || firstString(nested, ['access_token', 'accessToken']);
+  const project = firstString(auth, ['project_id', 'projectId']) || firstString(nested, ['project_id', 'projectId']);
+  if (!accessToken || !project) throw new Error('Phiên Google thiếu access token hoặc project ID; hãy đăng nhập lại slot này.');
+  return { accessToken, project };
+}
+
+function normalizeGoogleCatalog(payload) {
+  const hidden = new Set(['chat_20706', 'chat_23310', 'tab_flash_lite_preview', 'tab_jump_flash_lite_preview']);
+  const models = [];
+  const source = payload?.models && typeof payload.models === 'object' && !Array.isArray(payload.models) ? payload.models : {};
+  for (const [rawId, metadata] of Object.entries(source)) {
+    const id = String(rawId || '').trim();
+    if (!id || hidden.has(id) || id.length > 160 || /[\r\n]/.test(id)) continue;
+    const displayName = firstString(metadata, ['displayName', 'display_name', 'name']) || id;
+    models.push({ id, displayName: displayName.slice(0, 180) });
+  }
+  return models.sort((a, b) => a.displayName.localeCompare(b.displayName, 'vi'));
+}
+
+async function refreshGoogleCatalog(accountId, state, authContext) {
+  const headers = { Authorization: `Bearer ${authContext.accessToken}`, 'Content-Type': 'application/json', 'User-Agent': 'antigravity/hub/2.9.1 darwin/arm64' };
+  const endpoints = [
+    'https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',
+    'https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels',
+  ];
+  let lastError = null;
+  for (const url of endpoints) {
+    try {
+      const models = normalizeGoogleCatalog(await fetchJson(url, { method: 'POST', headers, body: JSON.stringify({ project: authContext.project }) }));
+      if (!models.length) throw new Error('Google không trả về model khả dụng.');
+      writeJson(googleCatalogPath(accountId), { schemaVersion: 1, accountId, observedAt: new Date().toISOString(), source: 'Google Antigravity fetchAvailableModels', models });
+      return models;
+    } catch (error) { lastError = error; }
+  }
+  writeJson(googleCatalogPath(accountId), { schemaVersion: 1, accountId, observedAt: new Date().toISOString(), source: 'Google Antigravity fetchAvailableModels', models: cachedGoogleCatalog(accountId), error: lastError instanceof Error ? lastError.message : String(lastError || 'unknown') });
+  throw lastError || new Error('Google không trả về catalog model.');
+}
+
 function classifyGoogleGroup(group) {
   const text = JSON.stringify({ name: group?.display_name ?? group?.displayName, description: group?.description, buckets: group?.buckets?.map((bucket) => ({ name: bucket?.display_name ?? bucket?.displayName, description: bucket?.description })) }).toLowerCase();
   if (text.includes('gemini')) return 'gemini_models';
@@ -712,22 +874,23 @@ function normalizeGoogleUsage(payload) {
 async function refreshGoogle(account) {
   const slot = account.id.slice('google:'.length);
   const state = googleSlotState(slot);
-  if (state.status !== 'ready' || state.authFiles.length !== 1) throw new Error('Slot Google này chưa đăng nhập hoàn chỉnh.');
-  const auth = readJson(state.authFiles[0]);
-  const nested = auth?.metadata && typeof auth.metadata === 'object' ? auth.metadata : {};
-  const accessToken = firstString(auth, ['access_token', 'accessToken']) || firstString(nested, ['access_token', 'accessToken']);
-  const project = firstString(auth, ['project_id', 'projectId']) || firstString(nested, ['project_id', 'projectId']);
-  if (!accessToken || !project) throw new Error('Phiên Google thiếu access token hoặc project ID; hãy đăng nhập lại slot này.');
-  const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'User-Agent': 'antigravity/cli/local-dashboard' };
+  const authContext = googleAuthContext(state);
+  const catalogPromise = refreshGoogleCatalog(account.id, state, authContext).catch(() => null);
+  const headers = { Authorization: `Bearer ${authContext.accessToken}`, 'Content-Type': 'application/json', 'User-Agent': 'antigravity/cli/local-dashboard' };
   const endpoints = [
     'https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary',
     'https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary',
   ];
   let lastError = null;
   for (const url of endpoints) {
-    try { return normalizeGoogleUsage(await fetchJson(url, { method: 'POST', headers, body: JSON.stringify({ project }) })); }
+    try {
+      const usage = normalizeGoogleUsage(await fetchJson(url, { method: 'POST', headers, body: JSON.stringify({ project: authContext.project }) }));
+      await catalogPromise;
+      return usage;
+    }
     catch (error) { lastError = error; }
   }
+  await catalogPromise;
   throw lastError || new Error('Google không trả về hạn mức.');
 }
 
@@ -920,6 +1083,13 @@ async function handle(request, response) {
       await waitForActionStatus(spawnTerminal('google', slot, loginHint), ['terminal_ready'], 12_000);
       return json(response, 200, { ok: true, slot });
     }
+    if (url.pathname === '/api/accounts/remove') {
+      if (typeof body.accountId !== 'string' || body.accountId.length > 180) return json(response, 400, { error: 'Tài khoản/provider không hợp lệ.' });
+      const account = buildState().accounts.find((item) => item.id === body.accountId);
+      if (!account) return json(response, 404, { error: 'Tài khoản/provider không còn tồn tại.' });
+      if (body.confirmation !== account.id) return json(response, 400, { error: 'Xác nhận xóa tài khoản/provider không hợp lệ.' });
+      return json(response, 200, { ok: true, ...moveAccountToTrash(account) });
+    }
     if (url.pathname === '/api/settings/open') {
       const notepad = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'notepad.exe');
       const child = spawn(notepad, [settingPath], { cwd: projectRoot, detached: true, windowsHide: false, stdio: 'ignore' });
@@ -955,6 +1125,29 @@ async function handle(request, response) {
       }
       return json(response, 200, { ok: true, results });
     }
+    if (url.pathname === '/api/google/models/refresh-all') {
+      const accounts = buildState().accounts.filter((account) => account.kind === 'google' && account.status === 'ready');
+      if (!accounts.length) {
+        return json(response, 400, { error: 'Chưa có tài khoản Google đã đăng nhập để đồng bộ model.' });
+      }
+      const results = [];
+      for (const account of accounts) {
+        const slot = account.id.slice('google:'.length);
+        try {
+          const state = googleSlotState(slot);
+          const models = await refreshGoogleCatalog(account.id, state, googleAuthContext(state));
+          results.push({ accountId: account.id, ok: true, count: models.length });
+        } catch (error) { results.push({ accountId: account.id, ok: false, error: error instanceof Error ? error.message : String(error) }); }
+      }
+      const succeeded = results.filter((result) => result.ok);
+      if (!succeeded.length) {
+        return json(response, 502, {
+          error: 'Google chưa trả danh sách model cho các tài khoản hiện tại. Không có model nào bị ghi cứng hoặc báo thành công giả.',
+          results,
+        });
+      }
+      return json(response, 200, { ok: true, synchronizedAccounts: succeeded.length, results });
+    }
     if (url.pathname === '/api/updates/check') {
       return json(response, 200, { ok: true, updates: await checkUpdates() });
     }
@@ -973,6 +1166,8 @@ function runSelfTest() {
   const isolated = codexChildEnvironment('D:\\project-local-account', { Path: 'safe-path', OPENAI_API_KEY: 'outside', CODEX_ACCESS_TOKEN: 'outside', CHATGPT_ACCESS_TOKEN: 'outside', AZURE_OPENAI_API_KEY: 'outside' });
   if (isolated.OPENAI_API_KEY || isolated.CODEX_ACCESS_TOKEN || isolated.CHATGPT_ACCESS_TOKEN || isolated.AZURE_OPENAI_API_KEY) throw new Error('external credential environment was inherited');
   if (isolated.Path !== 'safe-path' || isolated.CODEX_HOME !== 'D:\\project-local-account' || isolated.CODEX_SQLITE_HOME !== 'D:\\project-local-account') throw new Error('project-local Codex environment was not established');
+  const catalog = normalizeGoogleCatalog({ models: { 'future-model': { displayName: 'Future Model' }, chat_20706: { displayName: 'Internal' } } });
+  if (catalog.length !== 1 || catalog[0].id !== 'future-model' || catalog[0].displayName !== 'Future Model') throw new Error('dynamic Google model catalog normalization failed');
   process.stdout.write('PASS: dashboard Codex label, reset timestamp and child-environment self-test\n');
 }
 

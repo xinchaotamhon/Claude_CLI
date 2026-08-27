@@ -1,6 +1,6 @@
 ---
-last_verified: 2026-08-27
-verified_by: google-oauth-and-session-trash-repair
+last_verified: 2026-08-28
+verified_by: dashboard-account-control-catalog-update-review
 status: active
 ---
 
@@ -325,6 +325,36 @@ status: active
 - The root now contains only `DASHBOARD.bat`. The former SIGN alias was removed;
   technical/rollback launchers were moved under `tools/` so normal account,
   quota, route/model and terminal UX has one visible entry.
+- Dashboard account cards now expose recoverable **Xóa tài khoản** / **Xóa
+  provider** actions for Codex, Google and custom APIs. Removal is blocked while
+  a relevant Claude terminal is running, moves local state to ignored
+  `.runtime/account-trash`, and synchronizes CCR so removed Codex providers are
+  not preserved by its merge logic.
+- Google model names now come only from a per-account dynamic Antigravity
+  catalog cache. Four current slots returned HTTP 401 to the direct catalog
+  adapter; the reviewed `7.2.141-local.4` proxy loaded one slot but returned an
+  empty model list. The dashboard therefore exposes no invented model and a
+  failed sync cannot be reported as successful. An isolated `7.2.143` source
+  rebase/pilot is the next bounded repair.
+- Dashboard visual hierarchy now uses original compact semantic tokens,
+  explicit focus states and reduced-motion handling informed by Fluent UI
+  design-token patterns. No third-party UI framework or generated design code
+  was added.
+- Dashboard startup now launches one throttled hidden router warm-up and caches
+  only an exact verified dashboard PID/instance/server-hash identity. The full
+  verification still runs for every new server instance; no credential is read
+  by the warm-up starter.
+- Read-only release review found Claude `2.1.247`, CCR `3.0.22`, CLIProxyAPI
+  `7.2.143` and Codex helper `0.150.1`. No update was merged or promoted.
+  Claude is suitable for a gated binary update; CLIProxyAPI and CCR require
+  exact-tag isolated pilots; the working Codex helper remains held.
+- Automatic fallback remains off. A future bounded pilot may use one
+  owner-approved cross-provider hop before any output/tool side effect; account
+  rotation intended to bypass a provider quota is not an accepted policy.
+- All 22 enabled smoke gates passed under the owner Windows profile in final
+  run `20260827T182318Z-5de9b19c`. The preceding 21/22 run exposed only an
+  over-broad terminal-history verifier slice; narrowing it to the exact cleanup
+  function restored the intended invariant without changing runtime cleanup.
 - Dashboard account discovery is dynamic for imported Codex, pending Codex,
   Google and custom API state. Google slots are allocated on demand from 1 to
   50 with deterministic loopback callback ports. Codex Free/Plus and each
@@ -391,13 +421,11 @@ status: active
 
 ## Blockers
 
-- The Phase 2 wrappers and offline gates are ready, but real Google OAuth has
-  not been completed. The owner must choose **Thêm tài khoản Google** from
-  `DASHBOARD.bat` and complete the official
-  browser password/2FA flow. This project must never request those secrets.
-- Google accounts are not yet promoted as Claude routes. After interactive
-  login, refresh both quota groups and run one bounded account/model route proof
-  before wiring a Google route into the normal launch selector.
+- Google OAuth slots exist and quota can be read, but neither the direct
+  catalog endpoint nor project-patched CLIProxyAPI `7.2.141-local.4` currently
+  proves a launchable model. Rebase the isolation patch onto exact upstream
+  `7.2.143`, rebuild, and pass offline plus one owner-authorized live route
+  proof before exposing Google routes.
 - Owner reported that Codex App operates normally again. Its separate account
   rotation/quota workflow remains deliberately outside this project.
 
@@ -442,3 +470,4 @@ status: active
 - [CLIProxyAPI challenger decision](../60-Decisions/ADR-2026-08-25-cli-proxy-api-challenger.md)
 - [Portable session/account/update repair](../50-Evidence/2026-08-26-portable-session-account-update-repair.md)
 - [Portable session decision](../60-Decisions/ADR-2026-08-26-portable-sessions-and-deferred-account-import.md)
+- [Dashboard account/catalog/update review](../50-Evidence/2026-08-28-dashboard-account-control-catalog-and-update-review.md)

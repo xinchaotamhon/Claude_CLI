@@ -1,6 +1,6 @@
 ---
-last_verified: 2026-08-27
-verified_by: google-oauth-and-session-trash-repair
+last_verified: 2026-08-28
+verified_by: dashboard-account-control-catalog-update-review
 status: active
 ---
 
@@ -15,16 +15,14 @@ status: active
    are active, the dashboard must show a pending account; close them and click
    **Hoàn tất nhập tài khoản**. Confirm actual routes: Free must not receive Sol;
    Plus may retain Sol/Terra/Luna only after bounded checks pass.
-3. **Complete Google slots one at a time.** Enter the intended Google email as
-   an optional hint, use **Thêm tài khoản Google**, confirm the chooser displays
-   the intended account, finish official OAuth, then refresh quota. Verify the
-   `Gemini` and `Claude / GPT` groups independently before Slot 2 or 3.
-   The repaired helper must show binary `7.2.141-local.4` and callback
-   `127.0.0.1`; do not reuse credential files from the separately installed
-   Antigravity app.
-4. **Promote Google routes incrementally.** A completed OAuth slot is not yet a
-   Claude route. Prove one explicit account/model request and full tool loop,
-   then add only that route to the selector. Keep automatic fallback off.
+3. **Repair Google catalog through an isolated proxy upgrade.** Do not type the
+   screenshot model names into source. Rebase the existing loopback/offline
+   patch onto exact CLIProxyAPI `7.2.143`, rebuild locally, then prove dynamic
+   `/v1/models` discovery against one existing slot without returning auth to
+   the browser. Keep the current `7.2.141-local.4` runtime as rollback.
+4. **Promote Google routes incrementally.** Only after dynamic discovery works,
+   prove one explicit account/model request and a full tool loop, then add only
+   that route. Keep `Gemini` and `Claude / GPT` quota branches separate.
 5. **Finish owner-visible resume proof.** Dispatcher/PID acknowledgement,
    transcript filtering and a full Kiro Opus 5 Claude request are proved. Open
    one named interactive session, close it, then choose another route under
@@ -45,15 +43,20 @@ status: active
    values are optional; weekly/monthly duration is derived from provider data.
 8. **Do not call local proxy counts subscription quota.** A custom API provider
    remains `unknown` unless its own documented/verified quota adapter is added.
-9. **Do not enable automatic fallback yet.** Before promotion, prove finite
-   allowlists, session affinity, a recognized quota/rate-limit signal, bounded
-   attempts and no retry after streamed output/tool side effects.
+9. **Do not enable automatic fallback yet.** Prefer owner-approved
+   cross-provider fallback over automatic Free-account rotation. Before any
+   pilot, prove one-hop finite allowlists, session affinity, recognized
+   quota/rate-limit signals, no parallel race, and no retry after streamed
+   output/tool side effects.
 10. **Configure custom APIs only through ignored `setting.json`.** Use the
     dashboard button to open it, validate/reload through the existing route
     path and keep keys out of Git/docs/browser state.
 11. **Keep CCR as rollback champion.** Do not delete its ignored runtime/auth
     state. If dashboard fails, use `tools\RUN_CLAUDE_TECHNICAL.bat`.
-12. **Review updates conservatively.** The four release checks now run
+12. **Review updates conservatively.** The 2026-08-28 review recommends a gated
+    Claude `2.1.247` update, an isolated CLIProxyAPI `7.2.143` rebase first,
+    then an exact CCR `3.0.22` pilot. Hold Codex helper `0.149` while login and
+    usage work. The four release checks run
     independently and concurrently; a failed repository is marked as an error
     without hiding the others. Diff CCR/CLIProxyAPI source before merge;
     compare release notes/version/hash for the closed Claude binary. Never

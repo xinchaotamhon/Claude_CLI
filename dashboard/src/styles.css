@@ -14,6 +14,13 @@
   --warn: #efc35c;
   --danger: #ff6f76;
   --mono: "Cascadia Mono", "Consolas", monospace;
+  --surface: #111720;
+  --surface-raised: #171e29;
+  --surface-subtle: #0d1219;
+  --focus-ring: #7dd3fc;
+  --text-primary: #f4f7fb;
+  --text-secondary: #a6b0bf;
+  --accent: #63d7ba;
 }
 
 * { box-sizing: border-box; }
@@ -90,6 +97,57 @@ input::placeholder { color: #5f6d80; }
 }
 @media (max-width: 760px) {
   .topbar { height: auto; min-height: 72px; padding: 12px 20px; }.brand small, .service-pills > span { display: none; } main { width: calc(100% - 32px); }.hero h1 { font-size: 36px; }.summary-grid { grid-template-columns: 1fr; }.summary-grid div { min-height: 85px; border-right: 0; border-bottom: 1px solid var(--line); }.launch-controls, .account-grid, .management-grid, .update-grid { grid-template-columns: 1fr; }.manage-card.compact { grid-column: auto; }.account-foot, .app-footer { flex-direction: column; align-items: flex-start; }.app-footer { padding: 16px 20px; }.terminal-row { grid-template-columns: 12px 1fr; padding: 12px 14px; gap: 8px; }.terminal-row > span:not(.terminal-state), .terminal-row time, .terminal-row em { display: none; }
+}
+
+/* Compact control-room layer: Fluent-style semantic tokens, restrained depth,
+   visible focus, and information density suitable for many accounts. */
+body {
+  background:
+    radial-gradient(circle at 12% -8%, rgba(99, 215, 186, .09), transparent 28%),
+    radial-gradient(circle at 92% 2%, rgba(125, 211, 252, .08), transparent 25%),
+    #090d13;
+  color: var(--text-primary);
+}
+button, select, input { transition: border-color .15s ease, background-color .15s ease, color .15s ease, transform .15s ease; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline-color: var(--focus-ring); }
+.topbar { height: 64px; padding: 0 max(22px, calc((100vw - 1240px) / 2)); background: rgba(9, 13, 19, .92); border-color: #202936; }
+.brand-glyph { width: 34px; height: 34px; border-radius: 9px; }
+.brand strong { font-size: 14px; }.brand small { font-size: 10px; }
+.service-pills > span, .quiet-button { min-height: 32px; border-radius: 8px; background: var(--surface); border-color: #293445; }
+main { width: min(1240px, calc(100% - 44px)); }
+.hero { min-height: 206px; grid-template-columns: minmax(0, 1fr) 430px; gap: 42px; }
+.hero h1 { margin: 11px 0 10px; font-size: clamp(30px, 3.1vw, 43px); line-height: 1.08; }
+.hero p { max-width: 720px; line-height: 1.58; }
+.summary-grid { border-radius: 13px; background: var(--surface); box-shadow: 0 12px 34px rgba(0,0,0,.22); }
+.summary-grid div { min-height: 88px; padding: 18px; }.summary-grid strong { font-size: 27px; }.summary-grid span { margin-top: 8px; }
+.launch-deck { margin: 24px 0 42px; padding: 19px 20px; border-radius: 12px; background: linear-gradient(100deg, rgba(30, 58, 56, .58), var(--surface) 48%); box-shadow: none; }
+.section-icon { width: 40px; height: 40px; border-radius: 10px; }
+.launch-controls { max-width: 760px; }.launch-copy h2, .section-heading h2 { font-size: 17px; }
+select, input { height: 40px; border-radius: 8px; background: var(--surface-subtle); border-color: #334154; }
+.primary-button { height: 40px; border-radius: 8px; box-shadow: none; }
+.section-block { margin-bottom: 38px; }.section-heading { margin-bottom: 14px; }.section-heading h2 { margin-top: 5px; font-size: 20px; }
+.account-grid { gap: 12px; }
+.account-card.account-row { border-radius: 12px; background: var(--surface); box-shadow: none; border-color: #273243; }
+.account-head { padding: 17px 17px 9px; gap: 12px; }
+.provider-mark { width: 38px; height: 38px; border-radius: 10px; }
+.account-identity h3 { margin: 3px 0 6px; font-size: 15px; }
+.account-actions { display: flex; align-items: center; gap: 6px; }
+.danger-button { min-height: 31px; padding: 0 9px; border: 1px solid rgba(255, 111, 118, .34); border-radius: 7px; background: rgba(255, 111, 118, .06); color: #ffb0b4; font-size: 9px; cursor: pointer; white-space: nowrap; }
+.danger-button:hover:not(:disabled) { border-color: var(--danger); background: rgba(255, 111, 118, .12); }
+.danger-button:disabled { opacity: .38; cursor: default; }
+.model-list { padding: 0 17px 13px; max-height: 67px; overflow: auto; scrollbar-width: thin; }
+.usage-panel { min-height: 98px; margin: 0 10px; padding: 12px; border-radius: 9px; background: var(--surface-subtle); }
+.credit-strip { margin: 8px 16px 0; }.account-foot { padding: 11px 16px 13px; }
+.management-grid { margin-bottom: 44px; }.manage-card { border-radius: 11px; padding: 17px; background: var(--surface); border-color: #273243; }
+.wide-button.secondary { margin-top: 7px; background: transparent; }
+.terminal-section { margin-bottom: 42px; }.terminal-table { border-radius: 11px; background: var(--surface); }
+.terminal-row { min-height: 48px; padding: 0 15px; }
+.update-grid { gap: 9px; }.update-card { border-radius: 10px; padding: 14px; background: var(--surface); }
+.connection-banner { width: min(1240px, calc(100% - 44px)); }
+.toast { border-radius: 9px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }
 
 .connection-banner { width: min(1440px, calc(100% - clamp(32px, 8vw, 128px))); margin: 14px auto -14px; padding: 11px 15px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(239, 195, 92, .55); border-radius: 10px; background: rgba(66, 52, 18, .48); color: #f3d98a; font-size: 12px; }

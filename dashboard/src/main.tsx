@@ -59,11 +59,11 @@ function Gauge({ window }: { window: UsageWindow }) {
   );
 }
 
-function AccountCard({ account, busy, connected, onRefresh, onResume, onOpenQuota }: { account: Account; busy: boolean; connected: boolean; onRefresh: (id: string) => void; onResume: (account: Account) => void; onOpenQuota: (account: Account) => void }) {
+function AccountCard({ account, busy, connected, onRefresh, onResume, onOpenQuota, onDelete }: { account: Account; busy: boolean; connected: boolean; onRefresh: (id: string) => void; onResume: (account: Account) => void; onOpenQuota: (account: Account) => void; onDelete: (account: Account) => void }) {
   const statusText = account.status === 'ready' ? 'Đã sẵn sàng' : account.status === 'incomplete' ? 'Đăng nhập chưa xong' : account.status === 'disabled' ? 'Đã tắt' : 'Chưa đăng nhập';
   const windows = account.usage.groups.flatMap((group) => group.windows.map((window) => ({ group, window })));
   return (
-    <article className={`account-card ${account.kind}`}>
+    <article className={`account-card account-row ${account.kind}`}>
       <div className="account-head">
         <div className={`provider-mark ${account.kind}`} aria-hidden="true">
           {account.kind === 'codex' ? 'O' : account.kind === 'google' ? 'G' : 'API'}
@@ -77,9 +77,10 @@ function AccountCard({ account, busy, connected, onRefresh, onResume, onOpenQuot
             <span className="chip">{account.plan}</span>
           </div>
         </div>
-        <button className="icon-button" disabled={!connected || busy || account.status !== 'ready' || account.kind === 'api'} onClick={() => onRefresh(account.id)} title="Làm mới hạn mức">
-          <span className={busy ? 'spin' : ''}>↻</span>
-        </button>
+        <div className="account-actions">
+          <button className="icon-button" disabled={!connected || busy || account.status !== 'ready' || account.kind === 'api'} onClick={() => onRefresh(account.id)} title="Làm mới hạn mức và catalog model"><span className={busy ? 'spin' : ''}>↻</span></button>
+          <button className="danger-button" disabled={!connected || busy} onClick={() => onDelete(account)}>{account.kind === 'api' ? 'Xóa provider' : 'Xóa tài khoản'}</button>
+        </div>
       </div>
 
       <div className="model-list">
@@ -218,6 +219,13 @@ function App() {
     await action('/api/terminals/clear-closed', { confirmation: 'clear-closed-terminals' }, 'Đã dọn các mục terminal đã đóng.');
   }
 
+  async function deleteAccount(account: Account) {
+    const noun = account.kind === 'api' ? 'provider' : 'tài khoản';
+    const confirmed = window.confirm(`Xóa ${noun} "${account.label}" khỏi dự án?\n\nDữ liệu sẽ được chuyển vào thùng rác cục bộ để có thể khôi phục. Hãy đóng mọi terminal Claude trước khi xóa.`);
+    if (!confirmed) return;
+    await action('/api/accounts/remove', { accountId: account.id, confirmation: account.id }, `Đã chuyển ${account.label} vào thùng rác cục bộ.`);
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -277,6 +285,7 @@ function App() {
                 ? action('/api/accounts/codex/resume', { resumeKey: target.resumeKey }, `Đã mở cửa sổ hoàn tất ${target.label}.`)
                 : action('/api/accounts/google', { slot: target.id.replace('google:', '') }, `Đã mở lại đăng nhập ${target.label}.`))}
               onOpenQuota={(target) => void action('/api/providers/quota/open', { providerKey: target.providerKey }, `Đã mở trang quota của ${target.label}.`)}
+              onDelete={(target) => void deleteAccount(target)}
             />)}
           </div>
         </section>
@@ -290,6 +299,7 @@ function App() {
             <div className="manage-head"><span className="badge google">G</span><div><h3>Thêm Google AI Pro</h3><p>Nhập email để trang Google ưu tiên đúng tài khoản; mật khẩu và 2FA chỉ nhập trên Google.</p></div></div>
             <input value={googleLoginHint} placeholder="ten-tai-khoan@gmail.com (tùy chọn)" onChange={(event) => setGoogleLoginHint(event.target.value)} />
             <button className="wide-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/google', { loginHint: googleLoginHint }, 'Đã mở đăng nhập cho slot Google kế tiếp.')}>＋ Thêm tài khoản Google</button>
+            <button className="wide-button secondary" disabled={!dashboardConnected || busy !== null || !state.accounts.some((account) => account.kind === 'google' && account.status === 'ready')} onClick={() => void action('/api/google/models/refresh-all', {}, 'Đã đồng bộ model Google từ catalog hiện tại.')}>↻ Đồng bộ model Google</button>
           </article>
           <article className="manage-card compact">
             <div className="manage-head"><span className="badge api">{`{}`}</span><div><h3>API endpoint</h3><p>Key chỉ nằm trong setting.json bị Git bỏ qua.</p></div></div>

@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MENU = ROOT / "tools" / "router_project_menu.ps1"
+STARTER = ROOT / "tools" / "start_dashboard.ps1"
 
 
 def section(source: str, start: str, end: str) -> str:
@@ -17,6 +18,7 @@ class RouterStartupOptimizationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.source = MENU.read_text(encoding="utf-8-sig")
+        cls.starter = STARTER.read_text(encoding="utf-8-sig")
         cls.warmup = section(cls.source, "function Start-RouterWarmup", "function ConvertTo-CcrProvider")
         cls.start_profile = section(cls.source, "function Start-Profile", "function Show-RouterStatus")
         cls.menu = section(cls.source, "function Invoke-Menu", "function Invoke-SelfTest")
@@ -94,6 +96,17 @@ class RouterStartupOptimizationTests(unittest.TestCase):
         self.assertNotIn("USERPROFILE", self.warmup.upper())
         self.assertNotIn("WindowsApps", self.warmup)
         self.assertNotIn("Connect agent", self.warmup)
+
+    def test_dashboard_starts_the_same_verified_warmup_in_background(self):
+        for marker in (
+            "router_project_menu.ps1",
+            "-WarmRouter",
+            "-WindowStyle Hidden",
+            "warmup-started.json",
+        ):
+            self.assertIn(marker, self.starter)
+        self.assertNotIn("Read-ProtectedSecret", self.starter)
+        self.assertNotIn("setting.json", self.starter)
 
 
 if __name__ == "__main__":

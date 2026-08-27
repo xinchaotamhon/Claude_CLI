@@ -52,6 +52,7 @@ $GlobalProfileTakeoverPath = Join-Path (Join-Path $CcrAppDataPath "claude-code-r
 $AppliedSettingHashPath = Join-Path $RouterStateRoot "setting.applied.sha256"
 $RouterClientSecretPath = Join-Path $RouterStateRoot "router-client.dpapi"
 $AccountProfilesPath = Join-Path $RouterStateRoot "account-profiles.json"
+$RemovedAccountsPath = Join-Path $RouterStateRoot "removed-accounts.json"
 $CodexAccountsRoot = Join-Path $RouterStateRoot "codex-accounts"
 $CodexLoginRuntimeRoot = Join-Path $RouterRoot "codex-login-runtime"
 $CodexLoginBinary = Join-Path $CodexLoginRuntimeRoot "codex.exe"
@@ -751,7 +752,34 @@ function Enforce-SafeCcrConfig {
 
 function Merge-SettingIntoCcrConfig {
     param([Parameter(Mandatory = $true)]$CurrentConfig, [Parameter(Mandatory = $true)]$Setting)
-    $Preserved = @($CurrentConfig.Providers | Where-Object { -not ([string]$_.id).StartsWith($ManagedProviderPrefix, [System.StringComparison]::OrdinalIgnoreCase) })
+    $RemovedNames = @{}
+    if (Test-Path -LiteralPath $RemovedAccountsPath -PathType Leaf) {
+        try {
+            $RemovedState = Get-Content -Raw -LiteralPath $RemovedAccountsPath | ConvertFrom-Json
+            foreach ($Removed in @($RemovedState.providers)) {
+                $RemovedName = Get-StringProperty -Object $Removed -Name "name"
+                if ($RemovedName) { $RemovedNames[$RemovedName.ToLowerInvariant()] = $true }
+            }
+        }
+        catch { throw "The project-local removed-account index is invalid." }
+    }
+    $Preserved = @($CurrentConfig.Providers | Where-Object {
+        $ProviderId = [string]$_.id
+        $ProviderName = [string]$_.name
+        -not $ProviderId.StartsWith($ManagedProviderPrefix, [System.StringComparison]::OrdinalIgnoreCase) -and
+        -not $RemovedNames.ContainsKey($ProviderName.ToLowerInvariant())
+    })
+    if ($null -ne $CurrentConfig.PSObject.Properties["providerPlugins"] -and $null -ne $CurrentConfig.providerPlugins -and $RemovedNames.Count -gt 0) {
+        $KeptPlugins = @($CurrentConfig.providerPlugins | Where-Object {
+            $PluginProviderName = Get-StringProperty -Object $_ -Name "providerName"
+            if (-not $PluginProviderName) { return $true }
+            foreach ($RemovedName in $RemovedNames.Keys) {
+                if ($PluginProviderName.Equals($RemovedName, [System.StringComparison]::OrdinalIgnoreCase) -or $PluginProviderName.StartsWith("${RemovedName}::", [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
+            }
+            return $true
+        })
+        Set-JsonProperty -Object $CurrentConfig -Name "providerPlugins" -Value $KeptPlugins
+    }
     $PreservedNames = @{}
     foreach ($Provider in $Preserved) { $PreservedNames[([string]$Provider.name).ToLowerInvariant()] = $true }
     $Managed = @()

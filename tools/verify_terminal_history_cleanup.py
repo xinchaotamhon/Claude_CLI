@@ -28,7 +28,10 @@ def main() -> int:
         if marker not in server:
             return fail(f"terminal cleanup server control is missing: {marker}")
 
-    cleanup = server[server.index("function clearClosedTerminalHistory"):server.index("function binaryVersion")]
+    cleanup = server[
+        server.index("function clearClosedTerminalHistory"):
+        server.index("function activeRouteIds")
+    ]
     for forbidden in ("Stop-Process", "process.kill", "unlinkSync", "rmSync", "sessionsPath", "claudeHomeRoot"):
         if forbidden in cleanup:
             return fail(f"terminal history cleanup may affect live/session data: {forbidden}")

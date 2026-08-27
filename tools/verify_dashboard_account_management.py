@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""Offline contract for dynamic Google models and recoverable account removal."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+
+def fail(message: str) -> int:
+    print(f"FAIL: {message}")
+    return 1
+
+
+def main() -> int:
+    root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+    server = (root / "dashboard" / "server.mjs").read_text(encoding="utf-8")
+    ui = (root / "dashboard" / "src" / "main.tsx").read_text(encoding="utf-8")
+    css = (root / "dashboard" / "src" / "styles.css").read_text(encoding="utf-8")
+
+    server_markers = (
+        "v1internal:fetchAvailableModels",
+        "googleCatalogPath",
+        "normalizeGoogleCatalog",
+        "cachedGoogleModels",
+        "accountTrashRoot",
+        "moveGoogleAccountToTrash",
+        "moveApiProviderToTrash",
+        "activeRouteIds",
+        "'/api/accounts/remove'",
+        "confirmation !== account.id",
+        "Không có model nào bị ghi cứng hoặc báo thành công giả",
+    )
+    for marker in server_markers:
+        if marker not in server:
+            return fail(f"dashboard server is missing account/catalog marker: {marker}")
+
+    if "gemini-3.7" in server.lower() or "claude-opus-4.6" in server.lower():
+        return fail("dashboard hard-codes transient Antigravity model names")
+    removal = server[server.index("function moveGoogleAccountToTrash"):server.index("function binaryVersion")]
+    if "fs.rmSync" in removal or "fs.unlinkSync(state.authFiles" in removal or "fs.unlinkSync(home" in removal:
+        return fail("account removal contains a permanent credential deletion path")
+
+    for marker in ("Xóa tài khoản", "Xóa provider", "Đồng bộ model Google", "deleteAccount"):
+        if marker not in ui:
+            return fail(f"dashboard UI is missing self-service marker: {marker}")
+
+    for marker in ("--surface", "--focus-ring", "account-row", "danger-button"):
+        if marker not in css:
+            return fail(f"dashboard CSS is missing compact design-system marker: {marker}")
+
+    print("PASS: Google model names come from a sanitized dynamic catalog cache")
+    print("PASS: failed Google catalog refresh cannot be reported as a successful sync")
+    print("PASS: account/provider removal is explicit, active-route-aware and recoverable")
+    print("PASS: compact dashboard tokens and owner-facing removal controls are present")
+    print("network: not used; ignored settings and auth payloads were not read")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

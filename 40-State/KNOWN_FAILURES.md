@@ -1,10 +1,35 @@
 ---
-last_verified: 2026-08-27
-verified_by: google-oauth-and-session-trash-repair
+last_verified: 2026-08-28
+verified_by: dashboard-account-control-catalog-update-review
 status: active
 ---
 
 # Known Failures
+
+## challenger.google-dynamic-model-catalog-empty — open 2026-08-28
+
+- Symptoms: completed Google accounts show quota groups but no selectable
+  model; manually pressing catalog synchronization cannot populate a route.
+- Impact: Google accounts cannot be safely promoted into the Claude launch
+  selector, and hard-coding the current Antigravity screenshot would become
+  stale as Google changes model availability.
+- Reproduction: issue a bounded catalog request through the account's existing
+  project-local OAuth context, then query `/v1/models` through the exact
+  project-patched CLIProxyAPI binary.
+- Raw evidence: direct requests returned HTTP 401 for four slots; the proxy
+  loaded one auth entry and returned HTTP 200 with an empty sanitized model
+  array. No token, email, account ID or auth payload was retained.
+- Cause: proved only at the integration boundary. The current OAuth state is
+  rejected by the direct catalog surface, and CLIProxyAPI `7.2.141-local.4`
+  cannot derive a catalog. Whether the decisive change is scope, header,
+  endpoint behavior or old proxy translation remains unknown.
+- Failed approaches: direct dynamic catalog request and the reviewed current
+  proxy. Screenshot model names were deliberately not used as source truth.
+- Disposition: open. Rebase the existing isolation patch onto exact upstream
+  `7.2.143`, rebuild and run an isolated live pilot before route promotion.
+- Regression gate: `claude.dashboard-account-management` prohibits transient
+  hard-coded model names and false successful synchronization. A real provider
+  entitlement still requires a bounded owner-authorized live gate.
 
 ## challenger.google-empty-slot-acl-and-callback — fixed pending owner authorization 2026-08-27
 
