@@ -1,5 +1,9 @@
 # Evidence Index
 
+- [2026-08-28 Control Room v2 and first-launch contention repair](2026-08-28-dashboard-control-room-v2-and-startup-contention.md):
+  searchable provider-grouped route picker, account filters, truthful Google
+  catalog state, delayed/launch-aware background refresh, UI/token-repository
+  dispositions and current upstream candidate review.
 - [2026-08-28 component upgrade, subagents and CCR test isolation](2026-08-28-component-upgrade-subagents-and-ccr-test-isolation.md):
   Claude 2.1.247 and CLIProxyAPI 7.2.143 provenance/builds, CCR 3.0.22 HOLD,
   exact external Codex repair, mandatory isolated source-test wrapper and

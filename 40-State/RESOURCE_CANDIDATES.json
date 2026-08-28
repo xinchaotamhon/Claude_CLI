@@ -65,6 +65,62 @@
       "status": "rejected-auto-wakeup-and-external-ide-dependency",
       "fit": "Antigravity IDE RPC and Google Cloud Code quota reader",
       "constraints": "auto-wakeup can consume quota and the primary path depends on external IDE state; do not integrate without a new bounded review and owner authorization"
+    },
+    {
+      "id": "reference.fluent-ui",
+      "name": "Fluent UI",
+      "source_url": "https://github.com/microsoft/fluentui",
+      "status": "reference-patterns-adopted-no-runtime",
+      "fit": "semantic tokens, keyboard focus, status and density patterns for the local dashboard",
+      "constraints": "do not add the framework runtime unless a future component need justifies its dependency and build cost"
+    },
+    {
+      "id": "reference.carbon-design-system",
+      "name": "Carbon Design System",
+      "source_url": "https://github.com/carbon-design-system/carbon",
+      "status": "reference-patterns-adopted-no-runtime",
+      "fit": "enterprise information hierarchy, progressive disclosure and operational status patterns",
+      "constraints": "patterns only; no copied component source or runtime dependency"
+    },
+    {
+      "id": "external.clarity-core",
+      "name": "Clarity Core",
+      "source_url": "https://github.com/vmware-clarity/core",
+      "status": "rejected-archived",
+      "fit": "dashboard component system",
+      "constraints": "repository is archived/unsupported; do not add as a new dependency"
+    },
+    {
+      "id": "external.claude-snip",
+      "name": "snip",
+      "source_url": "https://github.com/edouard-claude/snip",
+      "status": "hold-offline-golden-fixture-only",
+      "fit": "filter repetitive shell output before it enters Claude context",
+      "constraints": "may remove warnings or stack-trace context; require pinned project-local build, representative golden outputs and fail-open behavior"
+    },
+    {
+      "id": "reference.claude-cost-optimizer",
+      "name": "claude-cost-optimizer",
+      "source_url": "https://github.com/Sagargupta16/claude-cost-optimizer",
+      "status": "reference-only",
+      "fit": "manual context budgeting and diff-first workflow ideas",
+      "constraints": "do not install hooks or broad automatic rewrites; project memory and result quality take precedence"
+    },
+    {
+      "id": "external.claude-token-optimizer",
+      "name": "claude-token-optimizer",
+      "source_url": "https://github.com/nadimtuhin/claude-token-optimizer",
+      "status": "hold-reference-only",
+      "fit": "token estimates and CLAUDE.md/.claudeignore optimization ideas",
+      "constraints": "broad rewrites can hide required project memory; self-reported savings and old tokenizer assumptions are not promotion evidence"
+    },
+    {
+      "id": "external.claude-context-saver",
+      "name": "claude-context-saver",
+      "source_url": "https://github.com/dongnh311/claude-context-saver",
+      "status": "rejected-overlap-and-scope",
+      "fit": "MCP context persistence",
+      "constraints": "overlaps existing project-local sessions/codebase memory and expands source-read, build, test and log-retention scope"
     }
   ]
 }

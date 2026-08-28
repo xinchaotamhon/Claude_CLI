@@ -23,6 +23,7 @@ def main() -> int:
         "googleCatalogPath",
         "normalizeGoogleCatalog",
         "cachedGoogleModels",
+        "googleCatalogState",
         "accountTrashRoot",
         "moveGoogleAccountToTrash",
         "moveApiProviderToTrash",
@@ -41,11 +42,29 @@ def main() -> int:
     if "fs.rmSync" in removal or "fs.unlinkSync(state.authFiles" in removal or "fs.unlinkSync(home" in removal:
         return fail("account removal contains a permanent credential deletion path")
 
-    for marker in ("Xóa tài khoản", "Xóa provider", "Đồng bộ model Google", "deleteAccount"):
+    for marker in (
+        "Xóa tài khoản",
+        "Xóa provider",
+        "Đồng bộ model Google",
+        "deleteAccount",
+        "RoutePicker",
+        "route-picker-popover",
+        "account-toolbar",
+        "Model mới sẽ tự xuất hiện sau lần đồng bộ",
+    ):
         if marker not in ui:
             return fail(f"dashboard UI is missing self-service marker: {marker}")
 
-    for marker in ("--surface", "--focus-ring", "account-row", "danger-button"):
+    for marker in (
+        "--surface",
+        "--focus-ring",
+        "account-row",
+        "danger-button",
+        "status-rail",
+        "route-picker-popover",
+        "segmented",
+        "catalog-state",
+    ):
         if marker not in css:
             return fail(f"dashboard CSS is missing compact design-system marker: {marker}")
 
@@ -53,6 +72,7 @@ def main() -> int:
     print("PASS: failed Google catalog refresh cannot be reported as a successful sync")
     print("PASS: account/provider removal is explicit, active-route-aware and recoverable")
     print("PASS: compact dashboard tokens and owner-facing removal controls are present")
+    print("PASS: searchable grouped route picker and account filters replace the long native menu")
     print("network: not used; ignored settings and auth payloads were not read")
     return 0
 

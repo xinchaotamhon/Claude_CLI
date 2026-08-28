@@ -39,6 +39,8 @@ const dispatcherScript = path.join(projectRoot, 'tools', 'dashboard_spawn_termin
 const instanceId = crypto.randomBytes(24).toString('base64url');
 const activeActions = new Set();
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
+const AUTO_REFRESH_START_DELAY_MS = 15_000;
+let activeLaunches = 0;
 
 fs.mkdirSync(usageRoot, { recursive: true });
 fs.mkdirSync(googleCatalogRoot, { recursive: true });
@@ -116,6 +118,25 @@ function cachedGoogleModels(accountId) {
 function cachedGoogleCatalog(accountId) {
   const value = readJson(googleCatalogPath(accountId), {});
   return Array.isArray(value?.models) ? value.models : [];
+}
+
+function googleCatalogState(accountId) {
+  const value = readJson(googleCatalogPath(accountId), {});
+  const models = Array.isArray(value?.models) ? value.models : [];
+  const rawError = typeof value?.error === 'string' ? value.error : '';
+  const error = rawError
+    ? (/HTTP 401/.test(rawError)
+      ? 'Phiên Google đã hết hạn hoặc không còn được cấp quyền đọc catalog. Hãy xóa slot này và đăng nhập lại đúng tài khoản.'
+      : /HTTP 403/.test(rawError)
+        ? 'Tài khoản Google không được cấp quyền đọc catalog Antigravity hiện tại.'
+        : 'Google chưa trả về catalog model; hãy thử đồng bộ lại sau.')
+    : undefined;
+  return {
+    status: models.length ? 'available' : error ? 'error' : 'unknown',
+    observedAt: typeof value?.observedAt === 'string' ? value.observedAt : null,
+    source: typeof value?.source === 'string' ? value.source : 'Google Antigravity dynamic catalog',
+    ...(error ? { error } : {}),
+  };
 }
 
 function emptyUsage(message = '') {
@@ -247,7 +268,7 @@ function buildAccounts(routes) {
       { id: 'gemini_models', label: 'Gemini', status: 'unknown', windows: [] },
       { id: 'claude_gpt_models', label: 'Claude / GPT', status: 'unknown', windows: [] },
     ];
-    accounts.push({ id, kind: 'google', label: `Google AI Pro ${index}`, plan: 'Google AI Pro', status: state.status, models: cachedGoogleModels(id), routes: [], usage: cachedUsage(id, fallback) });
+    accounts.push({ id, kind: 'google', label: `Google AI Pro ${index}`, plan: 'Google AI Pro', status: state.status, models: cachedGoogleModels(id), routes: [], catalog: googleCatalogState(id), usage: cachedUsage(id, fallback) });
   }
 
   const setting = readJson(settingPath, { providers: [] });
@@ -947,33 +968,38 @@ async function waitForActionStatus(launch, expected, timeoutMs) {
 }
 
 async function launchRoute(route, options = {}) {
-  const resumeId = safeSessionId(options.resumeId);
-  let record;
-  if (resumeId) {
-    record = sessionRecords().find((item) => item.id === resumeId);
-    if (!record) throw new Error('Không tìm thấy session Claude cục bộ này.');
-    record = { ...record, routeId: route.id, routeName: route.name, model: route.model, lastOpenedAt: new Date().toISOString() };
-  } else {
-    const id = crypto.randomUUID();
-    record = {
-      id,
-      name: safeSessionName(options.name) || `Phiên ${route.model} ${new Date().toLocaleString('vi-VN')}`.slice(0, 80),
-      routeId: route.id,
-      routeName: route.name,
-      model: route.model,
-      createdAt: new Date().toISOString(),
-      lastOpenedAt: new Date().toISOString(),
-      migrated: false,
-    };
+  activeLaunches += 1;
+  try {
+    const resumeId = safeSessionId(options.resumeId);
+    let record;
+    if (resumeId) {
+      record = sessionRecords().find((item) => item.id === resumeId);
+      if (!record) throw new Error('Không tìm thấy session Claude cục bộ này.');
+      record = { ...record, routeId: route.id, routeName: route.name, model: route.model, lastOpenedAt: new Date().toISOString() };
+    } else {
+      const id = crypto.randomUUID();
+      record = {
+        id,
+        name: safeSessionName(options.name) || `Phiên ${route.model} ${new Date().toLocaleString('vi-VN')}`.slice(0, 80),
+        routeId: route.id,
+        routeName: route.name,
+        model: route.model,
+        createdAt: new Date().toISOString(),
+        lastOpenedAt: new Date().toISOString(),
+        migrated: false,
+      };
+    }
+    const launch = spawnTerminal(resumeId ? 'launch-resume' : 'launch-new', route.id, record.id, record.name);
+    await waitForActionStatus(launch, ['claude_starting'], 70_000);
+    saveSessionRecord(record);
+    const records = readJson(terminalsPath, []);
+    const next = Array.isArray(records) ? records.slice(-39) : [];
+    next.push({ pid: launch.pid, sessionId: record.id, sessionName: record.name, routeId: route.id, routeName: route.name, model: route.model, startedAt: new Date().toISOString(), running: true });
+    writeJson(terminalsPath, next);
+    return { pid: launch.pid, session: record };
+  } finally {
+    activeLaunches = Math.max(0, activeLaunches - 1);
   }
-  const launch = spawnTerminal(resumeId ? 'launch-resume' : 'launch-new', route.id, record.id, record.name);
-  await waitForActionStatus(launch, ['claude_starting'], 70_000);
-  saveSessionRecord(record);
-  const records = readJson(terminalsPath, []);
-  const next = Array.isArray(records) ? records.slice(-39) : [];
-  next.push({ pid: launch.pid, sessionId: record.id, sessionName: record.name, routeId: route.id, routeName: route.name, model: route.model, startedAt: new Date().toISOString(), running: true });
-  writeJson(terminalsPath, next);
-  return { pid: launch.pid, session: record };
 }
 
 function securityHeaders(response) {
@@ -1191,6 +1217,7 @@ server.listen(PORT, HOST, () => {
 });
 
 async function refreshReadyAccounts(onlyStale = false) {
+  if (activeLaunches > 0) return;
   const accounts = buildState().accounts.filter((account) => account.status === 'ready' && account.kind !== 'api');
   for (const account of accounts) {
     if (activeActions.has(account.id)) continue;
@@ -1203,7 +1230,9 @@ async function refreshReadyAccounts(onlyStale = false) {
   }
 }
 
-setTimeout(() => void refreshReadyAccounts(true), 750).unref();
+// Quota/catalog refresh is deliberately delayed so a user can open the first
+// Claude terminal without competing with several Codex/Google network probes.
+setTimeout(() => void refreshReadyAccounts(true), AUTO_REFRESH_START_DELAY_MS).unref();
 setInterval(() => void refreshReadyAccounts(false), AUTO_REFRESH_MS).unref();
 
 function shutdown() {

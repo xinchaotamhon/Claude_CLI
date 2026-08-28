@@ -30,8 +30,8 @@ def main() -> int:
     dispatcher = dispatcher_path.read_text(encoding="utf-8")
 
     checks = (
-        require(server, ("dashboard-session.json", "discoverTranscriptIds", "waitForActionStatus", "setTimeout(resolve, 650)", "pruneActionStatusFiles", "Promise.allSettled"), "dashboard server"),
-        require(frontend, ("resumeRoutes", "Mở lại bằng", "dashboardConnected"), "dashboard frontend"),
+        require(server, ("dashboard-session.json", "discoverTranscriptIds", "waitForActionStatus", "setTimeout(resolve, 650)", "pruneActionStatusFiles", "Promise.allSettled", "AUTO_REFRESH_START_DELAY_MS = 15_000", "activeLaunches > 0"), "dashboard server"),
+        require(frontend, ("resumeRoutes", "Mở lại bằng", "dashboardConnected", "Đang chuẩn bị"), "dashboard frontend"),
         require(helper, ("StatusPath", "terminal_ready", "failed"), "terminal helper"),
         require(dispatcher, ("#requires -Version 7.0", "ProcessStartInfo", "UseShellExecute = $true", "ArgumentList.Add", "-StatusPath"), "terminal dispatcher"),
         require(supervisor, ("#requires -Version 7.0", "System.Threading.Mutex", "rapidFailures", "dashboard-server.log"), "dashboard supervisor"),
@@ -46,6 +46,7 @@ def main() -> int:
     print("PASS: phantom sessions are hidden unless a local transcript exists")
     print("PASS: one persistent local browser session survives bounded server restart")
     print("PASS: resume can select another current route and updates settle concurrently")
+    print("PASS: first launch is not forced to compete with automatic quota/catalog refresh")
     return 0
 
 

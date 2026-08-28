@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: component-upgrade-and-ccr-source-test-isolation-repair
+verified_by: dashboard-control-room-v2-and-startup-contention-repair
 status: active
 ---
 
@@ -356,18 +356,35 @@ status: active
   empty model list. The dashboard therefore exposes no invented model and a
   failed sync cannot be reported as successful. An isolated `7.2.143` source
   rebase/pilot is the next bounded repair.
-- Dashboard visual hierarchy now uses original compact semantic tokens,
-  explicit focus states and reduced-motion handling informed by Fluent UI
-  design-token patterns. No third-party UI framework or generated design code
-  was added.
+- Dashboard Control Room v2 replaces the long native route menu with an
+  original searchable picker grouped by provider, adds account-kind/text
+  filters, a visible isolation/fallback/update status rail and sanitized Google
+  catalog explanations. It uses compact semantic tokens, explicit focus states,
+  reduced-motion handling and responsive disclosure informed by Fluent UI and
+  Carbon patterns. No third-party UI framework or generated design code was
+  added.
 - Dashboard startup now launches one throttled hidden router warm-up and caches
   only an exact verified dashboard PID/instance/server-hash identity. The full
   verification still runs for every new server instance; no credential is read
   by the warm-up starter.
-- Read-only release review found Claude `2.1.247`, CCR `3.0.22`, CLIProxyAPI
-  `7.2.143` and Codex helper `0.150.1`. No update was merged or promoted.
-  Claude is suitable for a gated binary update; CLIProxyAPI and CCR require
-  exact-tag isolated pilots; the working Codex helper remains held.
+- Automatic quota/catalog refresh now waits 15 seconds after dashboard startup
+  instead of 750 ms and skips while a route launch is awaiting its lifecycle
+  acknowledgement. This removes a proved local first-launch contention source;
+  it does not conceal provider cold starts, stale OAuth or upstream failures.
+- Read-only release review found upstream Claude `2.1.250`, CCR `3.0.22`,
+  CLIProxyAPI `7.2.144`, Codex stable `0.150.1` and alpha
+  `0.151.0-alpha.8`. No update was merged or promoted. Operational versions
+  remain Claude `2.1.247`, CCR `3.0.21`, CLIProxyAPI `7.2.143-local.1` and Codex
+  helper `0.149.0-alpha.4.1`. Claude and CLIProxyAPI require exact rollback
+  pilots; CCR and the working Codex helper remain held.
+- Four owner-proposed token optimizers were reviewed. None was installed:
+  `snip` is eligible only for a future offline golden-fixture pilot; the other
+  candidates are reference-only or rejected because they can hide context,
+  warnings or expand MCP/log/build scope.
+- All 22 enabled smoke gates passed under the owner Windows profile in run
+  `20260828T065757Z-4d29afba`. The current dashboard server then restarted on
+  loopback with an exact matching source hash and healthy endpoint; no router
+  or existing Claude terminal was stopped.
 - Automatic fallback remains off. A future bounded pilot may use one
   owner-approved cross-provider hop before any output/tool side effect; account
   rotation intended to bypass a provider quota is not an accepted policy.

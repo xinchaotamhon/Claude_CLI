@@ -87,6 +87,16 @@ function AccountCard({ account, busy, connected, onRefresh, onResume, onOpenQuot
         {account.models.length ? account.models.map((model) => <span key={model}>{model}</span>) : <span className="muted-chip">Chưa có model</span>}
       </div>
 
+      {account.kind === 'google' && account.catalog && (
+        <div className={`catalog-state ${account.catalog.status}`}>
+          <span className="catalog-state-icon" aria-hidden="true">{account.catalog.status === 'available' ? '✓' : account.catalog.status === 'error' ? '!' : '…'}</span>
+          <div>
+            <strong>{account.catalog.status === 'available' ? `${account.models.length} model từ catalog Google` : account.catalog.status === 'error' ? 'Chưa đọc được model Google' : 'Chưa đồng bộ catalog Google'}</strong>
+            <p>{account.catalog.error || (account.catalog.status === 'available' ? 'Model mới sẽ tự xuất hiện sau lần đồng bộ, không cần sửa danh sách bằng tay.' : 'Bấm làm mới sau khi đăng nhập hoàn tất.')}</p>
+          </div>
+        </div>
+      )}
+
       {(account.status === 'incomplete' || account.status === 'not_signed_in') && account.kind !== 'api' && (
         <button className="wide-button resume-button" disabled={!connected || busy} onClick={() => onResume(account)}>
           {account.kind === 'codex' ? 'Hoàn tất nhập tài khoản' : 'Tiếp tục đăng nhập Google'}
@@ -139,16 +149,79 @@ function AccountCard({ account, busy, connected, onRefresh, onResume, onOpenQuot
   );
 }
 
+function routeKindLabel(route: Route) {
+  if (route.kind === 'codex') return 'Codex';
+  if (/google|gemini|antigravity/i.test(`${route.provider} ${route.name}`)) return 'Google';
+  return 'API';
+}
+
+function RoutePicker({ routes, value, disabled, onChange }: { routes: Route[]; value: string; disabled: boolean; onChange: (routeId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const selected = routes.find((route) => route.id === value);
+  const normalized = query.trim().toLocaleLowerCase('vi');
+  const filtered = routes.filter((route) => !normalized || `${route.name} ${route.provider} ${route.model}`.toLocaleLowerCase('vi').includes(normalized));
+  const groups = [...new Set(filtered.map((route) => route.provider))];
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [open]);
+
+  return (
+    <div className="route-picker">
+      <button type="button" className="route-picker-trigger" aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={() => setOpen((current) => !current)}>
+        <span className={`route-provider-mark ${selected ? routeKindLabel(selected).toLowerCase() : 'empty'}`}>{selected ? routeKindLabel(selected).slice(0, 1) : '—'}</span>
+        <span className="route-picker-value">
+          <strong>{selected?.model || 'Chưa có route khả dụng'}</strong>
+          <small>{selected ? `${selected.provider} · ${routeKindLabel(selected)}` : 'Đăng nhập hoặc thêm provider trước'}</small>
+        </span>
+        <span className="route-picker-chevron" aria-hidden="true">⌄</span>
+      </button>
+      {open && (
+        <div className="route-picker-popover" role="dialog" aria-label="Chọn tài khoản và model">
+          <div className="route-picker-head">
+            <div><strong>Chọn tài khoản & model</strong><small>{routes.length} route đang khả dụng</small></div>
+            <button type="button" className="picker-close" onClick={() => setOpen(false)} aria-label="Đóng bộ chọn">×</button>
+          </div>
+          <label className="route-search"><span aria-hidden="true">⌕</span><input autoFocus value={query} placeholder="Tìm tài khoản, provider hoặc model…" onChange={(event) => setQuery(event.target.value)} /></label>
+          <div className="route-picker-list">
+            {!filtered.length && <div className="route-empty"><strong>Không tìm thấy route</strong><span>Thử tên tài khoản hoặc model khác.</span></div>}
+            {groups.map((provider) => (
+              <section className="route-group" key={provider}>
+                <div className="route-group-title"><span>{provider}</span><small>{filtered.filter((route) => route.provider === provider).length} model</small></div>
+                {filtered.filter((route) => route.provider === provider).map((route) => (
+                  <button type="button" className={`route-option ${route.id === value ? 'selected' : ''}`} key={route.id} onClick={() => { onChange(route.id); setOpen(false); setQuery(''); }}>
+                    <span className={`route-provider-mark ${routeKindLabel(route).toLowerCase()}`}>{routeKindLabel(route).slice(0, 1)}</span>
+                    <span><strong>{route.model}</strong><small>{route.name}</small></span>
+                    <em>{routeKindLabel(route)}</em>
+                    {route.id === value && <b aria-label="Đang chọn">✓</b>}
+                  </button>
+                ))}
+              </section>
+            ))}
+          </div>
+          <footer><span>Esc để đóng</span><span>Mỗi terminal giữ route riêng</span></footer>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [state, setState] = useState<DashboardState>(EMPTY);
   const [selectedRoute, setSelectedRoute] = useState('');
   const [resumeRoutes, setResumeRoutes] = useState<Record<string, string>>({});
   const [sessionName, setSessionName] = useState('');
   const [googleLoginHint, setGoogleLoginHint] = useState('');
+  const [accountKind, setAccountKind] = useState<'all' | Account['kind']>('all');
+  const [accountQuery, setAccountQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [dashboardConnected, setDashboardConnected] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ tone: 'ok' | 'error' | 'info'; text: string } | null>(null);
 
   const reload = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -187,14 +260,18 @@ function App() {
   const selected = useMemo<Route | undefined>(() => state.routes.find((route) => route.id === selectedRoute), [state.routes, selectedRoute]);
   const readyAccounts = state.accounts.filter((account) => account.status === 'ready').length;
   const activeTerminals = state.terminals.filter((terminal) => terminal.running).length;
+  const updateCandidates = state.updates.components.filter((component) => component.status === 'available').length;
+  const normalizedAccountQuery = accountQuery.trim().toLocaleLowerCase('vi');
+  const visibleAccounts = state.accounts.filter((account) => (accountKind === 'all' || account.kind === accountKind) && (!normalizedAccountQuery || `${account.label} ${account.plan} ${account.models.join(' ')}`.toLocaleLowerCase('vi').includes(normalizedAccountQuery)));
 
-  async function action(path: string, body?: unknown, success?: string) {
+  async function action(path: string, body?: unknown, success?: string, pending?: string) {
     if (!dashboardConnected) {
       setNotice({ tone: 'error', text: 'Dashboard mất kết nối; đang tự kết nối lại. Vui lòng thử lại sau khi kết nối phục hồi.' });
       return;
     }
     const key = path + JSON.stringify(body ?? {});
     setBusy(key);
+    if (pending) setNotice({ tone: 'info', text: pending });
     try {
       await api(path, { method: 'POST', body: JSON.stringify(body ?? {}) });
       setNotice({ tone: 'ok', text: success || 'Đã thực hiện.' });
@@ -256,6 +333,12 @@ function App() {
           </div>
         </section>
 
+        <section className="status-rail" aria-label="Trạng thái hệ thống">
+          <div><span className="status-symbol safe">✓</span><p><strong>Cô lập project</strong><small>Runtime và phiên nằm trong claude_CLI-V</small></p></div>
+          <div><span className="status-symbol off">↛</span><p><strong>Fallback đang tắt</strong><small>Không tự đổi tài khoản khi hết quota</small></p></div>
+          <div><span className={`status-symbol ${updateCandidates ? 'warn' : 'safe'}`}>{updateCandidates || '✓'}</span><p><strong>{updateCandidates ? `${updateCandidates} candidate cập nhật` : 'Chưa có candidate mới'}</strong><small>Chỉ review, không tự merge</small></p></div>
+        </section>
+
         <section className="launch-deck">
           <div className="launch-copy">
             <div className="section-icon">›_</div>
@@ -263,8 +346,8 @@ function App() {
           </div>
           <div className="launch-controls">
             <label><span>TÊN SESSION (TÙY CHỌN)</span><input value={sessionName} maxLength={80} placeholder="Ví dụ: sửa website buổi sáng" onChange={(event) => setSessionName(event.target.value)} /></label>
-            <label><span>TÀI KHOẢN / MODEL</span><select value={selectedRoute} onChange={(event) => setSelectedRoute(event.target.value)} disabled={!state.routes.length}>{state.routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label>
-            <button className="primary-button" disabled={!dashboardConnected || !selected || busy !== null} onClick={() => void action('/api/launch', { routeId: selected?.id, name: sessionName }, `Đã mở terminal với ${selected?.model}.`)}><span>＋</span> Mở terminal</button>
+            <label className="route-picker-label"><span>TÀI KHOẢN / MODEL</span><RoutePicker routes={state.routes} value={selectedRoute} onChange={setSelectedRoute} disabled={!state.routes.length || busy !== null} /></label>
+            <button className="primary-button" disabled={!dashboardConnected || !selected || busy !== null} onClick={() => void action('/api/launch', { routeId: selected?.id, name: sessionName }, `Đã mở terminal với ${selected?.model}.`, `Đang chuẩn bị ${selected?.model}; terminal sẽ xuất hiện ngay và Claude tiếp tục kết nối an toàn…`)}><span>＋</span> Mở terminal</button>
           </div>
         </section>
 
@@ -274,8 +357,15 @@ function App() {
             <button className="quiet-button" disabled={!dashboardConnected || busy !== null || !readyAccounts} onClick={() => void action('/api/usage/refresh-all', {}, 'Đã làm mới các hạn mức có thể đọc.')}>↻ Làm mới tất cả</button>
           </div>
           <p className="section-note">Dashboard tự đọc lại mỗi 5 phút. Quota 5 giờ/tuần tự reset theo nhà cung cấp; bucket tín dụng tháng được hiển thị riêng và không bị gọi là quota tuần.</p>
+          <div className="account-toolbar">
+            <div className="segmented" role="group" aria-label="Lọc loại tài khoản">
+              {([['all', 'Tất cả'], ['codex', 'Codex'], ['google', 'Google'], ['api', 'API']] as const).map(([kind, label]) => <button type="button" className={accountKind === kind ? 'active' : ''} key={kind} onClick={() => setAccountKind(kind)}>{label}<span>{kind === 'all' ? state.accounts.length : state.accounts.filter((account) => account.kind === kind).length}</span></button>)}
+            </div>
+            <label className="account-search"><span aria-hidden="true">⌕</span><input value={accountQuery} placeholder="Tìm tài khoản hoặc model…" onChange={(event) => setAccountQuery(event.target.value)} /></label>
+          </div>
           <div className="account-grid">
-            {state.accounts.map((account) => <AccountCard
+            {!visibleAccounts.length && <div className="account-empty"><strong>Không có tài khoản phù hợp</strong><span>Đổi bộ lọc hoặc từ khóa tìm kiếm.</span></div>}
+            {visibleAccounts.map((account) => <AccountCard
               key={account.id}
               account={account}
               busy={busy !== null}
@@ -337,7 +427,7 @@ function App() {
 
       <footer className="app-footer"><span>Claude {state.services.claudeVersion} · CCR {state.services.routerVersion}</span><span>127.0.0.1:18320 · Không gửi token ra frontend · Fallback tự động mặc định tắt</span></footer>
       {loading && <div className="loading-bar"><span /></div>}
-      {notice && <button className={`toast ${notice.tone}`} onClick={() => setNotice(null)}>{notice.text}<span>×</span></button>}
+      {notice && <button className={`toast ${notice.tone}`} onClick={() => setNotice(null)}>{notice.tone === 'info' && <i className="toast-spinner" aria-hidden="true" />}{notice.text}<span>×</span></button>}
     </div>
   );
 }

@@ -25,6 +25,12 @@ export type Account = {
   status: 'ready' | 'not_signed_in' | 'incomplete' | 'disabled';
   models: string[];
   routes: string[];
+  catalog?: {
+    status: 'available' | 'unknown' | 'error';
+    observedAt: string | null;
+    source: string;
+    error?: string;
+  };
   usage: {
     status: 'idle' | 'available' | 'unknown' | 'error';
     observedAt: string | null;

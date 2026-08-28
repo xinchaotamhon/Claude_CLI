@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: component-upgrade-and-ccr-source-test-isolation-repair
+verified_by: dashboard-control-room-v2-and-startup-contention-repair
 status: active
 ---
 
@@ -87,6 +87,30 @@ status: active
   completed from the pending dashboard card after sessions close.
 - Regression gates: `dashboard.local-control-room` and
   `claude.codex-account-import`.
+
+## dashboard.first-launch-background-refresh-contention — fixed 2026-08-28
+
+- Symptom: after selecting a route, the dashboard appeared to wait for a long
+  time before the Claude terminal became usable; early Plus attempts could also
+  surface timeout/API errors that disappeared in later terminals.
+- Impact: the one-click dashboard felt impractical even when account routes and
+  later warm launches were healthy.
+- Reproduction: start a fresh dashboard, immediately launch a route, and
+  observe that the automatic quota/catalog refresh was scheduled after 750 ms
+  while the same machine was cold-starting router and Claude processes.
+- Raw evidence: source timing and lifecycle order only; no credential, provider
+  request body or transcript was captured. Upstream latency remains separately
+  unknown.
+- Cause: a proved local scheduling conflict. Background account probes could
+  overlap the first launch and compete for process/network resources. This does
+  not prove that every reported API error had the same cause.
+- Failed approach: a visible pending notice alone improved feedback but did not
+  remove the competing background work.
+- Disposition: fixed. Initial background refresh now waits 15 seconds and
+  skips whenever `activeLaunches > 0`; the five-minute steady-state refresh is
+  preserved. Provider failures still surface normally.
+- Regression gate: `claude.dashboard-action-lifecycle` requires both the
+  15-second delay and the active-launch guard.
 
 ## challenger.google-browser-account-reuse — fixed pending live proof 2026-08-26
 
