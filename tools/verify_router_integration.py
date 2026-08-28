@@ -91,6 +91,7 @@ def main() -> int:
     launcher_path = root / "tools" / "RUN_CLAUDE_TECHNICAL.bat"
     menu_path = root / "tools" / "router_project_menu.ps1"
     installer_path = root / "tools" / "install_router_runtime.ps1"
+    patcher_path = root / "tools" / "apply_router_local_patches.ps1"
     lock_path = root / "provider_router" / "package-lock.json"
     gitignore_path = root / ".gitignore"
     source_repo = root / "claude-code-router_proxy"
@@ -103,6 +104,7 @@ def main() -> int:
         launcher_path,
         menu_path,
         installer_path,
+        patcher_path,
         gitignore_path,
     ):
         if not path.is_file():
@@ -139,6 +141,24 @@ def main() -> int:
         return fail(f"router source package metadata is invalid: {exc}")
     if source_package.get("version") != PINNED_ROUTER_VERSION:
         return fail("router source fork version differs from the pinned runtime")
+    supervisor_path = (
+        source_repo
+        / "packages"
+        / "core"
+        / "src"
+        / "gateway"
+        / "core-runtime"
+        / "supervisor.ts"
+    )
+    if not supervisor_path.is_file():
+        return fail("router source fork is missing the core gateway supervisor")
+    supervisor = read_text(supervisor_path)
+    for marker in (
+        'detached: process.platform === "win32"',
+        'windowsHide: process.platform === "win32"',
+    ):
+        if marker not in supervisor:
+            return fail(f"router source fork is missing Windows core isolation: {marker}")
     source_git = subprocess.run(
         [
             "git",
@@ -343,6 +363,21 @@ def main() -> int:
         return fail(
             f"installed router package is {installed_version!r}, expected {PINNED_ROUTER_VERSION}"
         )
+    router_entry_text = read_text(router_entry)
+    runtime_isolation = (
+        'cwd:$,detached:process.platform==="win32",env:c,'
+        'serialization:"advanced",stdio:["ignore","pipe","pipe","ipc"],'
+        'windowsHide:process.platform==="win32"'
+    )
+    if router_entry_text.count(runtime_isolation) != 1:
+        return fail("installed router runtime is missing the exact Windows core isolation patch")
+    patcher = read_text(patcher_path)
+    for marker in (
+        "isolate Windows core gateway from launcher console",
+        "if ($PatchedCount -eq 1) { continue }",
+    ):
+        if marker not in patcher:
+            return fail(f"router runtime patcher is missing an idempotence/isolation marker: {marker}")
 
     print("PASS: project-local Claude Code Router integration is complete")
     print(f"root: {root}")

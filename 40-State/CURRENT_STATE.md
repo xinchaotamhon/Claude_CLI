@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: session-identity-stale-pid-and-cold-start-repair
+verified_by: ccr-dead-core-502-repair
 status: active
 ---
 
@@ -15,14 +15,27 @@ status: active
   Exact `2.1.247` rollback binary remains under ignored update backups.
 - Router is project-local CCR `3.0.21` on Node `v24.12.0`; reviewed source is
   nested branch `claude` at fork commit
-  `ffc823b683861ad3f86c8dd38c0dbe61eef62f6c`, based on upstream commit
+  `e703b588fd645c52a311700090ed2f6bb76e6d01`, based on upstream commit
   `1347c868b493728a31c76098459584e0fcc23940`. The fork commit is pushed to
   `xinchaotamhon/claude-code-router_proxy`.
 - The fork and pinned operational runtime now have the same bounded local
-  patch: provider-only startup skips external Claude App/profile sync, and the
-  gateway config-acceptance timeout is configurable only from 5 to 60 seconds.
+  patches: provider-only startup skips external Claude App/profile sync, the
+  gateway config-acceptance timeout is configurable only from 5 to 60 seconds,
+  and the Windows core child owns a hidden detached process group while
+  retaining parent IPC lifecycle ownership.
   `tools/apply_router_local_patches.ps1` reapplies the exact version-locked
   runtime patch after explicit reconstruction.
+- Codex/CCR readiness no longer trusts HTTP 200 alone. The launcher requires
+  public gateway payload `status=running`, authenticated management ownership
+  of a positive core PID on exact ports 3456/3457, and direct core health
+  `status=ok` with a runtime ID before DPAPI client-key access. One exact core
+  process-termination state permits one bounded management restart; unrelated
+  failures remain fail-closed.
+- The repaired live router was restarted from the patched operational bundle:
+  public health reported `running` with exact core endpoint 3457 and direct
+  core health reported `ok` with a runtime ID after the launcher exited. All
+  24 enabled smoke gates passed in owner-profile run
+  `20260828T150731Z-590717cd`; no model request was sent.
 - Parent Git is on branch `claude`, based on the remote `main` commit that
   contains only `LICENSE`; binaries, dependencies, ignored `setting.json`,
   `.ccr-local` and nested source repositories remain excluded.

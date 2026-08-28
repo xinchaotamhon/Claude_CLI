@@ -29,6 +29,11 @@ $Patches = @(
         Patched = 'var HM="gateway",_Z=(()=>{let e=Number(process.env.CCR_GATEWAY_CONFIG_ACCEPTANCE_TIMEOUT_MS);return Number.isFinite(e)&&e>=5e3&&e<=6e4?Math.trunc(e):5e3})(),PZ=15e3,Qqe=4e3'
     },
     [PSCustomObject]@{
+        Name = "isolate Windows core gateway from launcher console"
+        Original = 'cwd:$,env:c,serialization:"advanced",stdio:["ignore","pipe","pipe","ipc"]'
+        Patched = 'cwd:$,detached:process.platform==="win32",env:c,serialization:"advanced",stdio:["ignore","pipe","pipe","ipc"],windowsHide:process.platform==="win32"'
+    },
+    [PSCustomObject]@{
         Name = "disable external Claude App sync in provider-only mode"
         Original = 'try{t=(await Wa(t)).config}catch(n){console.error(`Failed to sync Claude App gateway config during ${e}: ${xc(n)}`)}'
         Patched = 'try{process.env.CCR_PROVIDER_GATEWAY_ONLY!=="1"&&(t=(await Wa(t)).config)}catch(n){console.error(`Failed to sync Claude App gateway config during ${e}: ${xc(n)}`)}'
@@ -50,7 +55,10 @@ $Changed = $false
 foreach ($Patch in $Patches) {
     $PatchedCount = ([regex]::Matches($Text, [regex]::Escape([string]$Patch.Patched))).Count
     $OriginalCount = ([regex]::Matches($Text, [regex]::Escape([string]$Patch.Original))).Count
-    if ($PatchedCount -eq 1 -and $OriginalCount -eq 0) { continue }
+    # A patched replacement may intentionally contain the original text as a
+    # suffix (for example a new guard before an existing try/catch). Treat the
+    # exact patched marker as authoritative so the patcher remains idempotent.
+    if ($PatchedCount -eq 1) { continue }
     if ($PatchedCount -ne 0 -or $OriginalCount -ne 1) {
         throw "Runtime patch '$($Patch.Name)' did not match exactly once; no file was changed."
     }

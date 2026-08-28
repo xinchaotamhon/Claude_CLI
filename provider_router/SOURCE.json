@@ -8,10 +8,10 @@
   "fork_repository": "https://github.com/xinchaotamhon/claude-code-router_proxy",
   "local_source": "claude-code-router_proxy",
   "local_branch": "claude",
-  "source_commit": "ffc823b683861ad3f86c8dd38c0dbe61eef62f6c",
+  "source_commit": "e703b588fd645c52a311700090ed2f6bb76e6d01",
   "upstream_base_commit": "1347c868b493728a31c76098459584e0fcc23940",
-  "fork_commit": "ffc823b683861ad3f86c8dd38c0dbe61eef62f6c",
-  "fork_patch_scope": "provider-only mode skips external Claude App/profile synchronization; gateway config acceptance timeout is bounded and configurable",
-  "reviewed_at": "2026-08-25",
+  "fork_commit": "e703b588fd645c52a311700090ed2f6bb76e6d01",
+  "fork_patch_scope": "provider-only mode skips external Claude App/profile synchronization; gateway config acceptance timeout is bounded and configurable; Windows core gateway runs in a hidden detached process group while retaining parent IPC lifecycle ownership",
+  "reviewed_at": "2026-08-28",
   "runtime_policy": "node_modules and node.exe are project-local ignored artifacts; package.json and package-lock.json pin reconstruction"
 }

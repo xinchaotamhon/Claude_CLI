@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: session-identity-stale-pid-and-cold-start-repair
+verified_by: ccr-dead-core-502-repair
 status: active
 ---
 
@@ -629,6 +629,22 @@ status: active
 - Regression gates: `claude.dashboard-action-lifecycle` and
   `claude.dashboard-account-management` prove the local containment. Live
   provider availability cannot be a deterministic offline gate.
+
+## router.http-200-shell-hid-dead-core — fixed 2026-08-28
+
+- Symptom: Claude returned HTTP 502 `Core gateway auth token is not initialized`
+  even though the local public gateway port still listened.
+- Cause: proved. The nested Windows core exited with `0xC000013A`; CCR cleared
+  its in-memory core token but retained a public HTTP-200 health shell whose
+  payload said `status:error`. The launcher checked status code only.
+- Failed approach: three consecutive shallow HTTP checks repeated the same
+  false-positive and therefore did not establish readiness.
+- Disposition: fixed. Windows core spawn is hidden/detached from launcher
+  console events while retaining IPC ownership. Startup now checks public JSON,
+  authenticated management PID/endpoints and direct core health; one exact
+  termination state gets one bounded restart before DPAPI access.
+- Regression evidence:
+  `50-Evidence/2026-08-28-ccr-dead-core-502-repair.md`.
 
 For every new retained failure, include a stable ID, impact, reproduction, raw
 evidence, cause or `unknown`, failed approaches, disposition, and a regression

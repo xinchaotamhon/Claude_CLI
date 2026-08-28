@@ -11,6 +11,11 @@ the secret in output.
 - Operational router/rollback champion: CCR `3.0.21` on project-local Node
   `v24.12.0`, provider-gateway-only on loopback. External Codex App takeover
   paths are removed and must not be reintroduced.
+- Reviewed CCR fork is branch `claude` at
+  `e703b588fd645c52a311700090ed2f6bb76e6d01`. Its Windows core child is
+  detached/hidden from launcher console control events while remaining owned
+  through IPC. Readiness requires management identity, public `running`, exact
+  core PID/endpoints and direct core `ok`; never weaken this to HTTP 200 alone.
 - `DASHBOARD.bat` is the single owner-facing entry. It detaches one hidden
   bootstrapper, returns immediately and starts the original local dashboard on
   authenticated `127.0.0.1:18320` using the project Node. Successful startup
@@ -72,12 +77,13 @@ the secret in output.
 - EasyCLIProxyAPI remains ignored inspect-only at a pinned revision because its
   tree has no license grant and unsafe global/update paths. No source was copied.
 - Current cumulative owner-profile baseline: 24/24 pass
-  `20260828T142604Z-ee30a4cf`. It includes session-route identity and stale PID
-  lifecycle gates. Kiro `claude-opus-5` has a bounded full
+  `20260828T150731Z-590717cd`. It includes the deep CCR core-health/Windows
+  process-isolation repair, session-route identity and stale PID lifecycle
+  gates. Kiro `claude-opus-5` has a bounded full
   Claude CLI -> CCR -> provider smoke with exact output `OK`; this proves one
   request, not provider identity, privacy or future availability.
 - Current focused evidence is
-  `50-Evidence/2026-08-28-session-identity-stale-pid-and-cold-start.md`.
+  `50-Evidence/2026-08-28-ccr-dead-core-502-repair.md`.
 
 ## Allowed Next Work
 

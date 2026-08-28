@@ -94,6 +94,37 @@ class RouterStartupOptimizationTests(unittest.TestCase):
         self.assertIn("Ensure-Router", self.start_profile)
         self.assertLess(self.start_profile.index("Ensure-Router"), self.start_profile.index("Read-ProtectedSecret"))
 
+    def test_gateway_health_rejects_a_live_shell_with_a_dead_core(self):
+        verified = section(self.source, "function Assert-VerifiedRouterService", "function Test-GatewayConfigAcceptanceTimeout")
+        for marker in (
+            "ConvertFrom-Json",
+            'Get-StringProperty -Object $GatewayHealth -Name "status"',
+            '"$CoreGatewayUrl/health"',
+            'Get-StringProperty -Object $CoreHealth -Name "status"',
+            'Invoke-RouterRpc -State $State -Method "getGatewayStatus"',
+            'Get-ObjectPropertyValue -Object $GatewayStatus -Name "gatewayManagedExternally"',
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, verified)
+
+    def test_windows_core_gateway_isolated_from_launcher_console_control_events(self):
+        supervisor = (
+            ROOT
+            / "claude-code-router_proxy"
+            / "packages"
+            / "core"
+            / "src"
+            / "gateway"
+            / "core-runtime"
+            / "supervisor.ts"
+        ).read_text(encoding="utf-8-sig")
+        spawn_gateway = section(supervisor, "export function spawnGatewayProcess", "function monitorGatewayConfigAcceptance")
+        self.assertIn('detached: process.platform === "win32"', spawn_gateway)
+        self.assertIn('windowsHide: process.platform === "win32"', spawn_gateway)
+
+        patcher = (ROOT / "tools" / "apply_router_local_patches.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("isolate Windows core gateway from launcher console", patcher)
+
     def test_warmup_failure_has_a_non_fatal_fallback_without_weakening_verification(self):
         self.assertRegex(self.warmup, re.compile(r"catch\s*\{.*?WarmupProcess\s*=\s*\$null", re.S))
         self.assertIn("route selection will verify startup synchronously", self.warmup)
@@ -109,6 +140,14 @@ class RouterStartupOptimizationTests(unittest.TestCase):
         self.assertIn('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', self.start_profile)
         self.assertIn('$env:CLAUDE_CODE_MAX_RETRIES = "3"', self.start_profile)
         self.assertLess(self.start_profile.index("Ensure-Router"), self.start_profile.index("Read-ProtectedSecret"))
+
+    def test_known_core_process_termination_gets_one_bounded_management_restart(self):
+        ensure_router = section(self.source, "function Ensure-Router", "function Start-RouterWarmup")
+        self.assertIn("function Test-CoreGatewayProcessTermination", self.source)
+        self.assertIn("Test-CoreGatewayProcessTermination -Status $Status", ensure_router)
+        self.assertEqual(ensure_router.count('-Method "restartGateway"'), 1)
+        self.assertIn("Wait-VerifiedRouterStability", ensure_router)
+        self.assertIn("Attempts 40", ensure_router)
 
     def test_no_codex_app_or_global_switching_surface_was_added(self):
         self.assertNotIn("Get-Command codex", self.warmup.casefold())

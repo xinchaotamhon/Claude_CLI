@@ -6,12 +6,12 @@
       "name": "Claude Code Router",
       "source_url": "https://github.com/musistudio/claude-code-router",
       "version": "3.0.21",
-      "source_commit": "ffc823b683861ad3f86c8dd38c0dbe61eef62f6c",
+      "source_commit": "e703b588fd645c52a311700090ed2f6bb76e6d01",
       "upstream_base_commit": "1347c868b493728a31c76098459584e0fcc23940",
       "license": "MIT",
       "local_integration": "provider_router plus ignored setting.json and per-account folder-local Codex browser login homes behind DASHBOARD.bat/tools/router_project_menu.ps1",
       "reason": "multi-protocol provider gateway behind one Claude CLI harness",
-      "constraints": "loopback-only; project-local ignored state; provider-only fork patch prevents external Claude App/profile synchronization; pinned local Codex helper authorized for login and read-only official app-server quota snapshots only; no global auth/PATH discovery; no provider CLI harness; no automatic update",
+      "constraints": "loopback-only; project-local ignored state; provider-only fork patch prevents external Claude App/profile synchronization; Windows core gateway is detached from launcher console control events but remains parent-owned through IPC; pinned local Codex helper authorized for login and read-only official app-server quota snapshots only; no global auth/PATH discovery; no provider CLI harness; no automatic update",
       "verification_gate": "claude.router-local-layout"
     },
     {

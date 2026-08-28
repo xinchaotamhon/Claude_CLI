@@ -42,6 +42,7 @@ $NodePath = Join-Path $RouterRoot "runtime\node.exe"
 $RouterCliPath = Join-Path $RouterRoot "node_modules\@musistudio\claude-code-router\dist\main\cli.js"
 $ClaudeBinary = Join-Path $RootPath "bin\claude.exe"
 $GatewayUrl = "http://127.0.0.1:3456"
+$CoreGatewayUrl = "http://127.0.0.1:3457"
 $ManagementUrl = "http://127.0.0.1:3458"
 $CcrHomePath = Join-Path $RouterStateRoot "home"
 $CcrAppDataPath = Join-Path $RouterStateRoot "appdata"
@@ -589,9 +590,37 @@ function Ensure-ManagementService {
 
 function Assert-VerifiedRouterService {
     $State = Assert-VerifiedManagementService
-    try { $Health = Invoke-WebRequest -Uri "$GatewayUrl/health" -UseBasicParsing -TimeoutSec 3 }
+    try { $GatewayResponse = Invoke-WebRequest -Uri "$GatewayUrl/health" -UseBasicParsing -TimeoutSec 3 }
     catch { throw "The verified CCR process did not answer the local gateway health check." }
-    if ([int]$Health.StatusCode -ne 200) { throw "The verified CCR gateway health check did not return HTTP 200." }
+    if ([int]$GatewayResponse.StatusCode -ne 200) { throw "The verified CCR gateway health check did not return HTTP 200." }
+    try { $GatewayHealth = $GatewayResponse.Content | ConvertFrom-Json }
+    catch { throw "The verified CCR gateway returned an invalid health payload." }
+    if ((Get-StringProperty -Object $GatewayHealth -Name "status") -ne "running") {
+        throw "The CCR gateway shell is listening, but its core gateway is not running."
+    }
+    if ((Get-StringProperty -Object $GatewayHealth -Name "core") -ne $CoreGatewayUrl) {
+        throw "The CCR gateway shell reports an unexpected project-local core endpoint."
+    }
+
+    $GatewayStatus = Invoke-RouterRpc -State $State -Method "getGatewayStatus"
+    $GatewayPid = Get-ObjectPropertyValue -Object $GatewayStatus -Name "pid"
+    $GatewayManagedExternally = Get-ObjectPropertyValue -Object $GatewayStatus -Name "gatewayManagedExternally"
+    if ((Get-StringProperty -Object $GatewayStatus -Name "state") -ne "running" -or
+        (Get-StringProperty -Object $GatewayStatus -Name "endpoint") -ne $GatewayUrl -or
+        (Get-StringProperty -Object $GatewayStatus -Name "coreEndpoint") -ne $CoreGatewayUrl -or
+        $GatewayManagedExternally -eq $true -or
+        $null -eq $GatewayPid -or [int]$GatewayPid -le 0) {
+        throw "The verified CCR management service does not own a running project-local core gateway."
+    }
+
+    try { $CoreResponse = Invoke-WebRequest -Uri "$CoreGatewayUrl/health" -UseBasicParsing -TimeoutSec 3 }
+    catch { throw "The verified CCR core gateway did not answer its direct health check." }
+    if ([int]$CoreResponse.StatusCode -ne 200) { throw "The verified CCR core health check did not return HTTP 200." }
+    try { $CoreHealth = $CoreResponse.Content | ConvertFrom-Json }
+    catch { throw "The verified CCR core gateway returned an invalid health payload." }
+    if ((Get-StringProperty -Object $CoreHealth -Name "status") -ne "ok" -or [string]::IsNullOrWhiteSpace((Get-StringProperty -Object $CoreHealth -Name "runtimeId"))) {
+        throw "The verified CCR core gateway is not ready."
+    }
     return $State
 }
 
@@ -613,6 +642,15 @@ function Test-GatewayConfigAcceptanceTimeout {
     $ErrorProperty = $Status.PSObject.Properties["lastError"]
     if ($null -eq $StateProperty -or [string]$StateProperty.Value -ne "error" -or $null -eq $ErrorProperty) { return $false }
     return ([string]$ErrorProperty.Value -match '^Core gateway did not accept runtime config within [0-9]+ms\.$')
+}
+
+function Test-CoreGatewayProcessTermination {
+    param([Parameter(Mandatory = $true)]$Status)
+    if ($null -eq $Status) { return $false }
+    $StateProperty = $Status.PSObject.Properties["state"]
+    $ErrorProperty = $Status.PSObject.Properties["lastError"]
+    if ($null -eq $StateProperty -or [string]$StateProperty.Value -ne "error" -or $null -eq $ErrorProperty) { return $false }
+    return ([string]$ErrorProperty.Value -match '^Core gateway exited with (?:-?[0-9]+|[A-Z]+)\.(?:\s|$)')
 }
 
 function Ensure-Router {
@@ -650,6 +688,21 @@ function Ensure-Router {
         $Status = Invoke-RouterRpc -State $State -Method "getGatewayStatus"
     }
     catch { throw "$InitialFailure Recovery status could not be verified." }
+    if (Test-CoreGatewayProcessTermination -Status $Status) {
+        try { [void](Invoke-RouterRpc -State $State -Method "restartGateway") }
+        catch { throw "$InitialFailure CCR management rejected the one bounded core-process restart." }
+        try {
+            [void](Invoke-CcrStartAndVerify `
+                -Arguments @("core-process-restart-verification") `
+                -Starter { param([string[]]$IgnoredArguments) } `
+                -Verifier { Wait-VerifiedRouterStability } `
+                -FailureMessage "CCR core-process restart was not verified:" `
+                -Attempts 40 `
+                -DelayMilliseconds 250)
+            return
+        }
+        catch { throw "$InitialFailure $($_.Exception.Message)" }
+    }
     if (-not (Test-GatewayConfigAcceptanceTimeout -Status $Status)) { throw $InitialFailure }
 
     $RetryFailure = "The cold-start retry did not produce a verified gateway."
@@ -1602,6 +1655,9 @@ function Invoke-SelfTest {
         if (-not (Test-GatewayConfigAcceptanceTimeout -Status ([PSCustomObject]@{ state = "error"; lastError = "Core gateway did not accept runtime config within 5000ms." }))) { throw "The bounded Windows cold-start recovery trigger was not recognized." }
         if (Test-GatewayConfigAcceptanceTimeout -Status ([PSCustomObject]@{ state = "error"; lastError = "Unrelated gateway failure." })) { throw "An unrelated gateway failure was accepted by the cold-start recovery trigger." }
         if (Test-GatewayConfigAcceptanceTimeout -Status ([PSCustomObject]@{ state = "stopped" })) { throw "A gateway status without a last error was accepted by the cold-start recovery trigger." }
+        if (-not (Test-CoreGatewayProcessTermination -Status ([PSCustomObject]@{ state = "error"; lastError = "Core gateway exited with 3221225786. stderr: offline fixture" }))) { throw "The exact core-process termination recovery trigger was not recognized." }
+        if (Test-CoreGatewayProcessTermination -Status ([PSCustomObject]@{ state = "error"; lastError = "Core gateway auth token is not initialized." })) { throw "A symptom without a proved core-process exit was accepted by the recovery trigger." }
+        if (Test-CoreGatewayProcessTermination -Status ([PSCustomObject]@{ state = "running"; lastError = "Core gateway exited with 3221225786." })) { throw "A running gateway was accepted by the core-process recovery trigger." }
         if ((Resolve-CodexModelChoice -Choices @("model-a", "model-b") -Choice "2") -ne "model-b") { throw "Numeric Codex model selection did not resolve." }
         if ((Resolve-CodexModelChoice -Choices @("model-a", "model-b") -Choice "MODEL-A") -ne "model-a") { throw "Exact Codex model ID selection was not case-insensitive." }
         if ($null -ne (Resolve-CodexModelChoice -Choices @("model-a", "model-b") -Choice "terra")) { throw "An unavailable Codex model alias was accepted." }
@@ -1634,7 +1690,7 @@ function Invoke-SelfTest {
         )) {
             if ($Text.IndexOf($Forbidden, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) { throw "Interactive API/profile input remains in RUN menu: $Forbidden" }
         }
-        foreach ($Required in @("setting.json", "saveConfig", "getServiceIdentity", "Assert-VerifiedRouterService", '"$GatewayUrl/health"', "importLocalAgentProvider", "account-profiles.json", "CODEX_HOME", "CODEX_SQLITE_HOME", "codex-login-runtime", "global-profile-takeover.json", 'applyProfile = $true')) {
+        foreach ($Required in @("setting.json", "saveConfig", "getServiceIdentity", "Assert-VerifiedRouterService", '"$GatewayUrl/health"', '"$CoreGatewayUrl/health"', "ConvertFrom-Json", "getGatewayStatus", "restartGateway", "importLocalAgentProvider", "account-profiles.json", "CODEX_HOME", "CODEX_SQLITE_HOME", "codex-login-runtime", "global-profile-takeover.json", 'applyProfile = $true')) {
             if ($Text.IndexOf($Required, [System.StringComparison]::Ordinal) -lt 0) { throw "Required setting flow marker is missing: $Required" }
         }
         foreach ($ExternalMarker in @(
@@ -1655,6 +1711,7 @@ function Invoke-SelfTest {
         Write-Output "PASS: generated account route IDs accept slug-safe underscore and dot characters"
         Write-Output "PASS: verified CCR postcondition wins over a stale start exit while unverified starts fail closed"
         Write-Output "PASS: bounded Windows cold-start recovery matches only the exact CCR IPC timeout"
+        Write-Output "PASS: bounded core-process recovery matches only a recorded error-state child exit"
         Write-Output "PASS: sole Codex model auto-selection and exact multi-model resolution"
         Write-Output "PASS: unfinished project-local Codex login resumes by exact account label"
         Write-Output "PASS: Codex account homes force file-backed ChatGPT login inside router state"

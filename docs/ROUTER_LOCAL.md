@@ -110,10 +110,18 @@ CCR 3.0.21 lưu cấu hình sống trong SQLite, không theo dõi JSON. Launcher
 9. Tự lấy/tạo CCR client key và lưu bằng Windows DPAPI.
 
 Lệnh nền `ccr start` đôi khi có thể trả mã khác 0 sau khi đã kích hoạt gateway.
-Launcher không coi riêng mã đó là thành công hay thất bại: nó kiểm tra lại state,
-PID, đúng Node/CLI cục bộ, service token và `/health` trên loopback. Nếu toàn bộ
-hậu điều kiện này đạt thì tiếp tục; nếu không đạt thì dừng trước khi giải mã
-client key và báo cả ngữ cảnh start lẫn lỗi xác minh.
+Launcher không coi riêng mã đó là thành công hay thất bại. Nó kiểm tra state,
+PID, đúng Node/CLI cục bộ và service token; sau đó đọc payload `/health` của
+gateway công khai trên `127.0.0.1:3456`, đối chiếu ownership/PID qua management
+RPC và kiểm tra trực tiếp core trên `127.0.0.1:3457`. HTTP 200 với
+`status:error` không phải trạng thái khỏe. Nếu nhận đúng dấu vết core child vừa
+thoát, launcher cho phép đúng một management restart rồi lặp lại toàn bộ kiểm
+chứng; lỗi khác vẫn fail-closed trước khi giải mã client key.
+
+Trên Windows, core child chạy trong process group tách khỏi console launcher và
+ẩn cửa sổ, nhưng vẫn giữ IPC với management service để stop/restart đúng owner.
+Điều này ngăn Ctrl+C/đóng terminal cha làm rơi riêng core rồi để lại gateway shell
+trả 502 `Core gateway auth token is not initialized`.
 
 Nếu file JSON sai, URL chứa credential, protocol sai, provider trùng tên hoặc
 provider bật mà thiếu key/model, việc save không diễn ra.

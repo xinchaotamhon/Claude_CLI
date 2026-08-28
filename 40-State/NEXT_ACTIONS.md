@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: session-identity-stale-pid-and-cold-start-repair
+verified_by: ccr-dead-core-502-repair
 status: active
 ---
 

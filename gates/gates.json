@@ -252,12 +252,12 @@
         "tests/test_router_startup_optimization.py"
       ],
       "cwd": ".",
-      "description": "RUN menu starts a non-blocking verified router warmup without touching credentials, providers or Codex App state",
+      "description": "RUN menu verifies management ownership plus public and core health before touching credentials",
       "enabled": true,
       "expected_exit_code": 0,
       "id": "claude.router-warm-start-contract",
       "introduced_by": "phase-2-project-local-account-onboarding",
-      "invariant": "Routes render before a hidden project-local warmup; route selection still verifies exact process, loopback and health before DPAPI access, while no global Codex/App switching or provider request is introduced",
+      "invariant": "Routes render before a hidden project-local warmup; route selection requires exact management identity, public gateway status=running, owned core PID/endpoints and direct core status=ok before DPAPI access; one exact core termination gets one bounded restart while no global Codex/App switching or provider request is introduced",
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 10

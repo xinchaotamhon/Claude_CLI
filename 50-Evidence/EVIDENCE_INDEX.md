@@ -1,5 +1,10 @@
 # Evidence Index
 
+- [2026-08-28 CCR dead-core 502 root-cause repair](2026-08-28-ccr-dead-core-502-repair.md):
+  proved false-positive HTTP-200 health, Windows console termination of the
+  nested core, detached hidden process-group repair, deep readiness, bounded
+  management recovery and quota-free live verification.
+
 - [2026-08-28 session identity, stale PID and cold-start containment](2026-08-28-session-identity-stale-pid-and-cold-start.md):
   immutable session origin, single-writer UUID, same-route parallel sessions,
   Windows PID-reuse recovery, Codex stable-readiness containment, conservative
