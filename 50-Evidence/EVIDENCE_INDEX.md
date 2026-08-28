@@ -1,5 +1,8 @@
 # Evidence Index
 
+- [2026-08-28 Claude 2.1.250 and CLIProxyAPI 7.2.144 upgrade](2026-08-28-claude-2.1.250-and-cliproxy-7.2.144-upgrade.md):
+  official release assets, closed-binary hash/rollback, exact four-patch rebase,
+  reproducible local build and no-network offline protocol pilot.
 - [2026-08-28 Control Room v2 and first-launch contention repair](2026-08-28-dashboard-control-room-v2-and-startup-contention.md):
   searchable provider-grouped route picker, account filters, truthful Google
   catalog state, delayed/launch-aware background refresh, UI/token-repository

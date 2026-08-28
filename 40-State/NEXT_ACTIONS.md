@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: dashboard-control-room-v2-and-startup-contention-repair
+verified_by: claude-2.1.250-and-cliproxy-7.2.144-upgrade
 status: active
 ---
 
@@ -18,8 +18,8 @@ status: active
 3. **Repair one Google slot without hard-coding.** Use the dashboard removal
    action for one stale/401 slot, sign in again through the official chooser,
    then run dynamic catalog synchronization. If it remains empty, review
-   upstream CLIProxyAPI `7.2.144` in an exact-tag isolated pilot; do not type
-   screenshot model names into source or claim login alone proves entitlement.
+   current CLIProxyAPI `7.2.144-local.1`; do not type screenshot model names
+   into source or claim login alone proves entitlement.
 4. **Promote Google routes incrementally.** Only after dynamic discovery works,
    prove one explicit account/model request and a full tool loop, then add only
    that route. Keep `Gemini` and `Claude / GPT` quota branches separate.
@@ -53,9 +53,9 @@ status: active
     path and keep keys out of Git/docs/browser state.
 11. **Keep CCR as rollback champion.** Do not delete its ignored runtime/auth
     state. If dashboard fails, use `tools\RUN_CLAUDE_TECHNICAL.bat`.
-12. **Review updates conservatively.** Operational versions remain Claude
-    `2.1.247` and isolated CLIProxyAPI `7.2.143-local.1`; upstream candidates
-    are Claude `2.1.250` and CLIProxyAPI `7.2.144`. Keep CCR at `3.0.21`:
+12. **Review updates conservatively.** Operational versions are now Claude
+    `2.1.250` and isolated CLIProxyAPI `7.2.144-local.1`, both with exact
+    rollback artifacts. Keep CCR at `3.0.21`:
     `3.0.22` is rejected until its changed runtime can preserve provider-only
     isolation with a new reviewed source/runtime patch. Never run CCR source
     tests directly; close Codex App/dashboard/router and use

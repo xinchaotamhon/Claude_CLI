@@ -59,8 +59,8 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         fail("SOURCE schema_version must be 1")
     if metadata.get("component") != "CLIProxyAPI":
         fail("unexpected source component")
-    if metadata.get("status") != "phase-5-v7.2.143-upgrade-built":
-        fail("source status must identify the reviewed v7.2.143 Phase 5 build")
+    if metadata.get("status") != "phase-6-v7.2.144-upgrade-built":
+        fail("source status must identify the reviewed v7.2.144 Phase 6 build")
     if metadata.get("source_url") != EXPECTED_URL:
         fail("unexpected source URL")
     if not HEX40.fullmatch(str(metadata.get("source_commit", ""))):

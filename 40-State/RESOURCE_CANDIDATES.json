@@ -14,9 +14,9 @@
       "id": "external.cli-proxy-api",
       "name": "CLIProxyAPI",
       "source_url": "https://github.com/router-for-me/CLIProxyAPI",
-      "status": "v7.2.143-reviewed-patched-runtime-active",
+      "status": "v7.2.144-reviewed-patched-runtime-active",
       "fit": "cross-protocol loopback gateway with Codex/Claude OAuth, API-key providers and multi-account routing",
-      "constraints": "v7.2.143 plus four tracked project patches passed focused source tests and reproducible build checks; OAuth and live provider requests remain unproved for this exact upgraded binary, and the previous 7.2.141-local.4 source/binary remain project-local rollback copies"
+      "constraints": "v7.2.144 plus four tracked project patches passed focused source tests, reproducible build and loopback-only offline protocol pilot; OAuth and live provider requests remain unproved for this exact upgraded binary, and 7.2.143-local.1 source/binary remain project-local rollback copies"
     },
     {
       "id": "external.easy-cli-proxy-api",

@@ -9,14 +9,14 @@
     "source": "https://go.dev/dl/"
   },
   "source": {
-    "upstream_tag": "v7.2.143",
-    "upstream_commit": "4b5f1eab25fca4b3815369a826e958e7c070a69e",
-    "patched_commit": "d60235408ba2f2ef8f59f66f6e172b2df6d1ec82"
+    "upstream_tag": "v7.2.144",
+    "upstream_commit": "d36b776c790a4d58027fd4fb434800fb5334bceb",
+    "patched_commit": "b811980516263623713dbcf15e3cecf8296ab2b0"
   },
   "binary": {
     "path": ".runtime/challenger/bin/cli-proxy-api.exe",
-    "sha256": "95ca070ecb8529dd84f0fce2aa8592fbfcbb7a94a1d3b2ab73d83d87c1237e32",
-    "size_bytes": 66125824,
+    "sha256": "bc2631f4e46a2fcc0a9ceafa6d55d3887d3442666b556712edac85c04d1f24e2",
+    "size_bytes": 66128896,
     "tracked": false
   },
   "fixture_binary": {

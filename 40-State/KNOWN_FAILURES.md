@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: dashboard-control-room-v2-and-startup-contention-repair
+verified_by: claude-2.1.250-and-cliproxy-7.2.144-upgrade
 status: active
 ---
 
@@ -44,14 +44,16 @@ status: active
   loaded one auth entry and returned HTTP 200 with an empty sanitized model
   array. No token, email, account ID or auth payload was retained.
 - Cause: proved only at the integration boundary. The current OAuth state is
-  rejected by the direct catalog surface; the new `7.2.143-local.1` build has
-  not yet received an owner-authorized live OAuth/catalog request.
+  rejected by the direct catalog surface; the new `7.2.144-local.1` build has
+  passed offline protocol gates but has not yet received an owner-authorized
+  live OAuth/catalog request.
   Whether the decisive change is scope, header, endpoint behavior or proxy
   translation remains unknown.
 - Failed approaches: direct dynamic catalog request and the reviewed current
   proxy. Screenshot model names were deliberately not used as source truth.
-- Disposition: open. The exact `7.2.143` rebase and reproducible build are now
-  complete; run an isolated owner-authorized live pilot before route promotion.
+- Disposition: open. The exact `7.2.144` rebase, reproducible build and offline
+  loopback pilot are complete; run an owner-authorized fresh OAuth/catalog proof
+  before route promotion.
 - Regression gate: `claude.dashboard-account-management` prohibits transient
   hard-coded model names and false successful synchronization. A real provider
   entitlement still requires a bounded owner-authorized live gate.

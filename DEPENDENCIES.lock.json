@@ -9,7 +9,7 @@
     {
       "id": "claude-code",
       "kind": "closed-binary",
-      "version": "2.1.247",
+      "version": "2.1.250",
       "path": "bin/claude.exe",
       "sha256_file": "checksums/claude.exe.sha256",
       "reconstruction": "Download the official Windows native binary after owner approval, copy it to bin/claude.exe, then verify the tracked SHA-256 or explicitly review and promote a new version/hash."
@@ -33,7 +33,7 @@
     {
       "id": "cli-proxy-api-challenger",
       "kind": "open-source-patched-build",
-      "version": "v7.2.143",
+      "version": "v7.2.144",
       "upstream": "https://github.com/router-for-me/CLIProxyAPI.git",
       "branch": "claude",
       "runtime_install": "tools/install_challenger_pilot.ps1",

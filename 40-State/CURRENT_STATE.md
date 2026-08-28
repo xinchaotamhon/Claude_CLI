@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: dashboard-control-room-v2-and-startup-contention-repair
+verified_by: claude-2.1.250-and-cliproxy-7.2.144-upgrade
 status: active
 ---
 
@@ -10,8 +10,9 @@ status: active
 
 - Root is `D:\mydata\new-git-3\claude_CLI-V`. Project-local
   `bin/claude.exe` remains the only interactive coding harness and reports
-  Claude Code `2.1.247`; tracked SHA-256 is
-  `00e5be0a8b69893cad9259a1e8b80d59be8f3eb367d4a16c19f91bcd279423b7`.
+  Claude Code `2.1.250`; tracked SHA-256 is
+  `63403e009e779b0788d1b46be8436e734075514e280bb1ee8e06e4126ba63f29`.
+  Exact `2.1.247` rollback binary remains under ignored update backups.
 - Router is project-local CCR `3.0.21` on Node `v24.12.0`; reviewed source is
   nested branch `claude` at fork commit
   `ffc823b683861ad3f86c8dd38c0dbe61eef62f6c`, based on upstream commit
@@ -61,14 +62,14 @@ status: active
   mutation stays pending until active sessions close. Dashboard recovery then
   completes the import without another login while auth remains valid.
 - The CLIProxyAPI nested `claude` branch now rebases the same four reviewed
-  patches onto upstream `v7.2.143` at patched commit
-  `d60235408ba2f2ef8f59f66f6e172b2df6d1ec82`: Google OAuth requests an account
+  patches onto upstream `v7.2.144` at patched commit
+  `b811980516263623713dbcf15e3cecf8296ab2b0`: Google OAuth requests an account
   chooser, accepts a bounded optional email `login_hint`, and uses the exact
   same IPv4 loopback host (`127.0.0.1`) for redirect URI and listener. The
-  reproducibly rebuilt `7.2.143-local.1` binary SHA-256 is
-  `95ca070ecb8529dd84f0fce2aa8592fbfcbb7a94a1d3b2ab73d83d87c1237e32`.
-  Focused `cmd/server` and `sdk/auth` tests passed. The previous source and
-  binary remain in ignored `.runtime/update-backups/cli-proxy-api` for rollback.
+  reproducibly rebuilt `7.2.144-local.1` binary SHA-256 is
+  `bc2631f4e46a2fcc0a9ceafa6d55d3887d3442666b556712edac85c04d1f24e2`.
+  Focused `cmd/server` and `sdk/auth` tests plus the loopback-only offline pilot
+  passed. The previous source branch and binary remain available for rollback.
 - Claude Code Router remains pinned to `3.0.21`. A `3.0.22` review branch
   accepted the source patch and passed typecheck plus 620/626 unit tests, but
   the published minified runtime no longer matched any of the four exact local
@@ -354,8 +355,9 @@ status: active
   catalog cache. Four current slots returned HTTP 401 to the direct catalog
   adapter; the reviewed `7.2.141-local.4` proxy loaded one slot but returned an
   empty model list. The dashboard therefore exposes no invented model and a
-  failed sync cannot be reported as successful. An isolated `7.2.143` source
-  rebase/pilot is the next bounded repair.
+  failed sync cannot be reported as successful. CLIProxyAPI `7.2.144-local.1`
+  now passes the isolated offline pilot, but a fresh owner OAuth/catalog proof
+  remains required before any Google route is exposed.
 - Dashboard Control Room v2 replaces the long native route menu with an
   original searchable picker grouped by provider, adds account-kind/text
   filters, a visible isolation/fallback/update status rail and sanitized Google
@@ -371,12 +373,9 @@ status: active
   instead of 750 ms and skips while a route launch is awaiting its lifecycle
   acknowledgement. This removes a proved local first-launch contention source;
   it does not conceal provider cold starts, stale OAuth or upstream failures.
-- Read-only release review found upstream Claude `2.1.250`, CCR `3.0.22`,
-  CLIProxyAPI `7.2.144`, Codex stable `0.150.1` and alpha
-  `0.151.0-alpha.8`. No update was merged or promoted. Operational versions
-  remain Claude `2.1.247`, CCR `3.0.21`, CLIProxyAPI `7.2.143-local.1` and Codex
-  helper `0.149.0-alpha.4.1`. Claude and CLIProxyAPI require exact rollback
-  pilots; CCR and the working Codex helper remain held.
+- Claude `2.1.250` and CLIProxyAPI `7.2.144-local.1` are promoted with exact
+  rollback artifacts. Operational CCR remains `3.0.21` and Codex helper remains
+  `0.149.0-alpha.4.1`; CCR `3.0.22` and newer Codex helper releases remain held.
 - Four owner-proposed token optimizers were reviewed. None was installed:
   `snip` is eligible only for a future offline golden-fixture pilot; the other
   candidates are reference-only or rejected because they can hide context,
@@ -385,6 +384,10 @@ status: active
   `20260828T065757Z-4d29afba`. The current dashboard server then restarted on
   loopback with an exact matching source hash and healthy endpoint; no router
   or existing Claude terminal was stopped.
+- All 22 enabled smoke gates passed again on promoted Claude `2.1.250` and
+  CLIProxyAPI `7.2.144-local.1` in owner-profile run
+  `20260828T072548Z-9493ae04`. The run included external Codex App isolation and
+  the no-network challenger pilot; it made no provider/model request.
 - Automatic fallback remains off. A future bounded pilot may use one
   owner-approved cross-provider hop before any output/tool side effect; account
   rotation intended to bypass a provider quota is not an accepted policy.
@@ -459,7 +462,7 @@ status: active
 ## Blockers
 
 - Google OAuth slots exist and quota can be read, but neither the direct
-  catalog endpoint nor project-patched CLIProxyAPI `7.2.143-local.1` currently
+  catalog endpoint nor project-patched CLIProxyAPI `7.2.144-local.1` currently
   proves a launchable model. The rebase/build is complete; one owner-authorized
   OAuth/catalog request and then one explicit live route/tool-loop proof remain
   required before exposing Google routes.
@@ -478,7 +481,7 @@ status: active
 - API keys in ignored `setting.json` are plaintext by owner choice. Git protects
   against normal commit, but Windows-user access and backups remain an owner
   responsibility.
-- CLIProxyAPI real OAuth refresh, mixed Free/Plus routing, Google quota response
+- CLIProxyAPI `7.2.144-local.1` real OAuth refresh, mixed Free/Plus routing, Google quota response
   shape and full Claude tool-loop fidelity remain unproved. Codex quota uses an
   official app-server method whose upstream account policy and returned buckets
   can still change; the dashboard must degrade to `unknown`/reauthentication
