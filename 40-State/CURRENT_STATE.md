@@ -482,13 +482,33 @@ status: active
   includes DPAPI, external Codex App isolation, Codex import recovery, dynamic
   Google onboarding, fallback contracts and the local dashboard gate.
 
+## Latest verified change — 2026-08-28
+
+- Google login, loopback proxy identity, catalog discovery and 13 route
+  definitions are valid. Current real Claude requests are nevertheless rejected
+  by Antigravity with HTTP 429. Flash, Flash Extra Low and Flash Lite were all
+  observed cooling down, including after a fresh proxy process. The exact
+  provider-side quota/rate policy remains unknown.
+- Google Claude child processes now use two retries, suppress nonessential
+  traffic/unsupported beta fields/nonstream fallback and disable prompt
+  suggestions. A 429 surfaces in seconds instead of appearing frozen through
+  the former ten-retry exponential backoff.
+- A failed launch terminal remains open for the owner to read; successful
+  Claude sessions are unchanged.
+- Dashboard dark UI was rebuilt with pattern-only review of Impeccable and
+  OpenDesign. No package or runtime dependency was added. Browser QA at 1280 px
+  proved no horizontal overflow, accessible route dialog dismissal and no
+  console errors.
+- All 22 smoke gates passed on the final artifact in
+  `20260828T094039Z-13e8d342`.
+
 ## Blockers
 
-- Google OAuth slots exist and quota can be read, but neither the direct
-  catalog endpoint nor project-patched CLIProxyAPI `7.2.144-local.1` currently
-  proves a launchable model. The rebase/build is complete; one owner-authorized
-  OAuth/catalog request and then one explicit live route/tool-loop proof remain
-  required before exposing Google routes.
+- Google routes are exposed and the runtime/protocol path is proved, but the
+  current account rejects real model requests with HTTP 429/cooling down. The
+  dashboard percentages cannot override this provider decision. Wait for the
+  provider reset/cooldown or add another authorized Google account before the
+  first successful full Claude tool-loop can be recorded.
 - Owner reported that Codex App operates normally again. Its separate account
   rotation/quota workflow remains deliberately outside this project.
 

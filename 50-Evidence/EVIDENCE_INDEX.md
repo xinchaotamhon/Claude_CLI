@@ -1,5 +1,8 @@
 # Evidence Index
 
+- [2026-08-28 Google harness 429 containment and dark control-room redesign](2026-08-28-google-harness-429-and-dark-ui.md):
+  real Claude-to-Google 429/cooldown diagnosis, bounded retries, visible failed
+  terminals, Impeccable/OpenDesign pattern adoption, browser QA and 22/22 gates.
 - [2026-08-28 Google runtime routes, hidden dashboard start and control-room UX](2026-08-28-google-runtime-routes-dashboard-startup-ui.md):
   live Google catalog-to-pinned-runtime intersection, per-slot loopback launch,
   no-request model-registry proof, one-console startup, grouped keyboard route

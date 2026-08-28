@@ -32,7 +32,7 @@ def main() -> int:
     checks = (
         require(server, ("dashboard-session.json", "discoverTranscriptIds", "waitForActionStatus", "setTimeout(resolve, 650)", "pruneActionStatusFiles", "Promise.allSettled", "AUTO_REFRESH_START_DELAY_MS = 15_000", "activeLaunches > 0"), "dashboard server"),
         require(frontend, ("resumeRoutes", "Mở lại bằng", "dashboardConnected", "Đang chuẩn bị"), "dashboard frontend"),
-        require(helper, ("StatusPath", "terminal_ready", "failed"), "terminal helper"),
+        require(helper, ("StatusPath", "terminal_ready", "failed", "Cửa sổ được giữ lại để bạn đọc lỗi thật"), "terminal helper"),
         require(dispatcher, ("#requires -Version 7.0", "ProcessStartInfo", "UseShellExecute = $true", "ArgumentList.Add", "-StatusPath"), "terminal dispatcher"),
         require(supervisor, ("#requires -Version 7.0", "System.Threading.Mutex", "rapidFailures", "dashboard-server.log"), "dashboard supervisor"),
         require(starter, ("dashboard_supervisor.ps1",), "dashboard starter"),
@@ -47,6 +47,7 @@ def main() -> int:
     print("PASS: one persistent local browser session survives bounded server restart")
     print("PASS: resume can select another current route and updates settle concurrently")
     print("PASS: first launch is not forced to compete with automatic quota/catalog refresh")
+    print("PASS: failed Claude launches remain visible instead of closing over the provider error")
     return 0
 
 

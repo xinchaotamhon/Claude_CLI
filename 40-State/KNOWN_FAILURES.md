@@ -520,6 +520,35 @@ status: active
   offline test cannot prove provider account access.
 - Evidence: `50-Evidence/2026-08-25-codex-free-model-route-repair.md`.
 
+## google.antigravity-quota-does-not-prove-route-availability — contained 2026-08-28
+
+- Symptom: selecting a Gemini route appeared frozen for minutes, then the
+  terminal closed; the dashboard simultaneously displayed nearly 100% weekly
+  and five-hour Google buckets.
+- Impact: the owner could neither use Gemini nor see the provider error, and a
+  quota card looked more authoritative than the actual model admission result.
+- Reproduction: send a bounded Claude Code prompt through the verified
+  project-local Google runtime. `gemini-3-flash` returned HTTP 429 resource
+  exhaustion; Flash Extra Low and Flash Lite returned provider cooldown. A
+  fresh proxy process did not change the result.
+- Raw evidence: only model IDs, HTTP status/category, timing and gate outcomes
+  are retained in
+  `50-Evidence/2026-08-28-google-harness-429-and-dark-ui.md`. Credentials and
+  transcripts were not retained.
+- Cause: proved at the provider boundary—Antigravity rejected the request with
+  429. Whether the upstream policy was account quota, per-model rate or another
+  resource limit remains unknown. The long apparent freeze was separately
+  caused by Claude Code's default ten exponential retries.
+- Failed approaches: smaller/lower Gemini variants, bare Claude prompt and a
+  fresh local proxy still reached provider cooldown. No attempt was made to
+  bypass provider controls or rotate accounts automatically.
+- Disposition: contained, provider-blocked. Google child launches use two
+  retries and suppress nonessential proxy traffic; a nonzero Claude exit keeps
+  its terminal visible. Dashboard copy says quota buckets are advisory.
+- Regression gates: `claude.dashboard-action-lifecycle` and
+  `claude.dashboard-account-management` prove the local containment. Live
+  provider availability cannot be a deterministic offline gate.
+
 For every new retained failure, include a stable ID, impact, reproduction, raw
 evidence, cause or `unknown`, failed approaches, disposition, and a regression
 gate or an explicit reason that deterministic gating is not feasible. Do not

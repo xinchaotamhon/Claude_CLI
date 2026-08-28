@@ -83,6 +83,11 @@ def main() -> int:
         "Wait-RuntimeModel",
         "ANTHROPIC_BASE_URL",
         "CLAUDE_CONFIG_DIR",
+        "CLAUDE_CODE_MAX_RETRIES",
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+        "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+        "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
+        "--prompt-suggestions",
         "-WindowStyle Hidden",
         "without sending a model request",
     ):
@@ -97,6 +102,7 @@ def main() -> int:
     print("PASS: compact dashboard tokens and owner-facing removal controls are present")
     print("PASS: searchable grouped route picker and account filters replace the long native menu")
     print("PASS: Google routes are the intersection of live catalog and pinned runtime capability")
+    print("PASS: Google launches bound retries and suppress proxy-incompatible background traffic")
     print("network: not used; ignored settings and auth payloads were not read")
     return 0
 

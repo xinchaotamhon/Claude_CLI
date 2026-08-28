@@ -56,6 +56,28 @@
       "reason": "replace the long native route list and dense account cards with a searchable, grouped and accessible owner flow",
       "constraints": "pattern reference only; no Carbon source, package, visual asset or external runtime was copied or installed",
       "verification_gate": "claude.dashboard-account-management"
+    },
+    {
+      "id": "pattern.impeccable-product-ui",
+      "name": "Impeccable product-interface critique patterns",
+      "source_url": "https://github.com/pbakaus/impeccable",
+      "reviewed_at": "2026-08-28",
+      "license": "Apache-2.0",
+      "adopted_scope": "product-not-marketing hierarchy, reduced nested cards and pills, tinted dark surfaces, deliberate typography and browser visual iteration",
+      "reason": "remove the oversized generic AI-dashboard presentation while preserving a compact owner-facing control room",
+      "constraints": "pattern reference only; no skill, hook, package, font, source file or external runtime was installed",
+      "verification_gate": "claude.dashboard-account-management"
+    },
+    {
+      "id": "pattern.open-design-semantic-dark-system",
+      "name": "OpenDesign portable design-system patterns",
+      "source_url": "https://github.com/nexu-io/open-design",
+      "reviewed_at": "2026-08-28",
+      "license": "Apache-2.0",
+      "adopted_scope": "semantic dark-mode tokens, portable design contract concepts and consistent component states",
+      "reason": "keep the dashboard visually coherent across future AI maintenance without adding another UI framework",
+      "constraints": "pattern reference only; no OpenDesign app, cloud service, package, template, asset or design-system bundle was downloaded",
+      "verification_gate": "claude.dashboard-account-management"
     }
   ]
 }

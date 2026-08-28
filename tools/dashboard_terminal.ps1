@@ -74,7 +74,16 @@ catch {
     $ExitCode = 1
 }
 
-if ($Action -like 'launch-*') { exit $ExitCode }
+if ($Action -like 'launch-*') {
+    if ($ExitCode -ne 0) {
+        try { Write-ActionStatus -Status 'failed' -ExitCode $ExitCode } catch { }
+        Write-Host ''
+        Write-Host "[ERROR] Claude kết thúc với mã $ExitCode." -ForegroundColor Red
+        Write-Host 'Cửa sổ được giữ lại để bạn đọc lỗi thật; dashboard không bị ảnh hưởng.' -ForegroundColor Yellow
+        [void](Read-Host 'Nhấn Enter để đóng cửa sổ này')
+    }
+    exit $ExitCode
+}
 Write-Host ''
 if ($ExitCode -eq 0) {
     Write-Host '[OK] Hoàn tất. Cửa sổ này sẽ tự đóng.' -ForegroundColor Green

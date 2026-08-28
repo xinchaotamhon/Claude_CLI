@@ -328,14 +328,28 @@ function Start-Claude {
     if (-not [Guid]::TryParseExact($SessionId, 'D', [ref]$ParsedSession)) { throw 'Invalid Claude session identifier.' }
     if ($SessionName -and ($SessionName.Length -gt 80 -or $SessionName -match '[\r\n]')) { throw 'Invalid Claude session name.' }
     Write-ClaudeSettings
-    $Arguments = @('--model', $Model)
+    $Arguments = @('--model', $Model, '--prompt-suggestions', 'false')
     if ($ResumeSession) { $Arguments += @('--resume', $ParsedSession.ToString('D')) }
     else {
         $Arguments += @('--session-id', $ParsedSession.ToString('D'))
         if ($SessionName) { $Arguments += @('--name', $SessionName) }
     }
     $Saved = @{}
-    $Names = @('ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'CLAUDE_CONFIG_DIR', 'DISABLE_AUTOUPDATER')
+    $Names = @(
+        'ANTHROPIC_BASE_URL',
+        'ANTHROPIC_AUTH_TOKEN',
+        'ANTHROPIC_API_KEY',
+        'ANTHROPIC_MODEL',
+        'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+        'ANTHROPIC_DEFAULT_SONNET_MODEL',
+        'ANTHROPIC_DEFAULT_OPUS_MODEL',
+        'CLAUDE_CONFIG_DIR',
+        'DISABLE_AUTOUPDATER',
+        'CLAUDE_CODE_MAX_RETRIES',
+        'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+        'CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS',
+        'CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK'
+    )
     foreach ($Name in $Names) { $Saved[$Name] = [Environment]::GetEnvironmentVariable($Name, 'Process') }
     try {
         $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:$($State.Port)"
@@ -347,6 +361,13 @@ function Start-Claude {
         $env:ANTHROPIC_DEFAULT_OPUS_MODEL = $Model
         $env:CLAUDE_CONFIG_DIR = $ClaudeHome
         $env:DISABLE_AUTOUPDATER = '1'
+        # Google/third-party routes can return a transient 429 for a large Claude
+        # harness request even when a tiny provider probe succeeds. Keep the
+        # terminal responsive and remove Anthropic-only background traffic.
+        $env:CLAUDE_CODE_MAX_RETRIES = '2'
+        $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
+        $env:CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS = '1'
+        $env:CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK = '1'
         Write-Host ("Launching Claude: Google {0} [{1}] -> local port {2}" -f $State.Number, $Model, $State.Port) -ForegroundColor Green
         Write-LaunchStatus
         & $ClaudeBinary @Arguments

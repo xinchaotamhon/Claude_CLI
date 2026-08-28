@@ -15,11 +15,14 @@ status: active
    are active, the dashboard must show a pending account; close them and click
    **Hoàn tất nhập tài khoản**. Confirm actual routes: Free must not receive Sol;
    Plus may retain Sol/Terra/Luna only after bounded checks pass.
-3. **Use the repaired Google slot normally.** `google_pro_1` currently exposes
-   13 launch routes from a 24-model live catalog. Choose one Google route in the
-   grouped palette and send the first normal owner prompt. If a catalog model
-   is absent from the route palette, treat it as unsupported by the pinned
-   runtime—not as a reason to hard-code or relabel it.
+3. **Retry Google only after its cooldown/reset.** `google_pro_1` exposes 13
+   launch routes from a 24-model catalog, but current real requests return 429
+   for several Gemini models. The launcher now fails visibly within bounded
+   retries and keeps the error terminal open. Do not repeatedly hammer the
+   account; wait for provider reset/cooldown or add another authorized Google
+   account, then send one short normal prompt before a full tool-loop proof.
+   If a catalog model is absent from the route palette, treat it as unsupported
+   by the pinned runtime—not as a reason to hard-code or relabel it.
 4. **Promote new Google models through the pinned runtime manifest.** Catalog
    discovery is dynamic, but launch capability is the intersection with
    `router_challenger/google-runtime-models.json`. On a future CLIProxyAPI
