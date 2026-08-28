@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: dashboard-account-control-catalog-update-review
+verified_by: component-upgrade-and-ccr-source-test-isolation-repair
 status: active
 ---
 
@@ -15,11 +15,11 @@ status: active
    are active, the dashboard must show a pending account; close them and click
    **Hoàn tất nhập tài khoản**. Confirm actual routes: Free must not receive Sol;
    Plus may retain Sol/Terra/Luna only after bounded checks pass.
-3. **Repair Google catalog through an isolated proxy upgrade.** Do not type the
-   screenshot model names into source. Rebase the existing loopback/offline
-   patch onto exact CLIProxyAPI `7.2.143`, rebuild locally, then prove dynamic
-   `/v1/models` discovery against one existing slot without returning auth to
-   the browser. Keep the current `7.2.141-local.4` runtime as rollback.
+3. **Prove the upgraded Google path.** Do not type screenshot model names into
+   source. CLIProxyAPI `7.2.143-local.1` is rebuilt and active with a local
+   `7.2.141-local.4` rollback. Let the owner complete one Google OAuth slot,
+   then prove dynamic `/v1/models` discovery without returning auth to the
+   browser.
 4. **Promote Google routes incrementally.** Only after dynamic discovery works,
    prove one explicit account/model request and a full tool loop, then add only
    that route. Keep `Gemini` and `Claude / GPT` quota branches separate.
@@ -53,10 +53,13 @@ status: active
     path and keep keys out of Git/docs/browser state.
 11. **Keep CCR as rollback champion.** Do not delete its ignored runtime/auth
     state. If dashboard fails, use `tools\RUN_CLAUDE_TECHNICAL.bat`.
-12. **Review updates conservatively.** The 2026-08-28 review recommends a gated
-    Claude `2.1.247` update, an isolated CLIProxyAPI `7.2.143` rebase first,
-    then an exact CCR `3.0.22` pilot. Hold Codex helper `0.149` while login and
-    usage work. The four release checks run
+12. **Review updates conservatively.** Claude `2.1.247` and the isolated
+    CLIProxyAPI `7.2.143-local.1` rebuild are complete. Keep CCR at `3.0.21`:
+    `3.0.22` is rejected until its changed runtime can preserve provider-only
+    isolation with a new reviewed source/runtime patch. Never run CCR source
+    tests directly; close Codex App/dashboard/router and use
+    `tools/run_ccr_source_tests_isolated.ps1`. Hold Codex helper `0.149` while
+    login and usage work. The four release checks run
     independently and concurrently; a failed repository is marked as an error
     without hiding the others. Diff CCR/CLIProxyAPI source before merge;
     compare release notes/version/hash for the closed Claude binary. Never

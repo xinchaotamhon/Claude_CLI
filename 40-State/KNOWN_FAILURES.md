@@ -1,10 +1,34 @@
 ---
 last_verified: 2026-08-28
-verified_by: dashboard-account-control-catalog-update-review
+verified_by: component-upgrade-and-ccr-source-test-isolation-repair
 status: active
 ---
 
 # Known Failures
+
+## ccr.source-test-external-codex-takeover — fixed/contained 2026-08-28
+
+- Symptom: Codex App's account menu again displayed **Claude Code Router** after
+  a CCR `3.0.22` source review, despite normal project launchers being isolated.
+- Root cause: the upstream core unit suite was run directly while the real
+  project router and Codex App were live. One upstream test reused the healthy
+  router and exercised global profile synchronization without the project's
+  provider-only environment. The old isolation gate covered normal launchers,
+  not developer/source-test execution.
+- Repair: restore `C:\Users\vhiep\.codex\config.toml` from the matching
+  `config.toml.ccr-original` snapshot (verified SHA-256 before copy), then remove
+  exactly six top-level CCR catalog/config/backup artifacts. A post-repair scan
+  observed zero CCR artifacts and zero CCR markers in the external config.
+- Prevention: `tools/run_ccr_source_tests_isolated.ps1` now refuses to run
+  while Codex/ChatGPT App or project ports are live, redirects HOME, APPDATA,
+  LOCALAPPDATA, TEMP, CODEX_HOME and CCR internal paths below this root, enables
+  provider-only mode and compares the external Codex fingerprint before/after.
+  `START_HERE.md`, `AGENTS.md` and `claude.external-app-isolation` make this
+  wrapper mandatory. The wrapper's live-App refusal was observed in this run.
+- CCR `3.0.22` disposition: HOLD. The source patch cherry-picked cleanly and
+  typecheck passed, but the npm runtime had zero matches for all four reviewed
+  minified patch anchors. The rejected worktree/runtime and review branch were
+  removed; operational CCR remains `3.0.21`.
 
 ## challenger.google-dynamic-model-catalog-empty — open 2026-08-28
 
@@ -20,13 +44,14 @@ status: active
   loaded one auth entry and returned HTTP 200 with an empty sanitized model
   array. No token, email, account ID or auth payload was retained.
 - Cause: proved only at the integration boundary. The current OAuth state is
-  rejected by the direct catalog surface, and CLIProxyAPI `7.2.141-local.4`
-  cannot derive a catalog. Whether the decisive change is scope, header,
-  endpoint behavior or old proxy translation remains unknown.
+  rejected by the direct catalog surface; the new `7.2.143-local.1` build has
+  not yet received an owner-authorized live OAuth/catalog request.
+  Whether the decisive change is scope, header, endpoint behavior or proxy
+  translation remains unknown.
 - Failed approaches: direct dynamic catalog request and the reviewed current
   proxy. Screenshot model names were deliberately not used as source truth.
-- Disposition: open. Rebase the existing isolation patch onto exact upstream
-  `7.2.143`, rebuild and run an isolated live pilot before route promotion.
+- Disposition: open. The exact `7.2.143` rebase and reproducible build are now
+  complete; run an isolated owner-authorized live pilot before route promotion.
 - Regression gate: `claude.dashboard-account-management` prohibits transient
   hard-coded model names and false successful synchronization. A real provider
   entitlement still requires a bounded owner-authorized live gate.

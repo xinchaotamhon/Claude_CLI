@@ -27,13 +27,15 @@ def main() -> int:
     launcher_path = root / "tools" / "RUN_CLAUDE_TECHNICAL.bat"
     start_path = root / "START_HERE.md"
     runbook_path = root / "docs" / "ROUTER_LOCAL.md"
-    for path in (menu_path, launcher_path, start_path, runbook_path):
+    source_test_path = root / "tools" / "run_ccr_source_tests_isolated.ps1"
+    for path in (menu_path, launcher_path, start_path, runbook_path, source_test_path):
         if not path.is_file():
             return fail(f"missing isolation artifact: {path.relative_to(root).as_posix()}")
 
     menu = read(menu_path)
     launcher = read(launcher_path)
     guidance = f"{read(start_path)}\n{read(runbook_path)}"
+    source_test = read(source_test_path)
 
     required = (
         '$GlobalProfileTakeoverPath = Join-Path',
@@ -61,10 +63,26 @@ def main() -> int:
         if phrase not in guidance:
             return fail(f"isolation guidance is missing: {phrase}")
 
+    source_test_controls = (
+        "Close Codex/ChatGPT App before running CCR source tests.",
+        "CCR_PROVIDER_GATEWAY_ONLY",
+        "CCR_INTERNAL_HOME_DIR",
+        "CCR_INTERNAL_APP_DATA_DIR",
+        "CCR_INTERNAL_USER_DATA_DIR",
+        "Get-ExternalCodexFingerprint",
+        "Stop the project dashboard/router before CCR source tests",
+    )
+    for marker in source_test_controls:
+        if marker not in source_test:
+            return fail(f"isolated CCR source-test control is missing: {marker}")
+    if "run_ccr_source_tests_isolated.ps1" not in guidance:
+        return fail("START_HERE/runbook must route CCR source tests through the isolated wrapper")
+
     print("PASS: normal launchers do not expose CCR agent UI")
     print("PASS: every synchronized config removes agent profiles and applies cleanup")
     print("PASS: a local takeover marker invalidates the fast path and forces restoration")
     print("PASS: documentation warns that System default / CLI & APP are external scopes")
+    print("PASS: CCR source tests refuse live external apps/routers and redirect HOME/APPDATA/TEMP into the project")
     print("external config/auth: not read; network: not used")
     return 0
 

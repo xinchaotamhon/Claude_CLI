@@ -59,8 +59,8 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         fail("SOURCE schema_version must be 1")
     if metadata.get("component") != "CLIProxyAPI":
         fail("unexpected source component")
-    if metadata.get("status") != "phase-4-google-oauth-callback-fix-built":
-        fail("source status must identify the Google OAuth callback Phase 4 build")
+    if metadata.get("status") != "phase-5-v7.2.143-upgrade-built":
+        fail("source status must identify the reviewed v7.2.143 Phase 5 build")
     if metadata.get("source_url") != EXPECTED_URL:
         fail("unexpected source URL")
     if not HEX40.fullmatch(str(metadata.get("source_commit", ""))):
@@ -92,7 +92,7 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         "checkout_is_ignored_nested_repository": True,
         "runtime_is_active": True,
         "offline_binary_was_built": True,
-        "oauth_was_run": True,
+        "oauth_was_run": False,
         "provider_request_was_run": False,
         "normal_launcher_changed": False,
         "local_model_suppresses_remote_catalog_and_antigravity_updates": True,
@@ -102,7 +102,7 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         "google_redirect_matches_ipv4_listener": True,
     }
     if policy != expected_policy:
-        fail("Phase 0 source policy changed unexpectedly")
+        fail("reviewed source policy changed unexpectedly")
 
     anchors = metadata.get("anchor_sha256")
     if not isinstance(anchors, dict) or not anchors:
@@ -164,7 +164,7 @@ def verify_checkout(metadata: dict[str, object], checkout: Path) -> None:
         fail("pinned tag does not point at candidate HEAD")
     remotes = run_git(checkout, "remote").splitlines()
     if remotes != [metadata["remote_name"]]:
-        fail("candidate must have only the upstream remote during Phase 0")
+        fail("candidate must have only the pinned upstream remote")
     if run_git(checkout, "remote", "get-url", metadata["remote_name"]) != EXPECTED_URL:
         fail("candidate upstream URL differs from metadata")
 

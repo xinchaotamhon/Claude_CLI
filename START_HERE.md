@@ -46,7 +46,8 @@ compatibility path.
 For runtime work, also read the [local router runbook](docs/ROUTER_LOCAL.md),
 the [update policy](docs/ROUTER_UPDATES.md), the [repository evaluation](docs/REPO_EVALUATION.md)
 the [new-machine reconstruction runbook](docs/RECONSTRUCT_ON_NEW_MACHINE.md) and
-the [router adoption ADR](60-Decisions/ADR-2026-08-24-adopt-claude-code-router.md).
+the [Claude subagent guide](docs/CLAUDE_SUBAGENTS.md), and the
+[router adoption ADR](60-Decisions/ADR-2026-08-24-adopt-claude-code-router.md).
 
 Routine continuation must be recoverable from this folder without chat history
 or a parent directory. Prefer runtime evidence, then the canonical owner file.
@@ -217,6 +218,13 @@ never downloads or updates it.
 - Never create a CCR `Connect agent` profile. In particular, `System default`
   and `CLI & APP` can modify `~/.codex`, `~/.claude` or an external desktop app.
   The launcher removes CCR agent profiles and does not expose the agent UI.
+- Never run `npm test` or a CCR source test directly inside
+  `claude-code-router_proxy` or a review worktree. Close Codex/ChatGPT App and
+  the local dashboard/router, then use
+  `tools/run_ccr_source_tests_isolated.ps1`. The wrapper redirects HOME,
+  APPDATA, LOCALAPPDATA, TEMP and CCR internal paths below this project and
+  rejects any change to external Codex config. This is a hard safety gate, not
+  an optional convenience.
 - Bind management and gateway services only to `127.0.0.1` unless a separate
   security decision explicitly authorizes remote access.
 - A model name does not prove final egress. Confirm the provider name, endpoint

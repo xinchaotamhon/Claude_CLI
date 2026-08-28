@@ -1,36 +1,36 @@
 {
   "schema_version": 1,
   "component": "CLIProxyAPI",
-  "status": "phase-4-google-oauth-callback-fix-built",
+  "status": "phase-5-v7.2.143-upgrade-built",
   "source_url": "https://github.com/router-for-me/CLIProxyAPI.git",
-  "source_tag": "v7.2.141",
-  "source_commit": "dc3c3b1ec3ed04bb0917e76451eaf98c6842674d",
-  "source_tree": "320d4056873d7e8fd036c568db493acc0e565dc7",
-  "patched_commit": "e835220044fb7f9bbe3f21ef3705864d4ded6cd1",
-  "patched_tree": "f823d155849f2be31d7de3c19adb90e65146e6f8",
+  "source_tag": "v7.2.143",
+  "source_commit": "4b5f1eab25fca4b3815369a826e958e7c070a69e",
+  "source_tree": "08ceb94c634abedef9ec1ade765f781261f2f772",
+  "patched_commit": "d60235408ba2f2ef8f59f66f6e172b2df6d1ec82",
+  "patched_tree": "3f2fbceb13baeff5a03de2addcd00ce5a08352e7",
   "patches": [
     {
       "file": "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
-      "commit": "d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4",
-      "sha256": "e45a879854608fdac862a418bdaa3b06d28252b7ca40aed5c2f58aef2601a209"
+      "commit": "191be149a21d8d0e503397943d6a9631ee5d3d8a",
+      "sha256": "3dfb2cfbdd0033c902695e2457682f5cdef35a06c24cd3085d6d587e0f358b3c"
     },
     {
-      "file": "router_challenger/patches/0001-fix-bind-antigravity-oauth-callback-to-loopback.patch",
-      "commit": "3a3df12d068ac3a3bff2712db168ed1a7d31190a",
-      "sha256": "de4d6d83041cd36ea4162a248a4e5256c2a7473999b90668925ea13a46733bde"
+      "file": "router_challenger/patches/0002-fix-bind-antigravity-oauth-callback-to-loopback.patch",
+      "commit": "d8ed08661e4641a3ba547d900495a86b10139698",
+      "sha256": "aa6678f1c6b4492b16cc7d720f5ca3a93bddea07d03c4091c4c76aaee585f8fb"
     },
     {
-      "file": "router_challenger/patches/0002-fix-select-google-oauth-account.patch",
-      "commit": "bcc28e6133a38b2185e04c631c9e662dbf28e9c3",
-      "sha256": "c36c1b374afd71fb91c7fb84f183972ccfb30a59cc08f8ef26e7fde0373f1a57"
+      "file": "router_challenger/patches/0003-fix-select-intended-Google-OAuth-account.patch",
+      "commit": "4fa4140584fcbc6e77f2049b4cdc2529bfc6b4db",
+      "sha256": "1ad26378fd0061d2ab728c9789e6d9857e75d89bd1c338381a421f18ec0c7579"
     },
     {
       "file": "router_challenger/patches/0004-fix-align-antigravity-oauth-callback-host.patch",
-      "commit": "e835220044fb7f9bbe3f21ef3705864d4ded6cd1",
-      "sha256": "51ef6e57763943871da68253f55ae76a357fe375bd5e5b0854218fe85cb95e50"
+      "commit": "d60235408ba2f2ef8f59f66f6e172b2df6d1ec82",
+      "sha256": "3bd6877bfbff3754a566bad8582bff91aad11c56da3eb8c51619b0b76d3b87fc"
     }
   ],
-  "source_commit_date": "2026-08-24T16:35:18+08:00",
+  "source_commit_date": "2026-08-27T05:30:19+08:00",
   "local_checkout": "cli-proxy-api_core",
   "local_branch": "claude",
   "remote_name": "upstream",
@@ -48,7 +48,7 @@
     "checkout_is_ignored_nested_repository": true,
     "runtime_is_active": true,
     "offline_binary_was_built": true,
-    "oauth_was_run": true,
+    "oauth_was_run": false,
     "provider_request_was_run": false,
     "normal_launcher_changed": false,
     "local_model_suppresses_remote_catalog_and_antigravity_updates": true,

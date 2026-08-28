@@ -1,7 +1,7 @@
-From 3a3df12d068ac3a3bff2712db168ed1a7d31190a Mon Sep 17 00:00:00 2001
+From d8ed08661e4641a3ba547d900495a86b10139698 Mon Sep 17 00:00:00 2001
 From: hiSoft <xinchaotamhon@gmail.com>
 Date: Tue, 25 Aug 2026 23:21:32 +0700
-Subject: [PATCH] fix: bind antigravity oauth callback to loopback
+Subject: [PATCH 2/4] fix: bind antigravity oauth callback to loopback
 
 ---
  sdk/auth/antigravity.go      |  6 +++++-

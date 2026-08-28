@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: dashboard-account-control-catalog-update-review
+verified_by: component-upgrade-and-ccr-source-test-isolation-repair
 status: active
 ---
 
@@ -10,7 +10,8 @@ status: active
 
 - Root is `D:\mydata\new-git-3\claude_CLI-V`. Project-local
   `bin/claude.exe` remains the only interactive coding harness and reports
-  Claude Code `2.1.241`.
+  Claude Code `2.1.247`; tracked SHA-256 is
+  `00e5be0a8b69893cad9259a1e8b80d59be8f3eb367d4a16c19f91bcd279423b7`.
 - Router is project-local CCR `3.0.21` on Node `v24.12.0`; reviewed source is
   nested branch `claude` at fork commit
   `ffc823b683861ad3f86c8dd38c0dbe61eef62f6c`, based on upstream commit
@@ -59,12 +60,31 @@ status: active
   auth is saved to its project-local account home, while CCR provider/config
   mutation stays pending until active sessions close. Dashboard recovery then
   completes the import without another login while auth remains valid.
-- The CLIProxyAPI nested `claude` branch now has four reviewed patches at
-  `e835220044fb7f9bbe3f21ef3705864d4ded6cd1`: Google OAuth requests an account
+- The CLIProxyAPI nested `claude` branch now rebases the same four reviewed
+  patches onto upstream `v7.2.143` at patched commit
+  `d60235408ba2f2ef8f59f66f6e172b2df6d1ec82`: Google OAuth requests an account
   chooser, accepts a bounded optional email `login_hint`, and uses the exact
   same IPv4 loopback host (`127.0.0.1`) for redirect URI and listener. The
-  reproducibly rebuilt `7.2.141-local.4` binary SHA-256 is
-  `3d3f909e0a59d810c415be65b1fbd1941a79a32eeb1e3d6a7eb1ac730b25d70e`.
+  reproducibly rebuilt `7.2.143-local.1` binary SHA-256 is
+  `95ca070ecb8529dd84f0fce2aa8592fbfcbb7a94a1d3b2ab73d83d87c1237e32`.
+  Focused `cmd/server` and `sdk/auth` tests passed. The previous source and
+  binary remain in ignored `.runtime/update-backups/cli-proxy-api` for rollback.
+- Claude Code Router remains pinned to `3.0.21`. A `3.0.22` review branch
+  accepted the source patch and passed typecheck plus 620/626 unit tests, but
+  the published minified runtime no longer matched any of the four exact local
+  isolation patch anchors. The candidate was rejected and its temporary
+  worktree/runtime removed; no CCR runtime or source branch was promoted.
+- A direct upstream CCR source test reused the live router and synchronized a
+  Codex profile outside the project. The exact pre-test Codex config snapshot
+  was restored, six CCR artifacts were removed and a post-repair scan found no
+  CCR artifact or CCR string in the external config. Future CCR source tests
+  must use `tools/run_ccr_source_tests_isolated.ps1`, which refuses a live
+  Codex/ChatGPT App or project router and redirects all home/app-data/temp paths
+  below this project.
+- All 22 enabled smoke gates passed after the upgrades and isolation repair in
+  owner-profile run `20260828T021912Z-afe77299`. A post-gate external scan still
+  observed zero CCR-named artifacts and zero CCR/loopback markers in Codex
+  `config.toml`; no provider/model request was made by this gate run.
 - Google onboarding no longer throws when a new slot has zero auth files, and
   current-user-only ACL setup is idempotent on a previously created empty slot
   without requesting owner/audit privileges. A live retry reached the official
@@ -386,7 +406,7 @@ status: active
   executed. The generated Sites hosting file and Cloudflare packages were
   removed because this dashboard is intentionally localhost-only.
 - Focused live smoke proved schema 1, five displayed account/provider entries,
-  two current Codex routes, Claude `2.1.241`, CCR `3.0.21`, authenticated state,
+  two current Codex routes, Claude `2.1.247`, CCR `3.0.21`, authenticated state,
   successful Codex quota refresh and rejection of an unknown route with HTTP
   400. An unauthenticated state request was also rejected.
 - The actual `tools/start_dashboard.ps1` double-click flow also passed under the
@@ -422,10 +442,10 @@ status: active
 ## Blockers
 
 - Google OAuth slots exist and quota can be read, but neither the direct
-  catalog endpoint nor project-patched CLIProxyAPI `7.2.141-local.4` currently
-  proves a launchable model. Rebase the isolation patch onto exact upstream
-  `7.2.143`, rebuild, and pass offline plus one owner-authorized live route
-  proof before exposing Google routes.
+  catalog endpoint nor project-patched CLIProxyAPI `7.2.143-local.1` currently
+  proves a launchable model. The rebase/build is complete; one owner-authorized
+  OAuth/catalog request and then one explicit live route/tool-loop proof remain
+  required before exposing Google routes.
 - Owner reported that Codex App operates normally again. Its separate account
   rotation/quota workflow remains deliberately outside this project.
 

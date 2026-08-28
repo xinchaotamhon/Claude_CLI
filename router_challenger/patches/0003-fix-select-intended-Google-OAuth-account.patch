@@ -1,7 +1,7 @@
-From bcc28e6133a38b2185e04c631c9e662dbf28e9c3 Mon Sep 17 00:00:00 2001
+From 4fa4140584fcbc6e77f2049b4cdc2529bfc6b4db Mon Sep 17 00:00:00 2001
 From: hiSoft <xinchaotamhon@gmail.com>
 Date: Wed, 26 Aug 2026 17:27:35 +0700
-Subject: [PATCH] fix: select intended Google OAuth account
+Subject: [PATCH 3/4] fix: select intended Google OAuth account
 
 ---
  internal/auth/antigravity/auth.go      |  6 +++++-
@@ -79,3 +79,6 @@ index 7e8112ad..7fad3876 100644
  func TestFetchProjectIDFromLoadCodeAssist(t *testing.T) {
  	auth := NewAntigravityAuth(nil, &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
  		if req.URL.String() != "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist" {
+-- 
+2.54.0.windows.1
+

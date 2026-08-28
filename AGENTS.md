@@ -29,3 +29,8 @@
 20. Ask a short Human-reality question when its answer can change architecture,
    domain assumptions, affected-party impact, safety, economics, or the smallest
    falsifiable test. Do not ask for discoverable repository facts.
+21. Never run CCR source tests directly. Close Codex/ChatGPT App and this
+    project's dashboard/router, then invoke
+    `tools/run_ccr_source_tests_isolated.ps1`; a direct upstream test can
+    synchronize a profile into external `~/.codex` even when the normal
+    launcher is isolated.

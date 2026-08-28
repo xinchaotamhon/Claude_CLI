@@ -9,7 +9,7 @@
     {
       "id": "claude-code",
       "kind": "closed-binary",
-      "version": "2.1.241",
+      "version": "2.1.247",
       "path": "bin/claude.exe",
       "sha256_file": "checksums/claude.exe.sha256",
       "reconstruction": "Download the official Windows native binary after owner approval, copy it to bin/claude.exe, then verify the tracked SHA-256 or explicitly review and promote a new version/hash."
@@ -33,7 +33,7 @@
     {
       "id": "cli-proxy-api-challenger",
       "kind": "open-source-patched-build",
-      "version": "v7.2.141",
+      "version": "v7.2.143",
       "upstream": "https://github.com/router-for-me/CLIProxyAPI.git",
       "branch": "claude",
       "runtime_install": "tools/install_challenger_pilot.ps1",
@@ -41,8 +41,8 @@
       "build_record": "router_challenger/BUILD.json",
       "patches": [
         "router_challenger/patches/0001-fix-keep-local-model-updater-free.patch",
-        "router_challenger/patches/0001-fix-bind-antigravity-oauth-callback-to-loopback.patch",
-        "router_challenger/patches/0002-fix-select-google-oauth-account.patch",
+        "router_challenger/patches/0002-fix-bind-antigravity-oauth-callback-to-loopback.patch",
+        "router_challenger/patches/0003-fix-select-intended-Google-OAuth-account.patch",
         "router_challenger/patches/0004-fix-align-antigravity-oauth-callback-host.patch"
       ]
     },

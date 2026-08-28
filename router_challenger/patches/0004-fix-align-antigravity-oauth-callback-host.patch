@@ -1,7 +1,7 @@
-From e835220044fb7f9bbe3f21ef3705864d4ded6cd1 Mon Sep 17 00:00:00 2001
+From d60235408ba2f2ef8f59f66f6e172b2df6d1ec82 Mon Sep 17 00:00:00 2001
 From: hiSoft <xinchaotamhon@gmail.com>
 Date: Thu, 27 Aug 2026 02:49:19 +0700
-Subject: [PATCH] fix: align antigravity oauth callback host
+Subject: [PATCH 4/4] fix: align antigravity oauth callback host
 
 ---
  sdk/auth/antigravity.go      | 6 +++++-

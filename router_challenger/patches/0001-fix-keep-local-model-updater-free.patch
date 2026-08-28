@@ -1,7 +1,7 @@
-From d3177d8ecd1c99d566fbe6e6ca1ba19a2be7ddc4 Mon Sep 17 00:00:00 2001
+From 191be149a21d8d0e503397943d6a9631ee5d3d8a Mon Sep 17 00:00:00 2001
 From: hiSoft <xinchaotamhon@gmail.com>
 Date: Tue, 25 Aug 2026 21:22:01 +0700
-Subject: [PATCH] fix: keep local-model updater-free
+Subject: [PATCH 1/4] fix: keep local-model updater-free
 
 ---
  cmd/server/main.go      | 15 +++++++++++++--
@@ -9,10 +9,10 @@ Subject: [PATCH] fix: keep local-model updater-free
  2 files changed, 40 insertions(+), 2 deletions(-)
 
 diff --git a/cmd/server/main.go b/cmd/server/main.go
-index 0d8cdece..b7ea43d2 100644
+index d9302b96..5212960c 100644
 --- a/cmd/server/main.go
 +++ b/cmd/server/main.go
-@@ -676,7 +676,9 @@ func main() {
+@@ -678,7 +678,9 @@ func main() {
  			if standalone {
  				// Standalone mode: start an embedded local server and connect TUI client to it.
  				managementasset.StartAutoUpdater(context.Background(), configFilePath)
@@ -23,7 +23,7 @@ index 0d8cdece..b7ea43d2 100644
  				startModelCatalogUpdaters(localModel, cfg.Home.Enabled)
  				hook := tui.NewLogHook(2000)
  				hook.SetFormatter(&logging.LogFormatter{})
-@@ -750,13 +752,22 @@ func main() {
+@@ -752,13 +754,22 @@ func main() {
  		} else {
  			// Start the main proxy service
  			managementasset.StartAutoUpdater(context.Background(), configFilePath)

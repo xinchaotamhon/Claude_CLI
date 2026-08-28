@@ -225,7 +225,7 @@
       "expected_exit_code": 0,
       "id": "challenger.cli-proxy-source-pin",
       "introduced_by": "cli-proxy-api-phase-1-offline-pilot",
-      "invariant": "The challenger checkout is clean at the exact two-commit reviewed patch series above the audited upstream tag; local-model suppresses update requests and Antigravity OAuth callback binds only to IPv4 loopback",
+      "invariant": "The challenger checkout is clean at the exact four-commit reviewed patch series above the audited upstream tag; local-model suppresses update requests and Antigravity OAuth callback binds only to IPv4 loopback",
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 30

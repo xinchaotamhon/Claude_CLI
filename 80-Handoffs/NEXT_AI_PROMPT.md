@@ -7,7 +7,7 @@ the secret in output.
 
 ## Verified Baseline
 
-- One harness: project-local `bin/claude.exe`, Claude Code `2.1.241`.
+- One harness: project-local `bin/claude.exe`, Claude Code `2.1.247`.
 - Operational router/rollback champion: CCR `3.0.21` on project-local Node
   `v24.12.0`, provider-gateway-only on loopback. External Codex App takeover
   paths are removed and must not be reintroduced.
@@ -41,8 +41,8 @@ the secret in output.
 - Backend Codex quota refresh has one live bounded proof. It returns only
   normalized windows/credits to the browser and labels the undocumented source
   experimental. Window duration determines 5-hour/weekly/monthly display.
-- Google onboarding uses reviewed CLIProxyAPI `7.2.141-local.4` at nested commit
-  `e835220044fb7f9bbe3f21ef3705864d4ded6cd1`; redirect and listener both use
+- Google onboarding uses reviewed CLIProxyAPI `7.2.143-local.1` at nested commit
+  `d60235408ba2f2ef8f59f66f6e172b2df6d1ec82`; redirect and listener both use
   `127.0.0.1`. Google quota contract always preserves two groups: `gemini_models` and
   `claude_gpt_models`. No Google owner login or live quota shape is proved yet;
   missing values remain unknown.
@@ -78,6 +78,8 @@ the secret in output.
 
 - No global `.codex`, global Claude config, PATH-discovered agent binary or CCR
   Connect-agent profile.
+- Never run CCR source tests directly. Close Codex/ChatGPT App and the local
+  dashboard/router, then use `tools/run_ccr_source_tests_isolated.ps1`.
 - No all-interface listener, remote dashboard, telemetry, updater, tray,
   autostart or browser token exposure.
 - No hidden account rotation or claim that multiple accounts increase an

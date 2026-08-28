@@ -129,7 +129,7 @@ function Assert-AccountRuntime {
     $Source = Get-Content -Raw -LiteralPath $SourcePath | ConvertFrom-Json
     if ($Source.policy.oauth_callback_loopback_only -ne $true) { throw "OAuth callback loopback policy is not pinned." }
     $PatchFiles = @($Source.patches | ForEach-Object { [string]$_.file })
-    if ($PatchFiles -notcontains "router_challenger/patches/0001-fix-bind-antigravity-oauth-callback-to-loopback.patch") {
+    if ($PatchFiles -notcontains "router_challenger/patches/0002-fix-bind-antigravity-oauth-callback-to-loopback.patch") {
         throw "Reviewed Antigravity callback patch is not pinned."
     }
 }

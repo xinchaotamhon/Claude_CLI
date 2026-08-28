@@ -1,5 +1,10 @@
 # Evidence Index
 
+- [2026-08-28 component upgrade, subagents and CCR test isolation](2026-08-28-component-upgrade-subagents-and-ccr-test-isolation.md):
+  Claude 2.1.247 and CLIProxyAPI 7.2.143 provenance/builds, CCR 3.0.22 HOLD,
+  exact external Codex repair, mandatory isolated source-test wrapper and
+  sanitized CLOVER candidate assessment.
+
 - [2026-08-27 Google OAuth and session trash repair](2026-08-27-google-oauth-and-session-trash-repair.md): empty-slot/ACL/callback root causes, fourth reviewed CLIProxyAPI patch, reproducible local.4 binary and confirmed recoverable session deletion contract.
 - [2026-08-27 dashboard lifecycle and Kiro Opus 5 repair](2026-08-27-dashboard-lifecycle-and-kiro-opus5.md): acknowledged visible-terminal launch, transcript-backed sessions, cross-route resume UI, supervised dashboard restart, concurrent update checks and full Claude-to-Kiro Opus 5 smoke.
 - [2026-08-26 portable session/account/update repair](2026-08-26-portable-session-account-update-repair.md): direct terminal launch, deferred Codex import, Google account chooser/login hint, common resumable session home and fresh-machine reconstruction controls.
