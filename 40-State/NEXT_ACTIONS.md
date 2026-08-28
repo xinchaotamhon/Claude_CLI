@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: google-interactive-launch-print-mode-repair
+verified_by: session-identity-stale-pid-and-cold-start-repair
 status: active
 ---
 
@@ -31,13 +31,14 @@ status: active
    quota branches separate. One minimal real inference is proved; a real
    multi-turn/tool-loop proof remains an owner action and should be recorded
    without credentials or transcript data.
-5. **Finish owner-visible resume proof.** Dispatcher/PID acknowledgement,
-   transcript filtering and a full Kiro Opus 5 Claude request are proved. Open
-   one named interactive session, close it, then choose another route under
-   **Mở lại bằng** and confirm prior Claude context is offered. After a second account exists, open two
-   dashboard terminals with different routes, then two with the same route.
-   Expected: each terminal keeps its selected model; same-account terminals
-   share provider quota; neither changes Codex App/global state.
+5. **Use the repaired session model deliberately.** **Mở terminal** always
+   creates a new UUID, so it is valid to open two or more terminals with the
+   same Google/Codex account and same model; they share account quota but not a
+   transcript. **Mở lại** keeps the old session name/origin and records the new
+   route separately. Close the old terminal before resuming that exact UUID;
+   the dashboard now rejects simultaneous writers. A real Google cross-route
+   resume is proved without sending a prompt; owner-visible multi-turn checking
+   remains useful.
    The dashboard **Xóa** action is recoverable: close the session terminal
    first, confirm the prompt, and let the server move only that UUID to local
    trash. Do not manually delete the common Claude home.
@@ -76,12 +77,20 @@ status: active
     cards are advisory metadata, not approval. Keep all reviewed token
     optimizers uninstalled unless a future offline golden-fixture pilot proves
     that warnings, stack traces and project memory remain intact.
+    Current safe usage reductions are already enabled: common resumable
+    sessions, native auto-compaction, nonessential-traffic suppression and
+    finite retries. Keep `xhigh`; do not install a token clipper or silently
+    downgrade models merely to make the usage number smaller.
 13. **Before every push, inspect staged files.** `setting.json`, `.ccr-local`,
     `.runtime`, auth JSON, binaries, Node modules and nested source repositories
     must remain ignored.
 14. **Rehearse a clean reconstruction when convenient.** Follow
     `docs/RECONSTRUCT_ON_NEW_MACHINE.md` in a disposable clone and prove the
     tracked patch/install paths before relying on portability for a machine move.
+15. **Retest one true Codex cold start.** After no project Codex route is warm,
+    open one terminal and send one ordinary first prompt. If it still fails,
+    preserve the visible error and timestamp; do not alter credentials or run
+    repeated retries before diagnosis.
 
 AI sessions may inspect tracked contracts and secret-free status only. Do not
 print or persist access tokens, refresh tokens, passwords, 2FA, provider account

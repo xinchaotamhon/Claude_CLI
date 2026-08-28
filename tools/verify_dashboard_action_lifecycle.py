@@ -35,7 +35,7 @@ def main() -> int:
         require(helper, ("StatusPath", "terminal_ready", "failed", "Cửa sổ được giữ lại để bạn đọc lỗi thật"), "terminal helper"),
         require(dispatcher, ("#requires -Version 7.0", "ProcessStartInfo", "UseShellExecute = $true", "ArgumentList.Add", "-StatusPath"), "terminal dispatcher"),
         require(supervisor, ("#requires -Version 7.0", "System.Threading.Mutex", "rapidFailures", "dashboard-server.log"), "dashboard supervisor"),
-        require(starter, ("dashboard_supervisor.ps1",), "dashboard starter"),
+        require(starter, ("dashboard_supervisor.ps1", "dashboard\\session_lifecycle.mjs", "Get-CombinedFileHash", "@($Server, $SessionLifecycle)"), "dashboard starter"),
     )
     if any(checks):
         return 1

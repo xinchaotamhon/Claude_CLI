@@ -595,6 +595,17 @@ function Assert-VerifiedRouterService {
     return $State
 }
 
+function Wait-VerifiedRouterStability {
+    param([int]$Checks = 3, [int]$DelayMilliseconds = 150)
+    if ($Checks -lt 1 -or $Checks -gt 5) { throw "Invalid CCR stability check count." }
+    $State = $null
+    for ($Check = 1; $Check -le $Checks; $Check++) {
+        $State = Assert-VerifiedRouterService
+        if ($Check -lt $Checks) { Start-Sleep -Milliseconds $DelayMilliseconds }
+    }
+    return $State
+}
+
 function Test-GatewayConfigAcceptanceTimeout {
     param([Parameter(Mandatory = $true)]$Status)
     if ($null -eq $Status) { return $false }
@@ -608,13 +619,13 @@ function Ensure-Router {
     # Fast path after background warmup (or when another project-local Claude
     # session already owns the verified gateway). This performs the full
     # process/loopback/health identity check and reads no DPAPI value.
-    try { [void](Assert-VerifiedRouterService); return } catch { }
+    try { [void](Wait-VerifiedRouterStability); return } catch { }
 
     if ($null -ne $script:WarmupProcess) {
         try {
             for ($WarmWait = 0; $WarmWait -lt 8 -and -not $script:WarmupProcess.HasExited; $WarmWait++) {
                 Start-Sleep -Milliseconds 125
-                try { [void](Assert-VerifiedRouterService); return } catch { }
+                try { [void](Wait-VerifiedRouterStability); return } catch { }
             }
         }
         catch { }
@@ -624,7 +635,7 @@ function Ensure-Router {
     try {
         [void](Invoke-CcrStartAndVerify `
             -Arguments @("start", "--host", "127.0.0.1", "--port", "3458", "--no-open", "--gateway") `
-            -Verifier { Assert-VerifiedRouterService } `
+            -Verifier { Wait-VerifiedRouterStability } `
             -FailureMessage "CCR gateway verification failed before any DPAPI client key was read.")
         return
     }
@@ -649,7 +660,7 @@ function Ensure-Router {
             [void](Invoke-CcrStartAndVerify `
                 -Arguments @("cold-start-verification") `
                 -Starter { param([string[]]$IgnoredArguments) } `
-                -Verifier { Assert-VerifiedRouterService } `
+                -Verifier { Wait-VerifiedRouterStability } `
                 -FailureMessage "CCR cold-start retry $Retry was not verified:" `
                 -Attempts 40 `
                 -DelayMilliseconds 250)
@@ -867,7 +878,7 @@ function Start-Profile {
         if ($SessionName) { $EffectiveClaudeArguments += @("--name", $SessionName) }
     }
     $Saved = @{}
-    $Names = @("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "CLAUDE_CONFIG_DIR", "CCR_INTERNAL_HOME_DIR", "CCR_INTERNAL_APP_DATA_DIR", "CCR_INTERNAL_USER_DATA_DIR", "DISABLE_AUTOUPDATER")
+    $Names = @("ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "CLAUDE_CONFIG_DIR", "CCR_INTERNAL_HOME_DIR", "CCR_INTERNAL_APP_DATA_DIR", "CCR_INTERNAL_USER_DATA_DIR", "DISABLE_AUTOUPDATER", "CLAUDE_CODE_MAX_RETRIES", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
     foreach ($Name in $Names) { $Saved[$Name] = [Environment]::GetEnvironmentVariable($Name, "Process") }
     try {
         $env:ANTHROPIC_BASE_URL = $GatewayUrl
@@ -882,6 +893,12 @@ function Start-Profile {
         $env:CCR_INTERNAL_APP_DATA_DIR = $CcrAppDataPath
         $env:CCR_INTERNAL_USER_DATA_DIR = $CcrUserDataPath
         $env:DISABLE_AUTOUPDATER = "1"
+        # The gateway and account adapter are local but can finish a cold
+        # initialization just after health turns green. Keep retries finite and
+        # suppress optional background requests; this never rotates accounts
+        # or changes the selected model/effort.
+        $env:CLAUDE_CODE_MAX_RETRIES = "3"
+        $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
         Write-Host ("Launching Claude: {0} -> {1}" -f $Profile.name, $env:ANTHROPIC_MODEL) -ForegroundColor Green
         if ($LaunchStatusPath) {
             $ActionsRoot = [System.IO.Path]::GetFullPath((Join-Path $RootPath '.runtime\dashboard\actions'))

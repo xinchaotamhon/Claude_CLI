@@ -4,12 +4,14 @@ import http from 'node:http';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createSessionRecord, normalizeSessionRecord, resumeSessionRecord, sessionLaunchConflicts } from './session_lifecycle.mjs';
 
 const HOST = '127.0.0.1';
 const PORT = 18320;
 const dashboardRoot = path.dirname(fileURLToPath(import.meta.url));
 const serverPath = fileURLToPath(import.meta.url);
-const serverHash = crypto.createHash('sha256').update(fs.readFileSync(serverPath)).digest('hex');
+const sessionLifecyclePath = path.join(dashboardRoot, 'session_lifecycle.mjs');
+const serverHash = crypto.createHash('sha256').update(fs.readFileSync(serverPath)).update(fs.readFileSync(sessionLifecyclePath)).digest('hex');
 const projectRoot = path.resolve(dashboardRoot, '..');
 const staticRoot = path.join(dashboardRoot, 'static');
 const runtimeRoot = path.join(projectRoot, '.runtime', 'dashboard');
@@ -40,6 +42,7 @@ const helperScript = path.join(projectRoot, 'tools', 'dashboard_terminal.ps1');
 const dispatcherScript = path.join(projectRoot, 'tools', 'dashboard_spawn_terminal.ps1');
 const instanceId = crypto.randomBytes(24).toString('base64url');
 const activeActions = new Set();
+const activeSessionLaunches = new Set();
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
 const AUTO_REFRESH_START_DELAY_MS = 15_000;
 let activeLaunches = 0;
@@ -385,18 +388,37 @@ function sessionRecords() {
   const records = readJson(sessionsPath, []);
   if (!Array.isArray(records)) return [];
   const transcripts = discoverTranscriptIds();
+  const terminalRecords = readJson(terminalsPath, []);
+  const origins = new Map();
+  if (Array.isArray(terminalRecords)) {
+    const ordered = [...terminalRecords].sort((a, b) => Date.parse(a?.startedAt || '') - Date.parse(b?.startedAt || ''));
+    for (const terminal of ordered) {
+      const id = safeSessionId(terminal?.sessionId);
+      if (id && !origins.has(id) && typeof terminal?.routeId === 'string') origins.set(id, terminal);
+    }
+  }
   return records
-    .filter((record) => transcripts.has(safeSessionId(record?.id)) && typeof record?.routeId === 'string')
-    .map((record) => ({
-      id: safeSessionId(record.id),
-      name: safeSessionName(record.name) || `Phiên ${safeSessionId(record.id).slice(0, 8)}`,
-      routeId: String(record.routeId),
-      routeName: String(record.routeName || record.routeId),
-      model: String(record.model || ''),
-      createdAt: String(record.createdAt || new Date(0).toISOString()),
-      lastOpenedAt: String(record.lastOpenedAt || record.createdAt || new Date(0).toISOString()),
-      migrated: record.migrated === true,
-    }))
+    .filter((record) => transcripts.has(safeSessionId(record?.id)) && typeof (record?.originRouteId || record?.routeId) === 'string')
+    .map((record) => normalizeSessionRecord(record, origins.get(safeSessionId(record?.id))))
+    .map((record) => {
+      const id = safeSessionId(record.id);
+      return {
+        id,
+        name: safeSessionName(record.name) || `Phiên ${id.slice(0, 8)}`,
+        routeId: String(record.routeId),
+        routeName: String(record.routeName || record.routeId),
+        model: String(record.model || ''),
+        originRouteId: String(record.originRouteId || record.routeId),
+        originRouteName: String(record.originRouteName || record.routeName || record.routeId),
+        originModel: String(record.originModel || record.model || ''),
+        lastRouteId: String(record.lastRouteId || record.routeId),
+        lastRouteName: String(record.lastRouteName || record.routeName || record.routeId),
+        lastModel: String(record.lastModel || record.model || ''),
+        createdAt: String(record.createdAt || new Date(0).toISOString()),
+        lastOpenedAt: String(record.lastOpenedAt || record.createdAt || new Date(0).toISOString()),
+        migrated: record.migrated === true,
+      };
+    })
     .sort((a, b) => Date.parse(b.lastOpenedAt) - Date.parse(a.lastOpenedAt))
     .slice(0, 200);
 }
@@ -479,16 +501,14 @@ function copyLegacySessionFiles(routes) {
         }
         if (!known.has(id)) {
           const stat = fs.statSync(source);
-          const record = {
+          const record = createSessionRecord({
             id,
             name: `Phiên cũ ${id.slice(0, 8)}`,
-            routeId: route?.id || modeEntry.name,
-            routeName: route?.name || modeEntry.name,
-            model: route?.model || '',
-            createdAt: stat.birthtime.toISOString(),
-            lastOpenedAt: stat.mtime.toISOString(),
+            route: { id: route?.id || modeEntry.name, name: route?.name || modeEntry.name, model: route?.model || '' },
+            now: stat.birthtime.toISOString(),
             migrated: true,
-          };
+          });
+          record.lastOpenedAt = stat.mtime.toISOString();
           known.set(id, record);
         }
       }
@@ -1059,25 +1079,28 @@ async function waitForActionStatus(launch, expected, timeoutMs) {
 
 async function launchRoute(route, options = {}) {
   activeLaunches += 1;
+  const resumeId = safeSessionId(options.resumeId);
+  let sessionReserved = false;
   try {
-    const resumeId = safeSessionId(options.resumeId);
     let record;
     if (resumeId) {
+      const terminals = readTerminals();
+      if (sessionLaunchConflicts(resumeId, terminals, activeSessionLaunches)) {
+        throw new Error('Session này đang mở trong một terminal khác. Hãy đóng terminal đó trước khi mở lại; nếu cần làm song song, hãy mở một session mới bằng cùng account/model.');
+      }
+      activeSessionLaunches.add(resumeId);
+      sessionReserved = true;
       record = sessionRecords().find((item) => item.id === resumeId);
       if (!record) throw new Error('Không tìm thấy session Claude cục bộ này.');
-      record = { ...record, routeId: route.id, routeName: route.name, model: route.model, lastOpenedAt: new Date().toISOString() };
+      record = resumeSessionRecord(record, route, new Date().toISOString());
     } else {
       const id = crypto.randomUUID();
-      record = {
+      record = createSessionRecord({
         id,
         name: safeSessionName(options.name) || `Phiên ${route.model} ${new Date().toLocaleString('vi-VN')}`.slice(0, 80),
-        routeId: route.id,
-        routeName: route.name,
-        model: route.model,
-        createdAt: new Date().toISOString(),
-        lastOpenedAt: new Date().toISOString(),
-        migrated: false,
-      };
+        route,
+        now: new Date().toISOString(),
+      });
     }
     const launch = route.kind === 'google'
       ? spawnTerminal(resumeId ? 'launch-google-resume' : 'launch-google-new', route.slot, route.model, record.id, record.name)
@@ -1090,6 +1113,7 @@ async function launchRoute(route, options = {}) {
     writeJson(terminalsPath, next);
     return { pid: launch.pid, session: record };
   } finally {
+    if (sessionReserved) activeSessionLaunches.delete(resumeId);
     activeLaunches = Math.max(0, activeLaunches - 1);
   }
 }

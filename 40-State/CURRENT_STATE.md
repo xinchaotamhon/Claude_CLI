@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: google-interactive-launch-print-mode-repair
+verified_by: session-identity-stale-pid-and-cold-start-repair
 status: active
 ---
 
@@ -62,6 +62,13 @@ status: active
   lists only IDs with a real JSONL transcript and allows **Mở lại bằng** any
   currently enabled route; failed starts no longer create visible phantom
   sessions.
+- A session's friendly name, UUID and origin route/model are now immutable.
+  Resuming through another route records separate `lastRoute*` metadata instead
+  of relabelling the old session as the new model. Legacy rows that had already
+  been relabelled are repaired from their earliest retained terminal metadata.
+  One exact UUID is allowed in only one running/starting terminal at a time;
+  any number of new UUIDs may use the same account/model concurrently and share
+  only that provider account's quota.
 - Dashboard session rows now include **Xóa** with an explicit browser
   confirmation. The server rejects a running session, matches only the exact
   UUID transcript under the isolated Claude home, and moves it plus a recovery
@@ -116,6 +123,11 @@ status: active
   process-scoped environment only. Removing a Google account first verifies
   and stops only its recorded proxy, then moves the account/cache to recoverable
   project-local trash. Automatic fallback remains disabled.
+- Google runtime PID markers are now treated as hints, not authority. A
+  malformed, exited or Windows-reused PID is discarded without stopping the
+  mismatched process; only the exact hash-pinned project binary may be stopped
+  or restarted. A real owner-profile resume of an existing Google session then
+  reached the prior conversation with `xhigh` intact and no new prompt sent.
 - All 22 enabled smoke gates passed after the Google runtime, hidden bootstrap,
   grouped route palette and metadata-contract updates in owner-profile run
   `20260828T084103Z-4ba632f2`. The gate run made no provider/model request and
@@ -126,6 +138,9 @@ status: active
 - The dashboard exposes explicit release checks for Claude, CCR, Codex and
   CLIProxyAPI plus local reviewed/build dates. Network is used only when the
   owner presses the button; no source fetch, merge or replacement occurs.
+- Dashboard identity now covers both `dashboard/server.mjs` and the extracted
+  session-lifecycle module. The starter and server compute the same combined
+  SHA-256, so a source update no longer produces a false "not ready" failure.
 - `DEPENDENCIES.lock.json`, `docs/RECONSTRUCT_ON_NEW_MACHINE.md` and
   `tools/audit_reconstruction.ps1` define fresh-machine reconstruction. Runtime,
   auth, DPAPI, keys and sessions remain intentionally outside Git.
@@ -412,6 +427,22 @@ status: active
   `snip` is eligible only for a future offline golden-fixture pilot; the other
   candidates are reference-only or rejected because they can hide context,
   warnings or expand MCP/log/build scope.
+- Conservative usage controls are active without reducing `xhigh`: Claude uses
+  the common resumable project session home and native auto-compaction; Google
+  and Codex/CCR launches suppress nonessential background traffic and use
+  finite process-local retries. These controls reduce duplicate setup/background
+  requests, not the reasoning tokens required by an `xhigh` answer. No prompt
+  clipping, warning removal, silent model downgrade or automatic account
+  fallback is enabled.
+- Codex/CCR launch now requires three consecutive verified local health checks
+  before reading its DPAPI client key, then gives Claude at most three
+  process-local retries. This contains the observed first-request race without
+  changing the selected account/model/effort. The exact upstream cold-start
+  cause and an owner-observed first prompt after a full cold boot remain to be
+  proved.
+- All 24 enabled smoke gates passed in final owner-profile run
+  `20260828T142604Z-ee30a4cf`. This run covered the new session lifecycle and
+  stale/reused Google PID gates and made no model request.
 - All 22 enabled smoke gates passed under the owner Windows profile in run
   `20260828T065757Z-4d29afba`. The current dashboard server then restarted on
   loopback with an exact matching source hash and healthy endpoint; no router

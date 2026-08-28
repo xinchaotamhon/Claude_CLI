@@ -81,6 +81,8 @@ def main() -> int:
         "Assert-BinaryIdentity",
         "Assert-LoopbackListener",
         "Wait-RuntimeModel",
+        "Remove-StaleRuntimePidMarker",
+        "Never stop a mismatched process",
         "ANTHROPIC_BASE_URL",
         "CLAUDE_CONFIG_DIR",
         "CLAUDE_CODE_MAX_RETRIES",

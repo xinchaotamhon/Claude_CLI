@@ -1,10 +1,62 @@
 ---
 last_verified: 2026-08-28
-verified_by: claude-2.1.250-and-cliproxy-7.2.144-upgrade
+verified_by: session-identity-stale-pid-and-cold-start-repair
 status: active
 ---
 
 # Known Failures
+
+## dashboard.session-route-mutation-and-duplicate-resume — fixed 2026-08-28
+
+- Symptom: choosing another model in **Mở lại bằng** made an old session appear
+  to have been created by that later model. The same UUID could also be opened
+  in overlapping terminals, risking concurrent writes to one transcript.
+- Cause: proved. Resume overwrote `routeId`, `routeName` and `model` in the
+  session index; there was no launch reservation keyed by session UUID.
+- Repair: origin and last-used route metadata are separate. Existing mutated
+  rows recover origin from the earliest retained terminal. A starting/running
+  UUID is rejected, while two new UUIDs on the same account/model remain valid.
+- Proof: functional lifecycle tests, sanitized live state with five repaired
+  cross-route sessions, and final owner-profile smoke run
+  `20260828T142604Z-ee30a4cf` (24/24).
+
+## challenger.google-resume-stale-or-reused-pid — fixed 2026-08-28
+
+- Symptom: **Mở lại** for an existing Google session failed before Claude
+  started with `Recorded PID ... is not the verified project-local Google
+  runtime.`
+- Cause: proved. A stale `proxy.pid` survived after the runtime exited and
+  Windows later assigned that number to another process. The old verifier
+  treated PID reuse as a fatal identity error.
+- Repair: malformed, missing and mismatched PID markers are removed without
+  stopping the unrelated process. Only an exact binary identity that is locally
+  owned but unhealthy is restarted.
+- Proof: the new offline gate deliberately points the marker at the current
+  PowerShell process and proves it remains alive; a real owner-profile Google
+  resume then reached the old conversation with `xhigh` intact and no prompt.
+
+## router.codex-first-request-cold-start — contained, owner proof pending 2026-08-28
+
+- Symptom: the first Codex terminal after a cold period could return an API
+  error, while a later retry worked.
+- Local cause: proved only as a readiness weakness. One instantaneous health
+  response was accepted while the local gateway/account adapter could still be
+  settling. The exact upstream/provider contribution is not proved.
+- Containment: require three consecutive verified gateway health checks, keep
+  retries finite at three and suppress nonessential traffic in that Claude
+  process. Account, model and `xhigh` are unchanged; no fallback occurs.
+- Remaining proof: after a deliberate normal cold start, the owner should send
+  one ordinary first prompt on Codex and report the exact visible error if it
+  still fails. Do not repeatedly hammer an exhausted provider route.
+
+## dashboard.composite-source-hash-mismatch — fixed 2026-08-28
+
+- Symptom: the dashboard server logged that it was ready, but the starter still
+  timed out and reported that `127.0.0.1:18320` never became ready.
+- Cause: the server fingerprint included the new session module while the
+  starter fingerprint included only `server.mjs`.
+- Repair/proof: both now hash the same ordered pair of files; live ready-state
+  and health hashes match, startup succeeds, and the contract is gated.
 
 ## challenger.google-interactive-launch-captured-as-print — fixed 2026-08-28
 

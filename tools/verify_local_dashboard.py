@@ -26,6 +26,7 @@ def main() -> int:
         "start": root / "tools" / "start_dashboard.ps1",
         "terminal": root / "tools" / "dashboard_terminal.ps1",
         "server": root / "dashboard" / "server.mjs",
+        "session_lifecycle": root / "dashboard" / "session_lifecycle.mjs",
         "ui": root / "dashboard" / "src" / "main.tsx",
         "css": root / "dashboard" / "src" / "styles.css",
         "package": root / "dashboard" / "package.json",
@@ -86,7 +87,7 @@ def main() -> int:
     for marker in ("[switch]$Detached", "startup-error.log", "Start-Process -FilePath 'notepad.exe'"):
         if marker not in start:
             return fail(f"dashboard detached startup is missing failure feedback marker: {marker}")
-    for marker in ("127.0.0.1:18320", "loopbackOnly", "Get-CimInstance Win32_Process", "ExecutablePath", "CommandLine", "instanceId", "ExpectedServerHash", "Stop-OutdatedOwnedDashboard"):
+    for marker in ("127.0.0.1:18320", "loopbackOnly", "Get-CimInstance Win32_Process", "ExecutablePath", "CommandLine", "instanceId", "ExpectedServerHash", "Stop-OutdatedOwnedDashboard", "dashboard\\session_lifecycle.mjs", "Get-CombinedFileHash", "@($Server, $SessionLifecycle)"):
         if marker not in start:
             return fail(f"dashboard startup does not independently verify exact process/loopback identity: {marker}")
 

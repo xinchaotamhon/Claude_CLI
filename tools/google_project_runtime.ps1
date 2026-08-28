@@ -215,22 +215,53 @@ function Wait-RuntimeModel {
     return $Available
 }
 
+function Remove-StaleRuntimePidMarker {
+    param([Parameter(Mandatory = $true)]$State)
+    Remove-Item -Force -LiteralPath $State.PidPath -ErrorAction SilentlyContinue
+}
+
 function Get-VerifiedRunningProxy {
     param([Parameter(Mandatory = $true)]$State, [Parameter(Mandatory = $true)][string]$ClientKey)
     if (-not (Test-Path -LiteralPath $State.PidPath -PathType Leaf)) { return $null }
     $Recorded = (Get-Content -Raw -LiteralPath $State.PidPath).Trim()
     $ProcessId = 0
-    if (-not [int]::TryParse($Recorded, [ref]$ProcessId)) { throw 'Google runtime PID file is invalid.' }
-    try {
-        $Process = Assert-ProcessIdentity -ProcessId $ProcessId
-        Assert-LoopbackListener -ProcessId $ProcessId -Port $State.Port
-        [void](Read-ModelsFromRuntime -State $State -ClientKey $ClientKey)
-        return $Process
-    }
-    catch [Microsoft.PowerShell.Commands.ProcessCommandException] {
-        Remove-Item -Force -LiteralPath $State.PidPath -ErrorAction SilentlyContinue
+    if (-not [int]::TryParse($Recorded, [ref]$ProcessId) -or $ProcessId -le 0) {
+        Remove-StaleRuntimePidMarker -State $State
         return $null
     }
+    try {
+        $Process = Assert-ProcessIdentity -ProcessId $ProcessId
+    }
+    catch {
+        # PID reuse is normal on Windows. Never stop a mismatched process; only
+        # discard this project's stale marker and start a verified runtime.
+        Remove-StaleRuntimePidMarker -State $State
+        return $null
+    }
+
+    $Watch = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($Watch.ElapsedMilliseconds -lt 2000) {
+        try {
+            $Process.Refresh()
+            if ($Process.HasExited) { break }
+            Assert-LoopbackListener -ProcessId $ProcessId -Port $State.Port
+            [void](Read-ModelsFromRuntime -State $State -ClientKey $ClientKey)
+            return $Process
+        }
+        catch { Start-Sleep -Milliseconds 100 }
+    }
+
+    # The executable identity is exact, so this is an owned but unhealthy
+    # project runtime. A bounded restart is safer than leaving every terminal
+    # on this Google slot connected to a dead listener.
+    try {
+        $Verified = Assert-ProcessIdentity -ProcessId $ProcessId
+        Stop-Process -Id $Verified.Id -Force
+        $Verified.WaitForExit(3000) | Out-Null
+    }
+    catch { }
+    Remove-StaleRuntimePidMarker -State $State
+    return $null
 }
 
 function Start-VerifiedProxy {
@@ -274,14 +305,22 @@ function Stop-VerifiedProxy {
     if (-not (Test-Path -LiteralPath $State.PidPath -PathType Leaf)) { return }
     $Recorded = (Get-Content -Raw -LiteralPath $State.PidPath).Trim()
     $ProcessId = 0
-    if (-not [int]::TryParse($Recorded, [ref]$ProcessId)) { throw 'Google runtime PID file is invalid; refusing to stop an unverified process.' }
+    if (-not [int]::TryParse($Recorded, [ref]$ProcessId) -or $ProcessId -le 0) {
+        Remove-StaleRuntimePidMarker -State $State
+        return
+    }
     try {
         $Process = Assert-ProcessIdentity -ProcessId $ProcessId
+    }
+    catch {
+        Remove-StaleRuntimePidMarker -State $State
+        return
+    }
+    try {
         Stop-Process -Id $Process.Id -Force
         $Process.WaitForExit(5000) | Out-Null
     }
-    catch [Microsoft.PowerShell.Commands.ProcessCommandException] { }
-    Remove-Item -Force -LiteralPath $State.PidPath -ErrorAction SilentlyContinue
+    finally { Remove-StaleRuntimePidMarker -State $State }
 }
 
 function Write-ClaudeSettings {
@@ -390,7 +429,25 @@ function Invoke-SelfTest {
     $Unique = @($Manifest.models | Sort-Object -Unique)
     if ($Unique.Count -ne @($Manifest.models).Count -or $Unique.Count -lt 1) { throw 'Google runtime model manifest is empty or contains duplicates.' }
     if ((Get-Content -Raw -LiteralPath $TemplatePath) -notmatch '__PROXY_PORT__') { throw 'Account config template is missing its port placeholder.' }
+    $SelfTestRoot = Assert-ProjectChild -Path (Join-Path $RuntimeRoot '__pid-lifecycle-selftest__')
+    $FakeState = [pscustomobject]@{ PidPath = (Join-Path $SelfTestRoot 'proxy.pid'); Port = 1 }
+    try {
+        [System.IO.Directory]::CreateDirectory($SelfTestRoot) | Out-Null
+        [System.IO.File]::WriteAllText($FakeState.PidPath, [string]$PID, (New-Object System.Text.UTF8Encoding($false)))
+        if ($null -ne (Get-VerifiedRunningProxy -State $FakeState -ClientKey 'offline-selftest-key') -or (Test-Path -LiteralPath $FakeState.PidPath)) {
+            throw 'A PID reused by another executable was not recovered without stopping that process.'
+        }
+        [void](Get-Process -Id $PID -ErrorAction Stop)
+        [System.IO.File]::WriteAllText($FakeState.PidPath, 'not-a-pid', (New-Object System.Text.UTF8Encoding($false)))
+        if ($null -ne (Get-VerifiedRunningProxy -State $FakeState -ClientKey 'offline-selftest-key') -or (Test-Path -LiteralPath $FakeState.PidPath)) {
+            throw 'A malformed stale Google runtime PID marker was not recovered.'
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $SelfTestRoot -PathType Container) { Remove-Item -LiteralPath $SelfTestRoot -Recurse -Force }
+    }
     Write-Host '[PASS] Project-local paths, pinned binary identity and Google runtime model manifest.'
+    Write-Host '[PASS] Stale or reused Google runtime PID markers recover without stopping unrelated processes.'
 }
 
 try {

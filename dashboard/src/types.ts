@@ -70,6 +70,12 @@ export type ClaudeSession = {
   routeId: string;
   routeName: string;
   model: string;
+  originRouteId: string;
+  originRouteName: string;
+  originModel: string;
+  lastRouteId: string;
+  lastRouteName: string;
+  lastModel: string;
   createdAt: string;
   lastOpenedAt: string;
   migrated: boolean;

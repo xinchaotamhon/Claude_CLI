@@ -391,6 +391,22 @@
     },
     {
       "command": [
+        "provider_router/runtime/node.exe",
+        "tests/test_session_route_lifecycle.mjs"
+      ],
+      "cwd": ".",
+      "description": "Session identity is route-independent and one exact session UUID cannot be launched concurrently",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "claude.session-route-lifecycle",
+      "introduced_by": "owner-observed-resume-route-mutation-and-duplicate-session-launch",
+      "invariant": "Resuming through a different account/model updates only last-used route metadata; origin identity and friendly name remain stable, multiple new terminals may share one account/model through distinct UUIDs, and one exact UUID is rejected while already launching or running",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 10
+    },
+    {
+      "command": [
         "{python}",
         "tools/verify_session_trash.py",
         "."
@@ -439,6 +455,31 @@
       "required": true,
       "tier": "smoke",
       "timeout_seconds": 10
+    },
+    {
+      "command": [
+        "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/google_project_runtime.ps1",
+        "-Action",
+        "SelfTest",
+        "-Root",
+        "."
+      ],
+      "cwd": ".",
+      "description": "Google runtime repairs stale/reused PID markers without touching unrelated processes",
+      "enabled": true,
+      "expected_exit_code": 0,
+      "id": "challenger.google-runtime-lifecycle",
+      "introduced_by": "owner-observed-google-resume-stale-pid-failure",
+      "invariant": "A reused or malformed project PID marker is discarded, a mismatched process is never stopped, and only the exact hash-pinned project runtime may be restarted or terminated",
+      "required": true,
+      "tier": "smoke",
+      "timeout_seconds": 15
     }
   ],
   "project": "Claude CLI Local",

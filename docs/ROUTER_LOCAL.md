@@ -249,6 +249,19 @@ Trong dashboard, mỗi lần bấm **Mở terminal** tạo đúng một cửa s�
 router background được dùng chung. Nhiều cửa sổ có thể dùng cùng hoặc khác tài
 khoản, nhưng cùng tài khoản vẫn chia sẻ một quota.
 
+Mỗi lần **Mở terminal** cũng tạo một UUID session mới. Vì vậy cùng một tài
+khoản/model có thể chạy trên nhiều terminal độc lập. **Mở lại** dùng lại đúng
+UUID/transcript cũ: tên và route/model gốc của session không đổi khi chọn model
+khác; dashboard chỉ ghi thêm route/model dùng gần nhất. Một UUID không được mở
+đồng thời ở hai terminal để tránh hai tiến trình cùng ghi một transcript.
+
+Các giảm usage an toàn đang bật nhưng không đổi `xhigh`: dùng chung home session
+để `/resume` không cần dựng lại ngữ cảnh thủ công, giữ auto-compaction gốc của
+Claude, tắt traffic nền không thiết yếu và giới hạn retry theo từng process.
+Chúng không cắt prompt/output, không giấu warning, không đổi sang model yếu hơn
+và không tự xoay tài khoản. Subagent vẫn tiêu provider usage riêng; xem
+`docs/CLAUDE_SUBAGENTS.md`.
+
 Các kiểm tra offline:
 
 ```text

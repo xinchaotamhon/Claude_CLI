@@ -89,7 +89,8 @@ class RouterStartupOptimizationTests(unittest.TestCase):
             "StatusCode -ne 200",
         ):
             self.assertIn(marker, verified)
-        self.assertIn("Assert-VerifiedRouterService", ensure_router)
+        self.assertIn("Wait-VerifiedRouterStability", ensure_router)
+        self.assertIn("Assert-VerifiedRouterService", verified)
         self.assertIn("Ensure-Router", self.start_profile)
         self.assertLess(self.start_profile.index("Ensure-Router"), self.start_profile.index("Read-ProtectedSecret"))
 
@@ -98,6 +99,16 @@ class RouterStartupOptimizationTests(unittest.TestCase):
         self.assertIn("route selection will verify startup synchronously", self.warmup)
         self.assertIn("Ensure-Router", self.start_profile)
         self.assertIn("fail-closed authority", self.warmup)
+
+    def test_codex_launch_requires_stable_gateway_and_bounded_process_retries(self):
+        ensure_router = section(self.source, "function Ensure-Router", "function Start-RouterWarmup")
+        verified = section(self.source, "function Assert-VerifiedRouterService", "function Test-GatewayConfigAcceptanceTimeout")
+        self.assertIn("function Wait-VerifiedRouterStability", verified)
+        self.assertIn("Wait-VerifiedRouterStability", ensure_router)
+        self.assertIn('CLAUDE_CODE_MAX_RETRIES', self.start_profile)
+        self.assertIn('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', self.start_profile)
+        self.assertIn('$env:CLAUDE_CODE_MAX_RETRIES = "3"', self.start_profile)
+        self.assertLess(self.start_profile.index("Ensure-Router"), self.start_profile.index("Read-ProtectedSecret"))
 
     def test_no_codex_app_or_global_switching_surface_was_added(self):
         self.assertNotIn("Get-Command codex", self.warmup.casefold())
@@ -115,6 +126,14 @@ class RouterStartupOptimizationTests(unittest.TestCase):
             self.assertIn(marker, self.starter)
         self.assertNotIn("Read-ProtectedSecret", self.starter)
         self.assertNotIn("setting.json", self.starter)
+
+    def test_dashboard_identity_covers_session_lifecycle_code(self):
+        for marker in (
+            "dashboard\\session_lifecycle.mjs",
+            "function Get-CombinedFileHash",
+            "@($Server, $SessionLifecycle)",
+        ):
+            self.assertIn(marker, self.starter)
 
 
 if __name__ == "__main__":

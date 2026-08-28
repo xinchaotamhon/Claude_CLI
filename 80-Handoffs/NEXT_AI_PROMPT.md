@@ -38,6 +38,10 @@ the secret in output.
   persistent HttpOnly browser session lets an open page reconnect. Session rows
   are shown only for real transcript JSONL IDs and **Mở lại bằng** can select any
   current route against the common ignored Claude home.
+- Session origin identity is immutable; cross-route resume updates only
+  `lastRoute*`. One exact UUID is single-writer, while distinct new UUIDs may
+  use the same account/model concurrently. Do not regress this into per-model
+  homes or overwrite origin metadata.
 - Session **Xóa** requires confirmation, rejects active terminals and moves the
   exact UUID transcript to ignored project-local trash with a recovery manifest.
 - **Xóa mục đã đóng** changes only the ignored terminal-history registry after
@@ -67,12 +71,13 @@ the secret in output.
   allowlists, session affinity and no retry after output/tool side effects.
 - EasyCLIProxyAPI remains ignored inspect-only at a pinned revision because its
   tree has no license grant and unsafe global/update paths. No source was copied.
-- Current cumulative owner-profile baseline: 22/22 pass
-  `20260828T103224Z-756f1b17`. Kiro `claude-opus-5` has a bounded full
+- Current cumulative owner-profile baseline: 24/24 pass
+  `20260828T142604Z-ee30a4cf`. It includes session-route identity and stale PID
+  lifecycle gates. Kiro `claude-opus-5` has a bounded full
   Claude CLI -> CCR -> provider smoke with exact output `OK`; this proves one
   request, not provider identity, privacy or future availability.
 - Current focused evidence is
-  `50-Evidence/2026-08-28-google-interactive-launch-print-mode-repair.md`.
+  `50-Evidence/2026-08-28-session-identity-stale-pid-and-cold-start.md`.
 
 ## Allowed Next Work
 
@@ -81,8 +86,8 @@ the secret in output.
 2. Let the owner run a normal multi-turn/tool-loop prompt on one of the 13
    Google routes. One minimal inference is already proved. Record only sanitized
    outcome metadata; do not expand routes from screenshot labels.
-3. Prove owner-visible cross-route resume, then parallel terminals with same
-   and different account routes.
+3. Let the owner confirm cross-route resume in the UI and parallel new sessions
+   with the same/different routes. Never open the same exact UUID concurrently.
 4. Improve quota refresh/reauth degradation without making quota a hard launch
    dependency.
 5. Add automatic fallback only as a separately approved, bounded and

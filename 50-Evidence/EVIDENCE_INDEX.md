@@ -1,5 +1,10 @@
 # Evidence Index
 
+- [2026-08-28 session identity, stale PID and cold-start containment](2026-08-28-session-identity-stale-pid-and-cold-start.md):
+  immutable session origin, single-writer UUID, same-route parallel sessions,
+  Windows PID-reuse recovery, Codex stable-readiness containment, conservative
+  usage controls, live dashboard identity and 24/24 owner-profile gates.
+
 - [2026-08-28 Google interactive launch print-mode repair](2026-08-28-google-interactive-launch-print-mode-repair.md):
   exact PowerShell pipeline root cause, minimal stream-preserving repair,
   dashboard proofs for Claude/Gemini routes, one real Gemini `OK` and 22/22 gates.

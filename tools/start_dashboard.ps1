@@ -43,6 +43,7 @@ $ProjectRoot = (Resolve-Path -LiteralPath $Root).Path
 $PowerShell7 = Join-Path ${env:ProgramFiles} 'PowerShell\7\pwsh.exe'
 $Node = Join-Path $ProjectRoot 'provider_router\runtime\node.exe'
 $Server = Join-Path $ProjectRoot 'dashboard\server.mjs'
+$SessionLifecycle = Join-Path $ProjectRoot 'dashboard\session_lifecycle.mjs'
 $Supervisor = Join-Path $ProjectRoot 'tools\dashboard_supervisor.ps1'
 $RouterWarmup = Join-Path $ProjectRoot 'tools\router_project_menu.ps1'
 $Static = Join-Path $ProjectRoot 'dashboard\static\index.html'
@@ -51,10 +52,36 @@ $VerifiedIdentity = Join-Path $ProjectRoot '.runtime\dashboard\verified-identity
 $WarmupState = Join-Path $ProjectRoot '.runtime\dashboard\warmup-started.json'
 $Health = 'http://127.0.0.1:18320/health'
 
-foreach ($Required in @($PowerShell7, $Node, $Server, $Static, $Supervisor, $RouterWarmup)) {
+foreach ($Required in @($PowerShell7, $Node, $Server, $SessionLifecycle, $Static, $Supervisor, $RouterWarmup)) {
     if (-not (Test-Path -LiteralPath $Required -PathType Leaf)) { throw "Dashboard component is missing: $Required" }
 }
-$ExpectedServerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Server).Hash.ToLowerInvariant()
+
+function Get-CombinedFileHash {
+    param([Parameter(Mandatory = $true)][string[]]$Paths)
+
+    $Parts = @()
+    $TotalLength = 0
+    foreach ($Path in $Paths) {
+        [byte[]]$Part = [System.IO.File]::ReadAllBytes($Path)
+        $Parts += ,$Part
+        $TotalLength += $Part.Length
+    }
+    [byte[]]$Combined = New-Object byte[] $TotalLength
+    $Offset = 0
+    foreach ($Part in $Parts) {
+        [System.Array]::Copy($Part, 0, $Combined, $Offset, $Part.Length)
+        $Offset += $Part.Length
+    }
+    $Hasher = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return ([System.BitConverter]::ToString($Hasher.ComputeHash($Combined))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $Hasher.Dispose()
+    }
+}
+
+$ExpectedServerHash = Get-CombinedFileHash -Paths @($Server, $SessionLifecycle)
 
 function Test-DashboardIdentity {
     try {
