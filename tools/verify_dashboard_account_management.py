@@ -6,6 +6,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 
 def fail(message: str) -> int:
     print(f"FAIL: {message}")
@@ -24,6 +27,10 @@ def main() -> int:
         "normalizeGoogleCatalog",
         "cachedGoogleModels",
         "googleCatalogState",
+        "googleRuntimeModelIds",
+        "buildGoogleRouteCandidates",
+        "routes.push(...googleRoutes())",
+        "launch-google-new",
         "accountTrashRoot",
         "moveGoogleAccountToTrash",
         "moveApiProviderToTrash",
@@ -57,9 +64,9 @@ def main() -> int:
 
     for marker in (
         "--surface",
-        "--focus-ring",
-        "account-row",
-        "danger-button",
+        "--focus",
+        "account-card",
+        "text-danger",
         "status-rail",
         "route-picker-popover",
         "segmented",
@@ -68,11 +75,28 @@ def main() -> int:
         if marker not in css:
             return fail(f"dashboard CSS is missing compact design-system marker: {marker}")
 
+    runtime = (root / "tools" / "google_project_runtime.ps1").read_text(encoding="utf-8")
+    runtime_manifest = (root / "router_challenger" / "google-runtime-models.json").read_text(encoding="utf-8")
+    for marker in (
+        "Assert-BinaryIdentity",
+        "Assert-LoopbackListener",
+        "Wait-RuntimeModel",
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CONFIG_DIR",
+        "-WindowStyle Hidden",
+        "without sending a model request",
+    ):
+        if marker not in runtime:
+            return fail(f"Google runtime is missing isolation/launch marker: {marker}")
+    if '"models"' not in runtime_manifest or '"binary_sha256"' not in runtime_manifest:
+        return fail("Google runtime compatibility manifest is incomplete")
+
     print("PASS: Google model names come from a sanitized dynamic catalog cache")
     print("PASS: failed Google catalog refresh cannot be reported as a successful sync")
     print("PASS: account/provider removal is explicit, active-route-aware and recoverable")
     print("PASS: compact dashboard tokens and owner-facing removal controls are present")
     print("PASS: searchable grouped route picker and account filters replace the long native menu")
+    print("PASS: Google routes are the intersection of live catalog and pinned runtime capability")
     print("network: not used; ignored settings and auth payloads were not read")
     return 0
 

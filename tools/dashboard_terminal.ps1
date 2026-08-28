@@ -3,11 +3,12 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('launch-new', 'launch-resume', 'codex', 'codex-resume', 'google')]
+    [ValidateSet('launch-new', 'launch-resume', 'launch-google-new', 'launch-google-resume', 'codex', 'codex-resume', 'google')]
     [string]$Action,
     [string]$Value,
     [string]$Extra,
     [string]$Label,
+    [string]$Meta,
     [string]$StatusPath,
     [string]$Root = (Join-Path $PSScriptRoot '..')
 )
@@ -17,6 +18,7 @@ $ErrorActionPreference = 'Stop'
 $ProjectRoot = (Resolve-Path -LiteralPath $Root).Path
 $RouterMenu = Join-Path $ProjectRoot 'tools\router_project_menu.ps1'
 $GoogleMenu = Join-Path $ProjectRoot 'tools\challenger_account_menu.ps1'
+$GoogleRuntime = Join-Path $ProjectRoot 'tools\google_project_runtime.ps1'
 $ActionsRoot = [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot '.runtime\dashboard\actions'))
 
 function Write-ActionStatus {
@@ -42,6 +44,14 @@ try {
         'launch-resume' {
             $Host.UI.RawUI.WindowTitle = "Claude CLI - tiếp tục $Label"
             & $RouterMenu -Root $ProjectRoot -LaunchProfileId $Value -ClaudeSessionId $Extra -ClaudeSessionName $Label -ResumeClaudeSession -LaunchStatusPath $StatusPath
+        }
+        'launch-google-new' {
+            $Host.UI.RawUI.WindowTitle = "Claude CLI - Google $Value [$Extra]"
+            & $GoogleRuntime -Root $ProjectRoot -Action Launch -Slot $Value -Model $Extra -SessionId $Label -SessionName $Meta -LaunchStatusPath $StatusPath
+        }
+        'launch-google-resume' {
+            $Host.UI.RawUI.WindowTitle = "Claude CLI - tiếp tục Google $Value [$Extra]"
+            & $GoogleRuntime -Root $ProjectRoot -Action Launch -Slot $Value -Model $Extra -SessionId $Label -SessionName $Meta -ResumeSession -LaunchStatusPath $StatusPath
         }
         'codex' {
             $Host.UI.RawUI.WindowTitle = 'Claude CLI - đăng nhập Codex'

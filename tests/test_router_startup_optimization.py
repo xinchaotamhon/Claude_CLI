@@ -23,6 +23,14 @@ class RouterStartupOptimizationTests(unittest.TestCase):
         cls.start_profile = section(cls.source, "function Start-Profile", "function Show-RouterStatus")
         cls.menu = section(cls.source, "function Invoke-Menu", "function Invoke-SelfTest")
 
+    def test_dashboard_entry_detaches_normal_startup_and_keeps_failure_feedback(self):
+        entry = (ROOT / "DASHBOARD.bat").read_text(encoding="utf-8-sig")
+        for marker in ('start ""', "-WindowStyle Hidden", "-Detached", "startup-error.log"):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, entry + self.starter)
+        self.assertNotIn('"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File', entry)
+        self.assertIn("startup-error.log", self.starter)
+
     def test_launcher_remains_powershell_5_1_compatible(self):
         self.assertTrue(self.source.startswith("#requires -Version 5.1"))
         for unsupported in ("ForEach-Object -Parallel", "Start-ThreadJob", "async", "await"):

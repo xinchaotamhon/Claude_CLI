@@ -29,6 +29,7 @@ export type Account = {
     status: 'available' | 'unknown' | 'error';
     observedAt: string | null;
     source: string;
+    routableCount?: number;
     error?: string;
   };
   usage: {
@@ -49,7 +50,7 @@ export type Route = {
   name: string;
   provider: string;
   model: string;
-  kind: 'codex' | 'api';
+  kind: 'codex' | 'google' | 'api';
 };
 
 export type TerminalRecord = {

@@ -1,7 +1,7 @@
 # Project-local OAuth command configuration. The account helper replaces only
 # the placeholders below in an ignored per-account copy.
 host: "127.0.0.1"
-port: 18317
+port: __PROXY_PORT__
 
 tls:
   enable: false

@@ -31,6 +31,8 @@ const accountProfilesPath = path.join(projectRoot, 'provider_router', '.ccr-loca
 const codexAccountsRoot = path.join(projectRoot, 'provider_router', '.ccr-local', 'codex-accounts');
 const codexBinary = path.join(projectRoot, 'provider_router', 'codex-login-runtime', 'codex.exe');
 const googleAccountsRoot = path.join(projectRoot, '.runtime', 'challenger', 'accounts', 'google');
+const googleRuntimeModelsPath = path.join(projectRoot, 'router_challenger', 'google-runtime-models.json');
+const googleRuntimeScript = path.join(projectRoot, 'tools', 'google_project_runtime.ps1');
 const settingPath = path.join(projectRoot, 'setting.json');
 const removedAccountsPath = path.join(projectRoot, 'provider_router', '.ccr-local', 'removed-accounts.json');
 const appliedSettingHashPath = path.join(projectRoot, 'provider_router', '.ccr-local', 'setting.applied.sha256');
@@ -120,6 +122,49 @@ function cachedGoogleCatalog(accountId) {
   return Array.isArray(value?.models) ? value.models : [];
 }
 
+function googleRuntimeModelIds() {
+  const value = readJson(googleRuntimeModelsPath, {});
+  return new Set(Array.isArray(value?.models)
+    ? value.models.filter((model) => typeof model === 'string' && /^[a-z0-9][a-z0-9_.-]{0,127}$/.test(model))
+    : []);
+}
+
+function buildGoogleRouteCandidates(slot, catalog, supported) {
+  const routes = [];
+  const accountId = `google:${slot}`;
+  const slotNumber = googleSlotNumber(slot);
+  if (!slotNumber) return routes;
+  for (const model of catalog) {
+    const modelId = typeof model?.id === 'string' ? model.id.trim() : '';
+    if (!supported.has(modelId)) continue;
+    const displayName = typeof model?.displayName === 'string' && model.displayName.trim() ? model.displayName.trim() : modelId;
+    const suffix = crypto.createHash('sha256').update(`${slot}\0${modelId}`, 'utf8').digest('hex').slice(0, 12);
+    routes.push({
+      id: `google-${slotNumber}-${suffix}`,
+      name: `Google AI Pro ${slotNumber}: ${displayName}`,
+      provider: slot,
+      model: modelId,
+      kind: 'google',
+      accountId,
+      slot,
+    });
+  }
+  return routes;
+}
+
+function googleRoutes() {
+  const supported = googleRuntimeModelIds();
+  if (!supported.size) return [];
+  const routes = [];
+  for (const slot of googleSlots()) {
+    const state = googleSlotState(slot);
+    if (state.status !== 'ready') continue;
+    const accountId = `google:${slot}`;
+    routes.push(...buildGoogleRouteCandidates(slot, cachedGoogleCatalog(accountId), supported));
+  }
+  return routes;
+}
+
 function googleCatalogState(accountId) {
   const value = readJson(googleCatalogPath(accountId), {});
   const models = Array.isArray(value?.models) ? value.models : [];
@@ -162,6 +207,7 @@ function readRoutes() {
     if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(profile.id)) continue;
     routes.push({ id: profile.id, name: String(profile.name || `${profile.provider} [${profile.model}]`), provider: profile.provider, model: profile.model, kind: 'api' });
   }
+  routes.push(...googleRoutes());
   return routes;
 }
 
@@ -268,7 +314,13 @@ function buildAccounts(routes) {
       { id: 'gemini_models', label: 'Gemini', status: 'unknown', windows: [] },
       { id: 'claude_gpt_models', label: 'Claude / GPT', status: 'unknown', windows: [] },
     ];
-    accounts.push({ id, kind: 'google', label: `Google AI Pro ${index}`, plan: 'Google AI Pro', status: state.status, models: cachedGoogleModels(id), routes: [], catalog: googleCatalogState(id), usage: cachedUsage(id, fallback) });
+    const accountRoutes = routes.filter((route) => route.kind === 'google' && route.accountId === id);
+    accounts.push({
+      id, kind: 'google', label: `Google AI Pro ${index}`, plan: 'Google AI Pro', status: state.status,
+      models: cachedGoogleModels(id), routes: accountRoutes.map((route) => route.id),
+      catalog: { ...googleCatalogState(id), routableCount: accountRoutes.length },
+      usage: cachedUsage(id, fallback),
+    });
   }
 
   const setting = readJson(settingPath, { providers: [] });
@@ -504,6 +556,7 @@ function moveGoogleAccountToTrash(account) {
   const state = googleSlotState(slot);
   if (!fs.existsSync(state.slotRoot)) throw new Error('Slot Google không còn tồn tại.');
   assertAccountIdle(account);
+  if (state.status === 'ready') stopGoogleRuntime(slot);
   const trash = accountTrashDirectory('google', slot);
   fs.renameSync(state.slotRoot, path.join(trash, slot));
   for (const cache of [usagePath(account.id), googleCatalogPath(account.id)]) {
@@ -591,7 +644,29 @@ function gitCommitDate(directory) {
 }
 
 function versionKey(value) {
-  return String(value || '').trim().replace(/^v/i, '').replace(/^claude-code-/i, '');
+  return String(value || '').trim().replace(/^rust-v/i, '').replace(/^v/i, '').replace(/^claude-code-/i, '');
+}
+
+function compareVersions(left, right) {
+  const parse = (value) => {
+    const normalized = versionKey(value);
+    const match = normalized.match(/^(\d+)\.(\d+)\.(\d+)(.*)$/);
+    return match ? { numbers: match.slice(1, 4).map(Number), suffix: match[4] || '' } : null;
+  };
+  const a = parse(left); const b = parse(right);
+  if (!a || !b) return versionKey(left) === versionKey(right) ? 0 : null;
+  for (let index = 0; index < 3; index += 1) {
+    if (a.numbers[index] !== b.numbers[index]) return a.numbers[index] > b.numbers[index] ? 1 : -1;
+  }
+  if (!a.suffix && b.suffix) return 1;
+  if (a.suffix && !b.suffix) return -1;
+  return a.suffix === b.suffix ? 0 : a.suffix.localeCompare(b.suffix, 'en', { numeric: true });
+}
+
+function updateStatus(localVersion, latestVersion) {
+  const comparison = compareVersions(localVersion, latestVersion);
+  if (comparison === null) return versionKey(localVersion) === versionKey(latestVersion) ? 'current' : 'available';
+  return comparison >= 0 ? 'current' : 'available';
 }
 
 let localUpdateSnapshot = null;
@@ -625,7 +700,7 @@ function localUpdateState() {
       ...component,
       latestVersion: cached?.latest?.[component.id] || null,
       errorMessage,
-      status: errorMessage ? 'error' : cached?.latest?.[component.id] ? (versionKey(cached.latest[component.id]) === versionKey(component.localVersion) ? 'current' : 'available') : 'unchecked',
+      status: errorMessage ? 'error' : cached?.latest?.[component.id] ? updateStatus(component.localVersion, cached.latest[component.id]) : 'unchecked',
     };
   });
   return { checkedAt: cached?.checkedAt || null, lastProjectUpdateAt: localUpdateSnapshot.lastProjectUpdateAt, components };
@@ -941,12 +1016,27 @@ function spawnTerminal(action, ...values) {
   if (values[0] !== undefined) args.push('-Value', String(values[0]));
   if (values[1] !== undefined) args.push('-Extra', String(values[1]));
   if (values[2] !== undefined) args.push('-Label', String(values[2]));
+  if (values[3] !== undefined) args.push('-Meta', String(values[3]));
   const result = spawnSync(powershell, args, { cwd: projectRoot, windowsHide: true, encoding: 'utf8', timeout: 10_000, shell: false });
   if (result.status !== 0) throw new Error('Không thể mở terminal riêng của dự án.');
   let launched;
   try { launched = JSON.parse(String(result.stdout || '').trim().split(/\r?\n/).filter(Boolean).at(-1)); } catch { }
   if (!Number.isInteger(launched?.pid) || launched.pid <= 0) throw new Error('Terminal mới không trả về PID hợp lệ.');
   return { pid: launched.pid, statusPath };
+}
+
+function stopGoogleRuntime(slot) {
+  if (!googleSlotNumber(slot) || !fs.existsSync(googleRuntimeScript)) throw new Error('Thiếu công cụ runtime Google cục bộ.');
+  const candidates = [
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'PowerShell', '7', 'pwsh.exe'),
+    path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+  ];
+  const powershell = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!powershell) throw new Error('Máy này thiếu PowerShell để dừng runtime Google an toàn.');
+  const result = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', googleRuntimeScript, '-Action', 'Stop', '-Slot', slot, '-Root', projectRoot], {
+    cwd: projectRoot, windowsHide: true, encoding: 'utf8', timeout: 15_000, shell: false,
+  });
+  if (result.status !== 0) throw new Error('Không thể xác minh và dừng runtime Google trước khi xóa tài khoản.');
 }
 
 async function waitForActionStatus(launch, expected, timeoutMs) {
@@ -989,7 +1079,9 @@ async function launchRoute(route, options = {}) {
         migrated: false,
       };
     }
-    const launch = spawnTerminal(resumeId ? 'launch-resume' : 'launch-new', route.id, record.id, record.name);
+    const launch = route.kind === 'google'
+      ? spawnTerminal(resumeId ? 'launch-google-resume' : 'launch-google-new', route.slot, route.model, record.id, record.name)
+      : spawnTerminal(resumeId ? 'launch-resume' : 'launch-new', route.id, record.id, record.name);
     await waitForActionStatus(launch, ['claude_starting'], 70_000);
     saveSessionRecord(record);
     const records = readJson(terminalsPath, []);
@@ -1194,11 +1286,24 @@ function runSelfTest() {
   if (isolated.Path !== 'safe-path' || isolated.CODEX_HOME !== 'D:\\project-local-account' || isolated.CODEX_SQLITE_HOME !== 'D:\\project-local-account') throw new Error('project-local Codex environment was not established');
   const catalog = normalizeGoogleCatalog({ models: { 'future-model': { displayName: 'Future Model' }, chat_20706: { displayName: 'Internal' } } });
   if (catalog.length !== 1 || catalog[0].id !== 'future-model' || catalog[0].displayName !== 'Future Model') throw new Error('dynamic Google model catalog normalization failed');
-  process.stdout.write('PASS: dashboard Codex label, reset timestamp and child-environment self-test\n');
+  const routeCandidates = buildGoogleRouteCandidates('google_pro_3', [
+    { id: 'future-model', displayName: 'Future Model' },
+    { id: 'supported-model', displayName: 'Supported Model' },
+  ], new Set(['supported-model']));
+  if (routeCandidates.length !== 1 || routeCandidates[0].kind !== 'google' || routeCandidates[0].slot !== 'google_pro_3' || routeCandidates[0].model !== 'supported-model') throw new Error('Google catalog-to-runtime route intersection failed');
+  if (updateStatus('2.1.250', 'v2.1.247') !== 'current' || updateStatus('0.149.0-alpha.4.1', 'rust-v0.150.1') !== 'available') throw new Error('update version ordering failed');
+  process.stdout.write('PASS: dashboard Codex label, Google route intersection, reset timestamp and child-environment self-test\n');
 }
 
 if (process.argv.includes('--self-test')) {
   runSelfTest();
+  process.exit(0);
+}
+
+if (process.argv.includes('--route-summary')) {
+  const routes = readRoutes();
+  const google = routes.filter((route) => route.kind === 'google');
+  process.stdout.write(`${JSON.stringify({ schemaVersion: 1, routeCount: routes.length, googleRouteCount: google.length, googleModels: [...new Set(google.map((route) => route.model))].sort() })}\n`);
   process.exit(0);
 }
 

@@ -159,7 +159,7 @@ function Write-AccountConfig {
     $ConfigPath = Assert-ProjectChild -Path (Join-Path ([string]$State.root) "config.yaml")
     $Template = Get-Content -Raw -LiteralPath $TemplatePath
     $SafeAuth = ([string]$State.authDir).Replace('\', '/')
-    $Text = $Template.Replace("__AUTH_DIR__", $SafeAuth).Replace("__CLIENT_KEY__", (Get-RandomLocalValue)).Replace("__MANAGEMENT_KEY__", (Get-RandomLocalValue))
+    $Text = $Template.Replace("__PROXY_PORT__", '18317').Replace("__AUTH_DIR__", $SafeAuth).Replace("__CLIENT_KEY__", (Get-RandomLocalValue)).Replace("__MANAGEMENT_KEY__", (Get-RandomLocalValue))
     [System.IO.File]::WriteAllText($ConfigPath, $Text, (New-Object System.Text.UTF8Encoding($false)))
     return $ConfigPath
 }

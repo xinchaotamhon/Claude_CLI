@@ -1,9 +1,11 @@
 # START HERE — Claude CLI Multi-Provider Local
 
 This folder is an independent Windows runtime wrapper for one Claude Code CLI
-harness. Claude remains the only interactive coding CLI. A project-local
-Claude Code Router gateway may send model inference to Google Gemini, OpenAI,
-DeepSeek, OpenRouter, Z.AI, Kimi, Ollama or another configured API endpoint.
+harness. Claude remains the only interactive coding CLI. Project-local
+loopback gateways may send model inference to Google Gemini, OpenAI, DeepSeek,
+OpenRouter, Z.AI, Kimi, Ollama or another configured API endpoint. CCR serves
+Codex/custom APIs; one hash-pinned CLIProxyAPI process per Google account serves
+Google routes. Neither path changes the external Codex/ChatGPT App.
 
 This file is the stable local router for the project. It is not a credential,
 runtime grant, update approval or factual replacement for the named state,
@@ -16,7 +18,10 @@ compatibility path.
 ## Project identity
 
 - User surface: only `bin/claude.exe` and its normal Claude Code experience.
-- Router: pinned `@musistudio/claude-code-router` running on loopback.
+- Routers: pinned `@musistudio/claude-code-router` serves Codex and custom API
+  routes; the hash-pinned project-local CLIProxyAPI runtime serves each Google
+  account on its own loopback port. Neither router may configure an external
+  desktop app or user-global CLI profile.
 - Model route: `Provider/model`; the provider configured in the router owns the
   final upstream endpoint.
 - Scope: local runtime, local configuration, encrypted launcher credentials,
@@ -145,6 +150,14 @@ and endpoints only in ignored `setting.json`.
 The optional email field is only an OAuth `login_hint`; Google still displays
 its own account chooser and owns password/2FA. The project never stores that
 email as a credential.
+After login, the dashboard reads Google's current catalog and intersects it
+with the supported model registry of the exact pinned local CLIProxyAPI binary.
+Catalog-only models remain visible on the account card but are not falsely
+offered as launch routes. Each ready Google slot starts or reuses one hidden,
+hash-verified loopback proxy on ports `18401` through `18450`; Claude remains
+the only interactive harness and all sessions still share the ignored
+`.runtime/claude-home` store. No model request is sent merely to populate the
+selector.
 
 After a route is selected and **Mở terminal** is pressed, the launcher starts
 that exact route in one new visible terminal. The dashboard does not report
@@ -170,13 +183,13 @@ startup.
 Normal control flow:
 
 ```text
-DASHBOARD.bat -> authenticated http://127.0.0.1:18320
-  -> exact account/model route -> new terminal
-  -> validate/sync changed setting.json to project-local CCR SQLite
-  -> project-local router on 127.0.0.1:3456
-  -> bin/claude.exe with ANTHROPIC_BASE_URL pointing to loopback
-  -> router resolves Provider/model
-  -> configured upstream API endpoint
+DASHBOARD.bat -> hidden starter -> authenticated http://127.0.0.1:18320
+  -> exact account/model route -> one new visible Claude terminal
+  -> Codex/custom API: project-local CCR on 127.0.0.1:3456
+  -> Google account: verified per-slot CLIProxyAPI on 127.0.0.1:18401..18450
+  -> bin/claude.exe with ANTHROPIC_BASE_URL pointing to the selected loopback
+  -> selected router resolves the exact account/model
+  -> configured upstream endpoint
 ```
 
 An API key entered in `setting.json` is plaintext by owner choice, but the file

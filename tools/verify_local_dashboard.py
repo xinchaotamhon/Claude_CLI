@@ -83,11 +83,17 @@ def main() -> int:
     start = read(files["start"])
     if "provider_router\\runtime\\node.exe" not in start or "-WindowStyle Hidden" not in start:
         return fail("dashboard does not use the project-local Node runtime in a hidden server process")
+    for marker in ("[switch]$Detached", "startup-error.log", "Start-Process -FilePath 'notepad.exe'"):
+        if marker not in start:
+            return fail(f"dashboard detached startup is missing failure feedback marker: {marker}")
     for marker in ("127.0.0.1:18320", "loopbackOnly", "Get-CimInstance Win32_Process", "ExecutablePath", "CommandLine", "instanceId", "ExpectedServerHash", "Stop-OutdatedOwnedDashboard"):
         if marker not in start:
             return fail(f"dashboard startup does not independently verify exact process/loopback identity: {marker}")
 
     entry = read(files["entry"])
+    for marker in ("start_dashboard.ps1", "-WindowStyle Hidden", "-Detached", 'start ""'):
+        if marker not in entry:
+            return fail(f"DASHBOARD.bat is missing detached startup marker: {marker}")
     if "start_dashboard.ps1" not in entry:
         return fail("DASHBOARD.bat does not enter the bounded local startup helper")
     root_batches = sorted(path.name for path in root.glob("*.bat"))
@@ -140,7 +146,7 @@ def main() -> int:
         check=False,
         timeout=15,
     )
-    expected_self_test = "PASS: dashboard Codex label, reset timestamp and child-environment self-test"
+    expected_self_test = "PASS: dashboard Codex label, Google route intersection, reset timestamp and child-environment self-test"
     if self_test.returncode != 0 or expected_self_test not in self_test.stdout:
         return fail(f"dashboard server self-test failed: {(self_test.stderr or self_test.stdout).strip()}")
     static_index = read(files["static"])

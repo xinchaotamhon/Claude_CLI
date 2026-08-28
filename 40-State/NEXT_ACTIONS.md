@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: claude-2.1.250-and-cliproxy-7.2.144-upgrade
+verified_by: google-runtime-routes-dashboard-startup-ui
 status: active
 ---
 
@@ -15,14 +15,18 @@ status: active
    are active, the dashboard must show a pending account; close them and click
    **Hoàn tất nhập tài khoản**. Confirm actual routes: Free must not receive Sol;
    Plus may retain Sol/Terra/Luna only after bounded checks pass.
-3. **Repair one Google slot without hard-coding.** Use the dashboard removal
-   action for one stale/401 slot, sign in again through the official chooser,
-   then run dynamic catalog synchronization. If it remains empty, review
-   current CLIProxyAPI `7.2.144-local.1`; do not type screenshot model names
-   into source or claim login alone proves entitlement.
-4. **Promote Google routes incrementally.** Only after dynamic discovery works,
-   prove one explicit account/model request and a full tool loop, then add only
-   that route. Keep `Gemini` and `Claude / GPT` quota branches separate.
+3. **Use the repaired Google slot normally.** `google_pro_1` currently exposes
+   13 launch routes from a 24-model live catalog. Choose one Google route in the
+   grouped palette and send the first normal owner prompt. If a catalog model
+   is absent from the route palette, treat it as unsupported by the pinned
+   runtime—not as a reason to hard-code or relabel it.
+4. **Promote new Google models through the pinned runtime manifest.** Catalog
+   discovery is dynamic, but launch capability is the intersection with
+   `router_challenger/google-runtime-models.json`. On a future CLIProxyAPI
+   update, review source/model registry, rebuild reproducibly, run offline and
+   loopback gates, then update the manifest. Keep `Gemini` and `Claude / GPT`
+   quota branches separate. The first real model/tool-loop proof is still an
+   owner action and should be recorded without credentials or transcript data.
 5. **Finish owner-visible resume proof.** Dispatcher/PID acknowledgement,
    transcript filtering and a full Kiro Opus 5 Claude request are proved. Open
    one named interactive session, close it, then choose another route under

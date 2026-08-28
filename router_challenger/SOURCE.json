@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "component": "CLIProxyAPI",
-  "status": "phase-6-v7.2.144-upgrade-built",
+  "status": "phase-7-v7.2.144-google-runtime-active",
   "source_url": "https://github.com/router-for-me/CLIProxyAPI.git",
   "source_tag": "v7.2.144",
   "source_commit": "d36b776c790a4d58027fd4fb434800fb5334bceb",
@@ -48,13 +48,15 @@
     "checkout_is_ignored_nested_repository": true,
     "runtime_is_active": true,
     "offline_binary_was_built": true,
-    "oauth_was_run": false,
+    "oauth_was_run": true,
     "provider_request_was_run": false,
-    "normal_launcher_changed": false,
+    "normal_launcher_changed": true,
     "local_model_suppresses_remote_catalog_and_antigravity_updates": true,
     "offline_fixture_only": false,
     "oauth_callback_loopback_only": true,
     "google_account_chooser_and_login_hint": true,
-    "google_redirect_matches_ipv4_listener": true
+    "google_redirect_matches_ipv4_listener": true,
+    "google_runtime_active": true,
+    "google_model_registry_probe_run": true
   }
 }

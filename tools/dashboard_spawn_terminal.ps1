@@ -3,11 +3,12 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('launch-new', 'launch-resume', 'codex', 'codex-resume', 'google')]
+    [ValidateSet('launch-new', 'launch-resume', 'launch-google-new', 'launch-google-resume', 'codex', 'codex-resume', 'google')]
     [string]$Action,
     [string]$Value,
     [string]$Extra,
     [string]$Label,
+    [string]$Meta,
     [Parameter(Mandatory = $true)][string]$StatusPath,
     [string]$Root = (Join-Path $PSScriptRoot '..')
 )
@@ -30,6 +31,7 @@ foreach ($Argument in @('-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '
 if ($PSBoundParameters.ContainsKey('Value')) { [void]$Start.ArgumentList.Add('-Value'); [void]$Start.ArgumentList.Add($Value) }
 if ($PSBoundParameters.ContainsKey('Extra')) { [void]$Start.ArgumentList.Add('-Extra'); [void]$Start.ArgumentList.Add($Extra) }
 if ($PSBoundParameters.ContainsKey('Label')) { [void]$Start.ArgumentList.Add('-Label'); [void]$Start.ArgumentList.Add($Label) }
+if ($PSBoundParameters.ContainsKey('Meta')) { [void]$Start.ArgumentList.Add('-Meta'); [void]$Start.ArgumentList.Add($Meta) }
 $Process = [System.Diagnostics.Process]::Start($Start)
 if ($null -eq $Process -or $Process.Id -le 0) { throw 'Visible terminal did not start.' }
 [PSCustomObject]@{ schemaVersion = 1; pid = $Process.Id } | ConvertTo-Json -Compress

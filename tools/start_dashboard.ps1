@@ -1,10 +1,44 @@
 #requires -Version 5.1
 
 [CmdletBinding()]
-param([string]$Root = (Join-Path $PSScriptRoot '..'))
+param(
+    [string]$Root = (Join-Path $PSScriptRoot '..'),
+    [switch]$Detached,
+    [switch]$SkipBrowser
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$StartupLog = $null
+try {
+    $StartupLog = [System.IO.Path]::GetFullPath((Join-Path $Root '.runtime\dashboard\startup-error.log'))
+}
+catch { }
+
+trap {
+    $Message = [string]$_.Exception.Message
+    try {
+        if (-not [string]::IsNullOrWhiteSpace($StartupLog)) {
+            $StartupDirectory = Split-Path -Parent $StartupLog
+            [System.IO.Directory]::CreateDirectory($StartupDirectory) | Out-Null
+            $Line = '[{0}] Dashboard startup failed: {1}{2}' -f [DateTime]::UtcNow.ToString('o'), $Message, [Environment]::NewLine
+            [System.IO.File]::AppendAllText($StartupLog, $Line, (New-Object System.Text.UTF8Encoding($false)))
+        }
+    }
+    catch { }
+    if ($Detached) {
+        try {
+            if (-not [string]::IsNullOrWhiteSpace($StartupLog) -and (Test-Path -LiteralPath $StartupLog -PathType Leaf)) {
+                Start-Process -FilePath 'notepad.exe' -ArgumentList ('"{0}"' -f $StartupLog) -WindowStyle Normal | Out-Null
+            }
+        }
+        catch { }
+    }
+    else {
+        [Console]::Error.WriteLine('[ERROR] Dashboard startup failed: ' + $Message)
+    }
+    exit 1
+}
 $ProjectRoot = (Resolve-Path -LiteralPath $Root).Path
 $PowerShell7 = Join-Path ${env:ProgramFiles} 'PowerShell\7\pwsh.exe'
 $Node = Join-Path $ProjectRoot 'provider_router\runtime\node.exe'
@@ -118,4 +152,6 @@ if ($State.loopbackOnly -ne $true -or [string]$State.host -ne '127.0.0.1' -or [i
 }
 $Uri = [Uri]([string]$State.url)
 if ($Uri.Scheme -ne 'http' -or $Uri.Host -ne '127.0.0.1' -or $Uri.Port -ne 18320) { throw 'Dashboard URL is unsafe.' }
-Start-Process ([string]$State.url) | Out-Null
+if (-not $SkipBrowser) {
+    Start-Process ([string]$State.url) | Out-Null
+}

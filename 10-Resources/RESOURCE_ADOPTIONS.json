@@ -34,6 +34,28 @@
       "reason": "make AI handoff deterministic while preserving this folder as the complete routine operating boundary",
       "constraints": "design-pattern adoption only; no runtime, state, permission or availability dependency on the CLOVER workspace",
       "verification_gate": "foundation.memory-routing"
+    },
+    {
+      "id": "pattern.microsoft-fluent-ui-control-room",
+      "name": "Microsoft Fluent UI interaction and accessibility patterns",
+      "source_url": "https://github.com/microsoft/fluentui",
+      "reviewed_at": "2026-08-28",
+      "license": "MIT",
+      "adopted_scope": "design tokens, explicit interactive states, accessible-by-default controls, compact control-room hierarchy",
+      "reason": "make the Windows-local dashboard easier to scan without importing another framework or runtime",
+      "constraints": "pattern reference only; no Fluent source, font, icon package or dependency was copied or installed",
+      "verification_gate": "claude.dashboard-account-management"
+    },
+    {
+      "id": "pattern.ibm-carbon-progressive-disclosure",
+      "name": "IBM Carbon information hierarchy and keyboard interaction patterns",
+      "source_url": "https://github.com/carbon-design-system/carbon",
+      "reviewed_at": "2026-08-28",
+      "license": "Apache-2.0",
+      "adopted_scope": "progressive disclosure for long catalogs, grouped search, visible focus, Escape/Enter/arrow keyboard behavior and truthful status labels",
+      "reason": "replace the long native route list and dense account cards with a searchable, grouped and accessible owner flow",
+      "constraints": "pattern reference only; no Carbon source, package, visual asset or external runtime was copied or installed",
+      "verification_gate": "claude.dashboard-account-management"
     }
   ]
 }

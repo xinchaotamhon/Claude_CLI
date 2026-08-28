@@ -13,6 +13,8 @@ $fixtureRoot = Join-Path $projectRoot 'router_challenger\fixture'
 $fixtureExe = Join-Path $outputDir 'challenger-fixture.exe'
 $manifestPath = Join-Path $projectRoot 'router_challenger\BUILD.json'
 $sourceMetadataPath = Join-Path $projectRoot 'router_challenger\SOURCE.json'
+$runtimeModelsPath = Join-Path $projectRoot 'router_challenger\google-runtime-models.json'
+$sourceModelsPath = Join-Path $sourceRoot 'internal\registry\models\models.json'
 
 if (-not (Test-Path -LiteralPath $goExe -PathType Leaf)) {
     throw 'Project-local Go is missing under vendor\go. Normal launchers never download it.'
@@ -23,9 +25,22 @@ if (-not (Test-Path -LiteralPath $sourceRoot -PathType Container)) {
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw 'The tracked challenger build manifest is missing.'
 }
+if (-not (Test-Path -LiteralPath $runtimeModelsPath -PathType Leaf) -or -not (Test-Path -LiteralPath $sourceModelsPath -PathType Leaf)) {
+    throw 'The Google runtime compatibility manifest or source model registry is missing.'
+}
 
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $sourceMetadata = Get-Content -Raw -LiteralPath $sourceMetadataPath | ConvertFrom-Json
+$runtimeModels = Get-Content -Raw -LiteralPath $runtimeModelsPath | ConvertFrom-Json
+$sourceModels = Get-Content -Raw -LiteralPath $sourceModelsPath | ConvertFrom-Json
+$expectedModels = @($sourceModels.antigravity | ForEach-Object { [string]$_.id } | Sort-Object -Unique)
+$declaredModels = @($runtimeModels.models | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+if (($expectedModels -join "`n") -ne ($declaredModels -join "`n")) {
+    throw 'The tracked Google runtime compatibility manifest is stale relative to the pinned source registry.'
+}
+if (([string]$runtimeModels.binary_sha256).ToLowerInvariant() -ne ([string]$manifest.binary.sha256).ToLowerInvariant()) {
+    throw 'The Google runtime compatibility manifest does not match BUILD.json.'
+}
 $sourceTree = (& git.exe -C $sourceRoot rev-parse 'HEAD^{tree}').Trim()
 if ($LASTEXITCODE -ne 0 -or $sourceTree -ne [string]$sourceMetadata.patched_tree) {
     throw "Challenger source tree is not the pinned patched tree: $sourceTree"

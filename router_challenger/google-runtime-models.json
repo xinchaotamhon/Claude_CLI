@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "component": "CLIProxyAPI Antigravity runtime compatibility",
+  "source_tag": "v7.2.144",
+  "source_commit": "d36b776c790a4d58027fd4fb434800fb5334bceb",
+  "binary_sha256": "bc2631f4e46a2fcc0a9ceafa6d55d3887d3442666b556712edac85c04d1f24e2",
+  "policy": "The dashboard exposes only the intersection of Google's live catalog and the pinned local runtime's supported Antigravity model IDs.",
+  "models": [
+    "claude-opus-4-6-thinking",
+    "claude-sonnet-4-6",
+    "gemini-3.6-flash-high",
+    "gemini-3.7-flash-high",
+    "gemini-3-flash",
+    "gemini-3-flash-agent",
+    "gemini-3.1-flash-image",
+    "gemini-pro-agent",
+    "gemini-3.1-pro-low",
+    "gpt-oss-120b-medium",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-low",
+    "gemini-3.5-flash-extra-low"
+  ]
+}

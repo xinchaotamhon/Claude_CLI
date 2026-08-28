@@ -1,5 +1,9 @@
 # Evidence Index
 
+- [2026-08-28 Google runtime routes, hidden dashboard start and control-room UX](2026-08-28-google-runtime-routes-dashboard-startup-ui.md):
+  live Google catalog-to-pinned-runtime intersection, per-slot loopback launch,
+  no-request model-registry proof, one-console startup, grouped keyboard route
+  palette, truthful update comparison and sanitized CLOVER contribution.
 - [2026-08-28 Claude 2.1.250 and CLIProxyAPI 7.2.144 upgrade](2026-08-28-claude-2.1.250-and-cliproxy-7.2.144-upgrade.md):
   official release assets, closed-binary hash/rollback, exact four-patch rebase,
   reproducible local build and no-network offline protocol pilot.

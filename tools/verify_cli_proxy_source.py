@@ -59,8 +59,8 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         fail("SOURCE schema_version must be 1")
     if metadata.get("component") != "CLIProxyAPI":
         fail("unexpected source component")
-    if metadata.get("status") != "phase-6-v7.2.144-upgrade-built":
-        fail("source status must identify the reviewed v7.2.144 Phase 6 build")
+    if metadata.get("status") != "phase-7-v7.2.144-google-runtime-active":
+        fail("source status must identify the reviewed active v7.2.144 Google runtime")
     if metadata.get("source_url") != EXPECTED_URL:
         fail("unexpected source URL")
     if not HEX40.fullmatch(str(metadata.get("source_commit", ""))):
@@ -92,14 +92,16 @@ def verify_metadata(root: Path) -> tuple[dict[str, object], Path]:
         "checkout_is_ignored_nested_repository": True,
         "runtime_is_active": True,
         "offline_binary_was_built": True,
-        "oauth_was_run": False,
+        "oauth_was_run": True,
         "provider_request_was_run": False,
-        "normal_launcher_changed": False,
+        "normal_launcher_changed": True,
         "local_model_suppresses_remote_catalog_and_antigravity_updates": True,
         "offline_fixture_only": False,
         "oauth_callback_loopback_only": True,
         "google_account_chooser_and_login_hint": True,
         "google_redirect_matches_ipv4_listener": True,
+        "google_runtime_active": True,
+        "google_model_registry_probe_run": True,
     }
     if policy != expected_policy:
         fail("reviewed source policy changed unexpectedly")

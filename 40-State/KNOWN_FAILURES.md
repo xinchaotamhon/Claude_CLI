@@ -30,7 +30,7 @@ status: active
   minified patch anchors. The rejected worktree/runtime and review branch were
   removed; operational CCR remains `3.0.21`.
 
-## challenger.google-dynamic-model-catalog-empty — open 2026-08-28
+## challenger.google-dynamic-model-catalog-empty — fixed 2026-08-28
 
 - Symptoms: completed Google accounts show quota groups but no selectable
   model; manually pressing catalog synchronization cannot populate a route.
@@ -40,23 +40,27 @@ status: active
 - Reproduction: issue a bounded catalog request through the account's existing
   project-local OAuth context, then query `/v1/models` through the exact
   project-patched CLIProxyAPI binary.
-- Raw evidence: direct requests returned HTTP 401 for four slots; the proxy
-  loaded one auth entry and returned HTTP 200 with an empty sanitized model
-  array. No token, email, account ID or auth payload was retained.
-- Cause: proved only at the integration boundary. The current OAuth state is
-  rejected by the direct catalog surface; the new `7.2.144-local.1` build has
-  passed offline protocol gates but has not yet received an owner-authorized
-  live OAuth/catalog request.
-  Whether the decisive change is scope, header, endpoint behavior or proxy
-  translation remains unknown.
+- Raw evidence: the stale slots originally returned HTTP 401. After the owner
+  removed/re-authenticated one slot, the same sanitized catalog adapter returned
+  24 models and four separate quota windows. The first project-local runtime
+  readiness attempt exposed no model immediately; a bounded registry wait then
+  proved `gemini-3.7-flash-high` on `/v1/models` without sending a model turn.
+  No token, email, account ID or auth payload was retained.
+- Cause: two independent conditions were conflated. The old OAuth state was
+  stale, while the dashboard also never converted a successful Google catalog
+  into launch routes. The runtime registry is asynchronous and may briefly
+  return an empty list during cold start.
 - Failed approaches: direct dynamic catalog request and the reviewed current
   proxy. Screenshot model names were deliberately not used as source truth.
-- Disposition: open. The exact `7.2.144` rebase, reproducible build and offline
-  loopback pilot are complete; run an owner-authorized fresh OAuth/catalog proof
-  before route promotion.
+- Disposition: fixed. The dashboard creates Google routes only from the
+  intersection of the live account catalog and the exact pinned runtime model
+  manifest. The current slot produces 13 launchable routes from 24 catalog
+  entries. Each slot has its own hash-verified loopback runtime and bounded
+  model-registration wait; no automatic fallback is enabled.
 - Regression gate: `claude.dashboard-account-management` prohibits transient
   hard-coded model names and false successful synchronization. A real provider
-  entitlement still requires a bounded owner-authorized live gate.
+  entitlement still requires the owner's first normal Claude prompt; current
+  proof stops at catalog, loopback identity and `/v1/models` readiness.
 
 ## challenger.google-empty-slot-acl-and-callback — fixed pending owner authorization 2026-08-27
 
@@ -78,17 +82,22 @@ status: active
 - Regression gates: `challenger.cli-proxy-source-pin` and
   `challenger.google-account-flow`.
 
-## dashboard.double-console-and-active-import-block — fixed/contained 2026-08-26
+## dashboard.double-console-and-active-import-block — fixed 2026-08-28
 
 - Symptom: the first dashboard launch could leave an extra blank terminal; a
   Codex Plus attempt failed while another Claude/router session was active.
-- Causes: Node launched CMD/batch before PowerShell, and the importer rejected
-  active CCR before allowing project-local browser auth.
-- Disposition: dashboard now starts PowerShell directly. Codex auth may be
-  saved while CCR is active, but provider/config mutation is deferred and
-  completed from the pending dashboard card after sessions close.
-- Regression gates: `dashboard.local-control-room` and
-  `claude.codex-account-import`.
+- Causes: Node originally launched CMD/batch before PowerShell; after that was
+  removed, `DASHBOARD.bat` itself still waited synchronously for the hidden
+  starter. Because echo was disabled, that owner console appeared as a large
+  blank terminal. The importer separately rejected active CCR before allowing
+  project-local browser auth.
+- Disposition: `DASHBOARD.bat` now detaches the hidden starter and exits
+  immediately. The supervisor/router remain hidden; a real startup failure is
+  written to ignored `.runtime/dashboard/startup-error.log` and opened for the
+  owner. Codex auth may be saved while CCR is active, with mutation deferred to
+  the pending dashboard card.
+- Regression gates: `claude.local-dashboard`,
+  `claude.router-warm-start-contract` and `claude.codex-account-import`.
 
 ## dashboard.first-launch-background-refresh-contention — fixed 2026-08-28
 

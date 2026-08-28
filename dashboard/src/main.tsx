@@ -1,26 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Account, ClaudeSession, DashboardState, Route, UsageWindow } from './types';
 import './styles.css';
 
 const EMPTY: DashboardState = {
-  schemaVersion: 1,
-  generatedAt: '',
-  project: { name: 'Claude CLI', rootLabel: 'claude_CLI-V', isolation: 'project-local' },
-  accounts: [],
-  routes: [],
-  sessions: [],
-  terminals: [],
-  updates: { checkedAt: null, lastProjectUpdateAt: null, components: [] },
+  schemaVersion: 1, generatedAt: '', project: { name: 'Claude CLI', rootLabel: 'claude_CLI-V', isolation: 'project-local' },
+  accounts: [], routes: [], sessions: [], terminals: [], updates: { checkedAt: null, lastProjectUpdateAt: null, components: [] },
   services: { dashboard: 'starting', router: 'unknown', claudeVersion: '—', routerVersion: '—' },
 };
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-  });
+  const response = await fetch(path, { ...init, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || `Yêu cầu thất bại (${response.status})`);
   return payload as T;
@@ -30,406 +20,73 @@ function formatReset(value: string | null) {
   if (!value) return 'Chưa có thời gian đặt lại';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Chưa có thời gian đặt lại';
-  const delta = date.getTime() - Date.now();
-  if (delta <= 0) return 'Đang đặt lại';
-  const minutes = Math.ceil(delta / 60_000);
-  const days = Math.floor(minutes / 1440);
-  const hours = Math.floor((minutes % 1440) / 60);
-  const mins = minutes % 60;
-  if (days > 0) return `Đặt lại sau ${days} ngày ${hours} giờ`;
-  if (hours > 0) return `Đặt lại sau ${hours} giờ ${mins} phút`;
-  return `Đặt lại sau ${mins} phút`;
+  const minutes = Math.ceil((date.getTime() - Date.now()) / 60_000);
+  if (minutes <= 0) return 'Đang đặt lại';
+  const days = Math.floor(minutes / 1440), hours = Math.floor((minutes % 1440) / 60), mins = minutes % 60;
+  return days > 0 ? `Đặt lại sau ${days} ngày ${hours} giờ` : hours > 0 ? `Đặt lại sau ${hours} giờ ${mins} phút` : `Đặt lại sau ${mins} phút`;
 }
+function accountKindLabel(kind: Account['kind']) { return kind === 'codex' ? 'ChatGPT / Codex' : kind === 'google' ? 'Google AI Pro' : 'API tùy chỉnh'; }
+function routeKindLabel(route: Route) { return route.kind === 'codex' ? 'Codex' : /google|gemini|antigravity/i.test(`${route.provider} ${route.name}`) ? 'Google' : 'API'; }
+function markFor(kind: 'Codex' | 'Google' | 'API' | Account['kind']) { const normalized = kind.toLowerCase(); return normalized === 'codex' ? 'C' : normalized === 'google' ? 'G' : '⌘'; }
 
 function Gauge({ window }: { window: UsageWindow }) {
-  const percent = window.remainingPercent;
-  const safe = percent === null ? 0 : Math.max(0, Math.min(100, percent));
+  const percent = window.remainingPercent, safe = percent === null ? 0 : Math.max(0, Math.min(100, percent));
   const tone = percent === null ? 'unknown' : safe <= 20 ? 'danger' : safe <= 45 ? 'warn' : 'good';
-  return (
-    <div className="usage-row">
-      <div className="usage-copy">
-        <div className="usage-title-row">
-          <span>{window.label}</span>
-          <strong className={`percent ${tone}`}>{percent === null ? '—' : `${Math.round(safe)}%`}</strong>
-        </div>
-        <progress className={`meter ${tone}`} max="100" value={percent === null ? 100 : safe} aria-label={`${window.label}: ${percent ?? 'không rõ'} phần trăm còn lại`} />
-        <small>{window.detail || formatReset(window.resetAt)}</small>
-      </div>
-    </div>
-  );
+  return <div className="usage-row"><div className="usage-title-row"><span>{window.label}</span><strong className={`percent ${tone}`}>{percent === null ? '—' : `${Math.round(safe)}%`}</strong></div><progress className={`meter ${tone}`} max="100" value={percent === null ? 100 : safe} aria-label={`${window.label}: ${percent ?? 'không rõ'} phần trăm còn lại`} /><small>{window.detail || formatReset(window.resetAt)}</small></div>;
 }
 
 function AccountCard({ account, busy, connected, onRefresh, onResume, onOpenQuota, onDelete }: { account: Account; busy: boolean; connected: boolean; onRefresh: (id: string) => void; onResume: (account: Account) => void; onOpenQuota: (account: Account) => void; onDelete: (account: Account) => void }) {
-  const statusText = account.status === 'ready' ? 'Đã sẵn sàng' : account.status === 'incomplete' ? 'Đăng nhập chưa xong' : account.status === 'disabled' ? 'Đã tắt' : 'Chưa đăng nhập';
+  const statusText = account.status === 'ready' ? 'Sẵn sàng' : account.status === 'incomplete' ? 'Đăng nhập chưa xong' : account.status === 'disabled' ? 'Đã tắt' : 'Chưa đăng nhập';
   const windows = account.usage.groups.flatMap((group) => group.windows.map((window) => ({ group, window })));
-  return (
-    <article className={`account-card account-row ${account.kind}`}>
-      <div className="account-head">
-        <div className={`provider-mark ${account.kind}`} aria-hidden="true">
-          {account.kind === 'codex' ? 'O' : account.kind === 'google' ? 'G' : 'API'}
-        </div>
-        <div className="account-identity">
-          <div className="eyebrow">{account.kind === 'codex' ? 'ChatGPT / Codex' : account.kind === 'google' ? 'Google AI Pro' : 'API tùy chỉnh'}</div>
-          <h3>{account.label}</h3>
-          <div className="chips">
-            <span className={`status-dot ${account.status}`} />
-            <span>{statusText}</span>
-            <span className="chip">{account.plan}</span>
-          </div>
-        </div>
-        <div className="account-actions">
-          <button className="icon-button" disabled={!connected || busy || account.status !== 'ready' || account.kind === 'api'} onClick={() => onRefresh(account.id)} title="Làm mới hạn mức và catalog model"><span className={busy ? 'spin' : ''}>↻</span></button>
-          <button className="danger-button" disabled={!connected || busy} onClick={() => onDelete(account)}>{account.kind === 'api' ? 'Xóa provider' : 'Xóa tài khoản'}</button>
-        </div>
-      </div>
-
-      <div className="model-list">
-        {account.models.length ? account.models.map((model) => <span key={model}>{model}</span>) : <span className="muted-chip">Chưa có model</span>}
-      </div>
-
-      {account.kind === 'google' && account.catalog && (
-        <div className={`catalog-state ${account.catalog.status}`}>
-          <span className="catalog-state-icon" aria-hidden="true">{account.catalog.status === 'available' ? '✓' : account.catalog.status === 'error' ? '!' : '…'}</span>
-          <div>
-            <strong>{account.catalog.status === 'available' ? `${account.models.length} model từ catalog Google` : account.catalog.status === 'error' ? 'Chưa đọc được model Google' : 'Chưa đồng bộ catalog Google'}</strong>
-            <p>{account.catalog.error || (account.catalog.status === 'available' ? 'Model mới sẽ tự xuất hiện sau lần đồng bộ, không cần sửa danh sách bằng tay.' : 'Bấm làm mới sau khi đăng nhập hoàn tất.')}</p>
-          </div>
-        </div>
-      )}
-
-      {(account.status === 'incomplete' || account.status === 'not_signed_in') && account.kind !== 'api' && (
-        <button className="wide-button resume-button" disabled={!connected || busy} onClick={() => onResume(account)}>
-          {account.kind === 'codex' ? 'Hoàn tất nhập tài khoản' : 'Tiếp tục đăng nhập Google'}
-        </button>
-      )}
-      {account.kind === 'api' && account.quotaPageAvailable && (
-        <button className="wide-button resume-button" disabled={!connected || busy} onClick={() => onOpenQuota(account)}>Mở trang quota của provider</button>
-      )}
-
-      <div className="usage-panel">
-        {windows.map(({ group, window }) => (
-          <Gauge key={`${group.id}-${window.id}`} window={{ ...window, label: account.kind === 'google' ? `${group.label} · ${window.label}` : window.label }} />
-        ))}
-        {!windows.length && (
-          <div className="empty-usage">
-            <span className="empty-orbit" />
-            <div>
-              <strong>{account.status === 'ready' ? 'Chưa có số hạn mức' : 'Đăng nhập để đọc hạn mức'}</strong>
-              <p>{account.usage.message || 'Bấm làm mới sau khi tài khoản sẵn sàng. Nếu nhà cung cấp không công bố dữ liệu, dashboard sẽ giữ trạng thái chưa xác định.'}</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {account.kind !== 'api' && (
-        <div className="credit-strip">
-          <span>Tín dụng bổ sung</span>
-          <strong>
-            {account.usage.credits
-              ? account.usage.credits.hasCredits
-                ? account.usage.credits.balance === null
-                  ? 'Có tín dụng · chưa rõ số dư'
-                  : `Số dư nhà cung cấp: ${account.usage.credits.balance}`
-                : 'Không có'
-              : 'Chưa xác định'}
-          </strong>
-          {account.kind === 'codex' && typeof account.usage.resetCreditsAvailable === 'number' && (
-            <small>{account.usage.resetCreditsAvailable} reset credit khả dụng · không tự dùng</small>
-          )}
-        </div>
-      )}
-
-      {account.usage.message && windows.length > 0 && <p className="usage-note">{account.usage.message}</p>}
-
-      <footer className="account-foot">
-        <span>{account.usage.experimental ? 'Nguồn thử nghiệm, có thể thay đổi' : account.usage.source}</span>
-        <span>{account.usage.observedAt ? `Cập nhật ${new Date(account.usage.observedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : 'Chưa cập nhật'}</span>
-      </footer>
-    </article>
-  );
-}
-
-function routeKindLabel(route: Route) {
-  if (route.kind === 'codex') return 'Codex';
-  if (/google|gemini|antigravity/i.test(`${route.provider} ${route.name}`)) return 'Google';
-  return 'API';
+  const visibleModels = account.models.slice(0, 5), extraModels = account.models.length - visibleModels.length;
+  const modelSummary = account.models.length === 1 ? '1 model' : `${account.models.length} model`;
+  const routeSummary = account.routes.length ? `${account.routes.length} route có thể mở` : account.status === 'ready' ? 'Đang chờ route' : 'Chưa có route';
+  return <article className={`account-card ${account.kind} ${account.status}`}>
+    <header className="account-head"><span className={`provider-mark ${account.kind}`} aria-hidden="true">{markFor(account.kind)}</span><div className="account-identity"><div className="account-overline">{accountKindLabel(account.kind)}</div><h3>{account.label}</h3><div className="account-meta"><span className={`status-dot ${account.status}`} />{statusText}<span className="plan-chip">{account.plan}</span></div></div><div className="account-actions"><button className="icon-button" disabled={!connected || busy || account.status !== 'ready' || account.kind === 'api'} onClick={() => onRefresh(account.id)} title="Làm mới hạn mức và catalog model" aria-label={`Làm mới ${account.label}`}><span className={busy ? 'spin' : ''}>↻</span></button><button className="text-danger" disabled={!connected || busy} onClick={() => onDelete(account)}>{account.kind === 'api' ? 'Xóa provider' : 'Xóa tài khoản'}</button></div></header>
+    <div className="account-route-summary"><span className="route-count">{account.routes.length}</span><span><strong>{routeSummary}</strong><small>{modelSummary} trong catalog tài khoản</small></span></div>
+    <div className="account-main"><div className="quota-stack" aria-label={`Hạn mức ${account.label}`}>{windows.map(({ group, window }) => <Gauge key={`${group.id}-${window.id}`} window={{ ...window, label: account.kind === 'google' ? `${group.label} · ${window.label}` : window.label }} />)}{!windows.length && <div className="empty-usage"><span className="empty-orbit" aria-hidden="true" /><div><strong>{account.status === 'ready' ? 'Chưa có số hạn mức' : 'Cần đăng nhập để đọc hạn mức'}</strong><p>{account.usage.message || 'Nếu nhà cung cấp không công bố dữ liệu, dashboard sẽ giữ trạng thái chưa xác định.'}</p></div></div>}</div><div className="model-preview"><div className="model-preview-head"><span>Model</span><strong>{modelSummary}</strong></div><div className="model-list">{visibleModels.length ? visibleModels.map((model) => <span key={model}>{model}</span>) : <span className="muted-chip">Chưa có model</span>}{extraModels > 0 && <span className="more-models">+{extraModels}</span>}</div>{account.models.length > visibleModels.length && <details className="model-details"><summary>Xem toàn bộ catalog</summary><div>{account.models.map((model) => <span key={model}>{model}</span>)}</div></details>}</div></div>
+    {account.kind === 'google' && account.catalog && <div className={`catalog-state ${account.catalog.status}`}><span className="catalog-state-icon" aria-hidden="true">{account.catalog.status === 'available' ? '✓' : account.catalog.status === 'error' ? '!' : '…'}</span><div><strong>{account.catalog.status === 'available' ? 'Catalog Google đã đồng bộ' : account.catalog.status === 'error' ? 'Chưa đọc được catalog Google' : 'Catalog Google chưa đồng bộ'}</strong><p>{account.catalog.error || (account.catalog.status === 'available' ? 'Model mới sẽ tự xuất hiện sau lần đồng bộ; danh sách không cần nhập tay.' : 'Bấm làm mới sau khi đăng nhập hoàn tất.')}</p></div></div>}
+    {(account.status === 'incomplete' || account.status === 'not_signed_in') && account.kind !== 'api' && <button className="wide-button resume-button" disabled={!connected || busy} onClick={() => onResume(account)}>{account.kind === 'codex' ? 'Hoàn tất nhập tài khoản' : 'Tiếp tục đăng nhập Google'}</button>}
+    {account.kind === 'api' && account.quotaPageAvailable && <button className="wide-button resume-button" disabled={!connected || busy} onClick={() => onOpenQuota(account)}>Mở trang quota của provider</button>}
+    {account.kind !== 'api' && <div className="credit-strip"><span>Tín dụng bổ sung</span><strong>{account.usage.credits ? account.usage.credits.hasCredits ? account.usage.credits.balance === null ? 'Có · chưa rõ số dư' : `Số dư: ${account.usage.credits.balance}` : 'Không có' : 'Chưa xác định'}</strong>{account.kind === 'codex' && typeof account.usage.resetCreditsAvailable === 'number' && <small>{account.usage.resetCreditsAvailable} reset credit khả dụng · không tự dùng</small>}</div>}
+    {account.usage.message && windows.length > 0 && <p className="usage-note">{account.usage.message}</p>}<footer className="account-foot"><span>{account.usage.experimental ? 'Nguồn thử nghiệm, có thể thay đổi' : account.usage.source}</span><span>{account.usage.observedAt ? `Cập nhật ${new Date(account.usage.observedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : 'Chưa cập nhật'}</span></footer>
+  </article>;
 }
 
 function RoutePicker({ routes, value, disabled, onChange }: { routes: Route[]; value: string; disabled: boolean; onChange: (routeId: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const selected = routes.find((route) => route.id === value);
-  const normalized = query.trim().toLocaleLowerCase('vi');
+  const [open, setOpen] = useState(false), [query, setQuery] = useState(''), [activeIndex, setActiveIndex] = useState(0);
+  const triggerRef = useRef<HTMLButtonElement>(null), queryRef = useRef<HTMLInputElement>(null);
+  const selected = routes.find((route) => route.id === value), normalized = query.trim().toLocaleLowerCase('vi');
   const filtered = routes.filter((route) => !normalized || `${route.name} ${route.provider} ${route.model}`.toLocaleLowerCase('vi').includes(normalized));
-  const groups = [...new Set(filtered.map((route) => route.provider))];
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [open]);
-
-  return (
-    <div className="route-picker">
-      <button type="button" className="route-picker-trigger" aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={() => setOpen((current) => !current)}>
-        <span className={`route-provider-mark ${selected ? routeKindLabel(selected).toLowerCase() : 'empty'}`}>{selected ? routeKindLabel(selected).slice(0, 1) : '—'}</span>
-        <span className="route-picker-value">
-          <strong>{selected?.model || 'Chưa có route khả dụng'}</strong>
-          <small>{selected ? `${selected.provider} · ${routeKindLabel(selected)}` : 'Đăng nhập hoặc thêm provider trước'}</small>
-        </span>
-        <span className="route-picker-chevron" aria-hidden="true">⌄</span>
-      </button>
-      {open && (
-        <div className="route-picker-popover" role="dialog" aria-label="Chọn tài khoản và model">
-          <div className="route-picker-head">
-            <div><strong>Chọn tài khoản & model</strong><small>{routes.length} route đang khả dụng</small></div>
-            <button type="button" className="picker-close" onClick={() => setOpen(false)} aria-label="Đóng bộ chọn">×</button>
-          </div>
-          <label className="route-search"><span aria-hidden="true">⌕</span><input autoFocus value={query} placeholder="Tìm tài khoản, provider hoặc model…" onChange={(event) => setQuery(event.target.value)} /></label>
-          <div className="route-picker-list">
-            {!filtered.length && <div className="route-empty"><strong>Không tìm thấy route</strong><span>Thử tên tài khoản hoặc model khác.</span></div>}
-            {groups.map((provider) => (
-              <section className="route-group" key={provider}>
-                <div className="route-group-title"><span>{provider}</span><small>{filtered.filter((route) => route.provider === provider).length} model</small></div>
-                {filtered.filter((route) => route.provider === provider).map((route) => (
-                  <button type="button" className={`route-option ${route.id === value ? 'selected' : ''}`} key={route.id} onClick={() => { onChange(route.id); setOpen(false); setQuery(''); }}>
-                    <span className={`route-provider-mark ${routeKindLabel(route).toLowerCase()}`}>{routeKindLabel(route).slice(0, 1)}</span>
-                    <span><strong>{route.model}</strong><small>{route.name}</small></span>
-                    <em>{routeKindLabel(route)}</em>
-                    {route.id === value && <b aria-label="Đang chọn">✓</b>}
-                  </button>
-                ))}
-              </section>
-            ))}
-          </div>
-          <footer><span>Esc để đóng</span><span>Mỗi terminal giữ route riêng</span></footer>
-        </div>
-      )}
-    </div>
-  );
+  const groups = Array.from(filtered.reduce((map, route) => { const key = `${route.kind}\u0000${route.provider}`; const title = route.kind === 'google' ? route.name.split(':', 1)[0] : route.provider; const group = map.get(key) || { key, title, provider: route.provider, routes: [] as Route[] }; group.routes.push(route); map.set(key, group); return map; }, new Map<string, { key: string; title: string; provider: string; routes: Route[] }>()).values());
+  const close = useCallback(() => { setOpen(false); setQuery(''); window.setTimeout(() => triggerRef.current?.focus(), 0); }, []);
+  const choose = useCallback((routeId: string) => { onChange(routeId); close(); }, [close, onChange]);
+  useEffect(() => { if (!open) return; setActiveIndex(Math.max(0, filtered.findIndex((route) => route.id === value))); window.setTimeout(() => queryRef.current?.focus(), 0); }, [open, value]);
+  useEffect(() => { setActiveIndex((current) => Math.min(Math.max(0, current), Math.max(0, filtered.length - 1))); }, [filtered.length]);
+  useEffect(() => { const onKeyDown = (event: KeyboardEvent) => { const isShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'; if (isShortcut && !disabled) { event.preventDefault(); setOpen(true); return; } if (!open) return; if (event.key === 'Escape') { event.preventDefault(); close(); return; } if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((current) => Math.min(current + 1, Math.max(0, filtered.length - 1))); return; } if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex((current) => Math.max(current - 1, 0)); return; } if (event.key === 'Enter' && filtered[activeIndex]) { event.preventDefault(); choose(filtered[activeIndex].id); } }; window.addEventListener('keydown', onKeyDown); return () => window.removeEventListener('keydown', onKeyDown); }, [activeIndex, choose, close, disabled, filtered, open]);
+  return <div className="route-picker"><button ref={triggerRef} type="button" className="route-picker-trigger" aria-haspopup="dialog" aria-expanded={open} aria-controls="route-command-palette" disabled={disabled} onClick={() => setOpen(true)}><span className={`route-provider-mark ${selected ? routeKindLabel(selected).toLowerCase() : 'empty'}`}>{selected ? markFor(routeKindLabel(selected)) : '—'}</span><span className="route-picker-value"><strong>{selected?.model || 'Chưa có route khả dụng'}</strong><small>{selected ? `${selected.name} · ${routeKindLabel(selected)}` : 'Đăng nhập hoặc thêm provider trước'}</small></span><span className="route-picker-key" aria-hidden="true">⌘K</span></button>{open && <div className="route-dialog-layer" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><div id="route-command-palette" className="route-picker-popover" role="dialog" aria-modal="true" aria-label="Chọn tài khoản và model"><header className="route-picker-head"><div><span className="dialog-kicker">ROUTE CHO TERMINAL MỚI</span><strong>Chọn tài khoản & model</strong><small>{routes.length} route đang khả dụng · mũi tên để di chuyển, Enter để chọn</small></div><button type="button" className="picker-close" onClick={close} aria-label="Đóng bộ chọn">×</button></header><label className="route-search"><span aria-hidden="true">⌕</span><input ref={queryRef} value={query} placeholder="Tìm model, tài khoản hoặc provider…" onChange={(event) => setQuery(event.target.value)} /></label><div className="route-picker-list" role="listbox" aria-label="Danh sách route">{!filtered.length && <div className="route-empty"><strong>Không tìm thấy route</strong><span>Thử tên tài khoản, provider hoặc model khác.</span></div>}{groups.map((group) => <section className="route-group" key={group.key}><div className="route-group-title"><span>{group.title}</span><small>{group.provider} · {group.routes.length} model</small></div>{group.routes.map((route) => { const index = filtered.findIndex((item) => item.id === route.id), kind = routeKindLabel(route); return <button type="button" role="option" aria-selected={route.id === value} className={`route-option ${route.id === value ? 'selected' : ''} ${index === activeIndex ? 'active' : ''}`} key={route.id} onMouseEnter={() => setActiveIndex(index)} onClick={() => choose(route.id)}><span className={`route-provider-mark ${kind.toLowerCase()}`}>{markFor(kind)}</span><span><strong>{route.model}</strong><small>{route.provider}</small></span><em>{kind}</em>{route.id === value && <b aria-label="Đang chọn">✓</b>}</button>; })}</section>)}</div><footer><span>Esc để đóng</span><span>Mỗi terminal giữ route riêng</span></footer></div></div>}</div>;
 }
 
 function App() {
-  const [state, setState] = useState<DashboardState>(EMPTY);
-  const [selectedRoute, setSelectedRoute] = useState('');
-  const [resumeRoutes, setResumeRoutes] = useState<Record<string, string>>({});
-  const [sessionName, setSessionName] = useState('');
-  const [googleLoginHint, setGoogleLoginHint] = useState('');
-  const [accountKind, setAccountKind] = useState<'all' | Account['kind']>('all');
-  const [accountQuery, setAccountQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [dashboardConnected, setDashboardConnected] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ tone: 'ok' | 'error' | 'info'; text: string } | null>(null);
-
-  const reload = useCallback(async (quiet = false) => {
-    if (!quiet) setLoading(true);
-    try {
-      const snapshot = await api<DashboardState>('/api/state');
-      setState(snapshot);
-      setDashboardConnected(true);
-      setSelectedRoute((current) => current && snapshot.routes.some((route) => route.id === current) ? current : snapshot.routes[0]?.id || '');
-      setResumeRoutes((current) => {
-        const updated: Record<string, string> = { ...current };
-        for (const session of snapshot.sessions) {
-          const selected = updated[session.id];
-          if (!selected || !snapshot.routes.some((route) => route.id === selected)) {
-            updated[session.id] = snapshot.routes.find((route) => route.id === session.routeId)?.id || snapshot.routes[0]?.id || '';
-          }
-        }
-        for (const sessionId of Object.keys(updated)) {
-          if (!snapshot.sessions.some((session) => session.id === sessionId)) delete updated[sessionId];
-        }
-        return updated;
-      });
-    } catch (error) {
-      setDashboardConnected(false);
-      if (!quiet) setNotice({ tone: 'error', text: 'Dashboard mất kết nối; đang tự kết nối lại. ' + (error instanceof Error ? error.message : String(error)) });
-    } finally {
-      if (!quiet) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void reload();
-    const timer = window.setInterval(() => void reload(true), 8_000);
-    return () => window.clearInterval(timer);
-  }, [reload]);
-
-  const selected = useMemo<Route | undefined>(() => state.routes.find((route) => route.id === selectedRoute), [state.routes, selectedRoute]);
-  const readyAccounts = state.accounts.filter((account) => account.status === 'ready').length;
-  const activeTerminals = state.terminals.filter((terminal) => terminal.running).length;
-  const updateCandidates = state.updates.components.filter((component) => component.status === 'available').length;
-  const normalizedAccountQuery = accountQuery.trim().toLocaleLowerCase('vi');
+  const [state, setState] = useState<DashboardState>(EMPTY), [selectedRoute, setSelectedRoute] = useState(''), [resumeRoutes, setResumeRoutes] = useState<Record<string, string>>({}), [sessionName, setSessionName] = useState(''), [googleLoginHint, setGoogleLoginHint] = useState(''), [accountKind, setAccountKind] = useState<'all' | Account['kind']>('all'), [accountQuery, setAccountQuery] = useState(''), [loading, setLoading] = useState(true), [dashboardConnected, setDashboardConnected] = useState(false), [busy, setBusy] = useState<string | null>(null), [notice, setNotice] = useState<{ tone: 'ok' | 'error' | 'info'; text: string } | null>(null);
+  const reload = useCallback(async (quiet = false) => { if (!quiet) setLoading(true); try { const snapshot = await api<DashboardState>('/api/state'); setState(snapshot); setDashboardConnected(true); setSelectedRoute((current) => current && snapshot.routes.some((route) => route.id === current) ? current : snapshot.routes[0]?.id || ''); setResumeRoutes((current) => { const updated = { ...current }; for (const session of snapshot.sessions) if (!updated[session.id] || !snapshot.routes.some((route) => route.id === updated[session.id])) updated[session.id] = snapshot.routes.find((route) => route.id === session.routeId)?.id || snapshot.routes[0]?.id || ''; for (const sessionId of Object.keys(updated)) if (!snapshot.sessions.some((session) => session.id === sessionId)) delete updated[sessionId]; return updated; }); } catch (error) { setDashboardConnected(false); if (!quiet) setNotice({ tone: 'error', text: 'Dashboard mất kết nối; đang tự kết nối lại. ' + (error instanceof Error ? error.message : String(error)) }); } finally { if (!quiet) setLoading(false); } }, []);
+  useEffect(() => { void reload(); const timer = window.setInterval(() => void reload(true), 8_000); return () => window.clearInterval(timer); }, [reload]);
+  const selected = useMemo(() => state.routes.find((route) => route.id === selectedRoute), [state.routes, selectedRoute]);
+  const readyAccounts = state.accounts.filter((account) => account.status === 'ready').length, activeTerminals = state.terminals.filter((terminal) => terminal.running).length, updateCandidates = state.updates.components.filter((component) => component.status === 'available').length, normalizedAccountQuery = accountQuery.trim().toLocaleLowerCase('vi');
   const visibleAccounts = state.accounts.filter((account) => (accountKind === 'all' || account.kind === accountKind) && (!normalizedAccountQuery || `${account.label} ${account.plan} ${account.models.join(' ')}`.toLocaleLowerCase('vi').includes(normalizedAccountQuery)));
-
-  async function action(path: string, body?: unknown, success?: string, pending?: string) {
-    if (!dashboardConnected) {
-      setNotice({ tone: 'error', text: 'Dashboard mất kết nối; đang tự kết nối lại. Vui lòng thử lại sau khi kết nối phục hồi.' });
-      return;
-    }
-    const key = path + JSON.stringify(body ?? {});
-    setBusy(key);
-    if (pending) setNotice({ tone: 'info', text: pending });
-    try {
-      await api(path, { method: 'POST', body: JSON.stringify(body ?? {}) });
-      setNotice({ tone: 'ok', text: success || 'Đã thực hiện.' });
-      await new Promise((resolve) => window.setTimeout(resolve, 550));
-      await reload(true);
-    } catch (error) {
-      setNotice({ tone: 'error', text: error instanceof Error ? error.message : String(error) });
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function deleteSession(session: ClaudeSession) {
-    const confirmed = window.confirm(`Xóa session "${session.name}" khỏi Claude CLI?\n\nSession sẽ được chuyển vào thùng rác cục bộ để có thể khôi phục, không bị xóa vĩnh viễn.`);
-    if (!confirmed) return;
-    await action('/api/sessions/delete', { sessionId: session.id, confirmation: session.id }, `Đã chuyển ${session.name} vào thùng rác cục bộ.`);
-  }
-
-  async function clearClosedTerminals() {
-    const confirmed = window.confirm('Xóa mọi mục terminal đã đóng khỏi danh sách gần đây?\n\nThao tác này không tắt terminal đang chạy, không xóa session và không xóa transcript.');
-    if (!confirmed) return;
-    await action('/api/terminals/clear-closed', { confirmation: 'clear-closed-terminals' }, 'Đã dọn các mục terminal đã đóng.');
-  }
-
-  async function deleteAccount(account: Account) {
-    const noun = account.kind === 'api' ? 'provider' : 'tài khoản';
-    const confirmed = window.confirm(`Xóa ${noun} "${account.label}" khỏi dự án?\n\nDữ liệu sẽ được chuyển vào thùng rác cục bộ để có thể khôi phục. Hãy đóng mọi terminal Claude trước khi xóa.`);
-    if (!confirmed) return;
-    await action('/api/accounts/remove', { accountId: account.id, confirmation: account.id }, `Đã chuyển ${account.label} vào thùng rác cục bộ.`);
-  }
-
-  return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-glyph"><span /><span /><span /></div>
-          <div><strong>Claude CLI Control Room</strong><small>Độc lập trong claude_CLI-V · localhost</small></div>
-        </div>
-        <div className="service-pills">
-          <span><i className={dashboardConnected ? 'live' : 'idle'} /> Dashboard {dashboardConnected ? 'đang kết nối' : 'mất kết nối'}</span>
-          <span><i className={state.services.router === 'running' ? 'live' : 'idle'} /> Router {state.services.router === 'running' ? 'đang chạy' : 'đang nghỉ'}</span>
-          <button className="quiet-button" onClick={() => void reload()} disabled={loading}>↻ Đồng bộ</button>
-        </div>
-      </header>
-
-      {!dashboardConnected && <div className="connection-banner" role="alert"><strong>Dashboard mất kết nối</strong><span>{loading ? 'Đang kết nối…' : 'Đang tự kết nối lại… Các nút hành động sẽ mở lại khi kết nối phục hồi.'}</span></div>}
-
-      <main>
-        <section className="hero">
-          <div>
-            <div className="eyebrow coral">BẢNG ĐIỀU KHIỂN CỤC BỘ</div>
-            <h1>Một nơi để chọn tài khoản,<br /><span>model và hạn mức.</span></h1>
-            <p>Mỗi terminal dùng route riêng theo lựa chọn của bạn. Nhiều terminal có thể dùng cùng tài khoản hoặc các tài khoản khác nhau; cùng tài khoản vẫn chia sẻ một hạn mức.</p>
-          </div>
-          <div className="summary-grid">
-            <div><strong>{readyAccounts}</strong><span>Tài khoản sẵn sàng</span></div>
-            <div><strong>{state.routes.length}</strong><span>Route model</span></div>
-            <div><strong>{activeTerminals}</strong><span>Terminal đang chạy</span></div>
-          </div>
-        </section>
-
-        <section className="status-rail" aria-label="Trạng thái hệ thống">
-          <div><span className="status-symbol safe">✓</span><p><strong>Cô lập project</strong><small>Runtime và phiên nằm trong claude_CLI-V</small></p></div>
-          <div><span className="status-symbol off">↛</span><p><strong>Fallback đang tắt</strong><small>Không tự đổi tài khoản khi hết quota</small></p></div>
-          <div><span className={`status-symbol ${updateCandidates ? 'warn' : 'safe'}`}>{updateCandidates || '✓'}</span><p><strong>{updateCandidates ? `${updateCandidates} candidate cập nhật` : 'Chưa có candidate mới'}</strong><small>Chỉ review, không tự merge</small></p></div>
-        </section>
-
-        <section className="launch-deck">
-          <div className="launch-copy">
-            <div className="section-icon">›_</div>
-            <div><h2>Mở phiên Claude mới</h2><p>Terminal mới không thay đổi tài khoản của những terminal đang chạy.</p></div>
-          </div>
-          <div className="launch-controls">
-            <label><span>TÊN SESSION (TÙY CHỌN)</span><input value={sessionName} maxLength={80} placeholder="Ví dụ: sửa website buổi sáng" onChange={(event) => setSessionName(event.target.value)} /></label>
-            <label className="route-picker-label"><span>TÀI KHOẢN / MODEL</span><RoutePicker routes={state.routes} value={selectedRoute} onChange={setSelectedRoute} disabled={!state.routes.length || busy !== null} /></label>
-            <button className="primary-button" disabled={!dashboardConnected || !selected || busy !== null} onClick={() => void action('/api/launch', { routeId: selected?.id, name: sessionName }, `Đã mở terminal với ${selected?.model}.`, `Đang chuẩn bị ${selected?.model}; terminal sẽ xuất hiện ngay và Claude tiếp tục kết nối an toàn…`)}><span>＋</span> Mở terminal</button>
-          </div>
-        </section>
-
-        <section className="section-block">
-          <div className="section-heading">
-            <div><div className="eyebrow">TÀI KHOẢN & HẠN MỨC</div><h2>Tình trạng hiện tại</h2></div>
-            <button className="quiet-button" disabled={!dashboardConnected || busy !== null || !readyAccounts} onClick={() => void action('/api/usage/refresh-all', {}, 'Đã làm mới các hạn mức có thể đọc.')}>↻ Làm mới tất cả</button>
-          </div>
-          <p className="section-note">Dashboard tự đọc lại mỗi 5 phút. Quota 5 giờ/tuần tự reset theo nhà cung cấp; bucket tín dụng tháng được hiển thị riêng và không bị gọi là quota tuần.</p>
-          <div className="account-toolbar">
-            <div className="segmented" role="group" aria-label="Lọc loại tài khoản">
-              {([['all', 'Tất cả'], ['codex', 'Codex'], ['google', 'Google'], ['api', 'API']] as const).map(([kind, label]) => <button type="button" className={accountKind === kind ? 'active' : ''} key={kind} onClick={() => setAccountKind(kind)}>{label}<span>{kind === 'all' ? state.accounts.length : state.accounts.filter((account) => account.kind === kind).length}</span></button>)}
-            </div>
-            <label className="account-search"><span aria-hidden="true">⌕</span><input value={accountQuery} placeholder="Tìm tài khoản hoặc model…" onChange={(event) => setAccountQuery(event.target.value)} /></label>
-          </div>
-          <div className="account-grid">
-            {!visibleAccounts.length && <div className="account-empty"><strong>Không có tài khoản phù hợp</strong><span>Đổi bộ lọc hoặc từ khóa tìm kiếm.</span></div>}
-            {visibleAccounts.map((account) => <AccountCard
-              key={account.id}
-              account={account}
-              busy={busy !== null}
-              connected={dashboardConnected}
-              onRefresh={(accountId) => void action('/api/usage/refresh', { accountId }, `Đã làm mới ${account.label}.`)}
-              onResume={(target) => void (target.kind === 'codex'
-                ? action('/api/accounts/codex/resume', { resumeKey: target.resumeKey }, `Đã mở cửa sổ hoàn tất ${target.label}.`)
-                : action('/api/accounts/google', { slot: target.id.replace('google:', '') }, `Đã mở lại đăng nhập ${target.label}.`))}
-              onOpenQuota={(target) => void action('/api/providers/quota/open', { providerKey: target.providerKey }, `Đã mở trang quota của ${target.label}.`)}
-              onDelete={(target) => void deleteAccount(target)}
-            />)}
-          </div>
-        </section>
-
-        <section className="management-grid">
-          <article className="manage-card">
-            <div className="manage-head"><span className="badge openai">O</span><div><h3>Thêm tài khoản Codex</h3><p>Đăng nhập chính thức bằng trình duyệt và 2FA.</p></div></div>
-            <div className="button-row"><button disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/codex', { plan: 'free' }, 'Đã mở cửa sổ đăng nhập Codex Free.')}>＋ Codex Free</button><button disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/codex', { plan: 'plus' }, 'Đã mở cửa sổ đăng nhập Codex Plus.')}>＋ Codex Plus</button></div>
-          </article>
-          <article className="manage-card">
-            <div className="manage-head"><span className="badge google">G</span><div><h3>Thêm Google AI Pro</h3><p>Nhập email để trang Google ưu tiên đúng tài khoản; mật khẩu và 2FA chỉ nhập trên Google.</p></div></div>
-            <input value={googleLoginHint} placeholder="ten-tai-khoan@gmail.com (tùy chọn)" onChange={(event) => setGoogleLoginHint(event.target.value)} />
-            <button className="wide-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/google', { loginHint: googleLoginHint }, 'Đã mở đăng nhập cho slot Google kế tiếp.')}>＋ Thêm tài khoản Google</button>
-            <button className="wide-button secondary" disabled={!dashboardConnected || busy !== null || !state.accounts.some((account) => account.kind === 'google' && account.status === 'ready')} onClick={() => void action('/api/google/models/refresh-all', {}, 'Đã đồng bộ model Google từ catalog hiện tại.')}>↻ Đồng bộ model Google</button>
-          </article>
-          <article className="manage-card compact">
-            <div className="manage-head"><span className="badge api">{`{}`}</span><div><h3>API endpoint</h3><p>Key chỉ nằm trong setting.json bị Git bỏ qua.</p></div></div>
-            <button className="wide-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/settings/open', {}, 'Đã mở setting.json.')}>Mở setting.json</button>
-          </article>
-        </section>
-
-        <section className="terminal-section">
-          <div className="section-heading"><div><div className="eyebrow">SESSION CỤC BỘ</div><h2>Mở lại công việc cũ</h2></div></div>
-          <p className="section-note">Nội dung session nằm trong <code>.runtime/claude-home</code> và không được đưa lên Git. Các session cũ đã được sao chép vào đây mà không xóa bản gốc.</p>
-          <div className="terminal-table">
-            {state.sessions.length === 0 ? <div className="table-empty">Chưa có session Claude nào trong dự án.</div> : state.sessions.slice(0, 20).map((session) => (
-              <div className="terminal-row session-row" key={session.id}><span className="terminal-state ended" /><strong>{session.name}</strong><span>{session.model || session.routeName}</span><span>{session.migrated ? 'Đã nhập từ cấu hình cũ' : 'Session mới'}</span><time>{new Date(session.lastOpenedAt).toLocaleString('vi-VN')}</time><label className="session-route-choice"><span>Mở lại bằng</span><select value={resumeRoutes[session.id] || ''} aria-label={`Mở lại bằng ${session.name}`} disabled={!dashboardConnected || busy !== null || !state.routes.length} onChange={(event) => setResumeRoutes((current) => ({ ...current, [session.id]: event.target.value }))}><option value="" disabled>Chọn route</option>{state.routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label><div className="session-actions"><button disabled={!dashboardConnected || busy !== null || !resumeRoutes[session.id]} onClick={() => void action('/api/sessions/resume', { sessionId: session.id, routeId: resumeRoutes[session.id] }, `Đã mở lại ${session.name}.`)}>Mở lại</button><button className="session-delete-button" disabled={!dashboardConnected || busy !== null} onClick={() => void deleteSession(session)}>Xóa</button></div></div>
-            ))}
-          </div>
-        </section>
-
-        <section className="terminal-section update-section">
-          <div className="section-heading"><div><div className="eyebrow">CẬP NHẬT CÓ KIỂM SOÁT</div><h2>Chỉ kiểm tra, không tự merge</h2></div><button className="quiet-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/updates/check', {}, 'Đã kiểm tra bản phát hành mới; không có gì được tự cập nhật.')}>↻ Kiểm tra cập nhật</button></div>
-          <p className="section-note">Lần cập nhật project gần nhất: {state.updates.lastProjectUpdateAt ? new Date(state.updates.lastProjectUpdateAt).toLocaleString('vi-VN') : 'chưa xác định'}. Lần kiểm tra mạng: {state.updates.checkedAt ? new Date(state.updates.checkedAt).toLocaleString('vi-VN') : 'chưa kiểm tra'}.</p>
-          <div className="update-grid">
-            {state.updates.components.map((component) => <article className="update-card" key={component.id}><div><strong>{component.label}</strong><small>{component.source}</small></div><span className={`update-status ${component.status}`} title={component.errorMessage || undefined}>{component.status === 'available' ? 'Có bản mới' : component.status === 'current' ? 'Đang mới nhất' : component.status === 'error' ? 'Lỗi kiểm tra' : 'Chưa kiểm tra'}</span>{component.errorMessage && <p className="update-error-note" title={component.errorMessage}>{component.errorMessage}</p>}<dl><div><dt>Đang dùng</dt><dd>{component.localVersion}</dd></div><div><dt>Mới nhất</dt><dd>{component.latestVersion || '—'}</dd></div><div><dt>Đã duyệt/build</dt><dd>{component.lastUpdatedAt || '—'}</dd></div></dl></article>)}
-          </div>
-        </section>
-
-        <section className="terminal-section">
-          <div className="section-heading"><div><div className="eyebrow">PHIÊN ĐANG CHẠY</div><h2>Terminal gần đây</h2></div><button className="quiet-button" disabled={!dashboardConnected || busy !== null || !state.terminals.some((terminal) => !terminal.running)} onClick={() => void clearClosedTerminals()}>Xóa mục đã đóng</button></div>
-          <div className="terminal-table">
-            {state.terminals.length === 0 ? <div className="table-empty">Chưa có terminal nào được mở từ dashboard.</div> : state.terminals.map((terminal) => (
-              <div className="terminal-row" key={`${terminal.pid}-${terminal.startedAt}`}><span className={`terminal-state ${terminal.running ? 'live' : 'ended'}`} /><strong>{terminal.routeName}</strong><span>{terminal.model}</span><span>PID {terminal.pid}</span><time>{new Date(terminal.startedAt).toLocaleString('vi-VN')}</time><em>{terminal.running ? 'Đang chạy' : 'Đã đóng'}</em></div>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      <footer className="app-footer"><span>Claude {state.services.claudeVersion} · CCR {state.services.routerVersion}</span><span>127.0.0.1:18320 · Không gửi token ra frontend · Fallback tự động mặc định tắt</span></footer>
-      {loading && <div className="loading-bar"><span /></div>}
-      {notice && <button className={`toast ${notice.tone}`} onClick={() => setNotice(null)}>{notice.tone === 'info' && <i className="toast-spinner" aria-hidden="true" />}{notice.text}<span>×</span></button>}
-    </div>
-  );
+  async function action(path: string, body?: unknown, success?: string, pending?: string) { if (!dashboardConnected) { setNotice({ tone: 'error', text: 'Dashboard mất kết nối; đang tự kết nối lại. Vui lòng thử lại sau khi kết nối phục hồi.' }); return; } const key = path + JSON.stringify(body ?? {}); setBusy(key); if (pending) setNotice({ tone: 'info', text: pending }); try { await api(path, { method: 'POST', body: JSON.stringify(body ?? {}) }); setNotice({ tone: 'ok', text: success || 'Đã thực hiện.' }); await new Promise((resolve) => window.setTimeout(resolve, 550)); await reload(true); } catch (error) { setNotice({ tone: 'error', text: error instanceof Error ? error.message : String(error) }); } finally { setBusy(null); } }
+  async function deleteSession(session: ClaudeSession) { if (window.confirm(`Xóa session "${session.name}" khỏi Claude CLI?\n\nSession sẽ được chuyển vào thùng rác cục bộ để có thể khôi phục, không bị xóa vĩnh viễn.`)) await action('/api/sessions/delete', { sessionId: session.id, confirmation: session.id }, `Đã chuyển ${session.name} vào thùng rác cục bộ.`); }
+  async function clearClosedTerminals() { if (window.confirm('Xóa mọi mục terminal đã đóng khỏi danh sách gần đây?\n\nThao tác này không tắt terminal đang chạy, không xóa session và không xóa transcript.')) await action('/api/terminals/clear-closed', { confirmation: 'clear-closed-terminals' }, 'Đã dọn các mục terminal đã đóng.'); }
+  async function deleteAccount(account: Account) { const noun = account.kind === 'api' ? 'provider' : 'tài khoản'; if (window.confirm(`Xóa ${noun} "${account.label}" khỏi dự án?\n\nDữ liệu sẽ được chuyển vào thùng rác cục bộ để có thể khôi phục. Hãy đóng mọi terminal Claude trước khi xóa.`)) await action('/api/accounts/remove', { accountId: account.id, confirmation: account.id }, `Đã chuyển ${account.label} vào thùng rác cục bộ.`); }
+  return <div className="app-shell"><header className="topbar"><div className="brand"><div className="brand-glyph" aria-hidden="true"><span /><span /><span /></div><div><strong>Claude CLI Control Room</strong><small>Không gian điều khiển độc lập · localhost</small></div></div><div className="service-pills"><span><i className={dashboardConnected ? 'live' : 'idle'} /> Dashboard {dashboardConnected ? 'đang kết nối' : 'mất kết nối'}</span><span><i className={state.services.router === 'running' ? 'live' : 'idle'} /> Router {state.services.router === 'running' ? 'đang chạy' : 'đang nghỉ'}</span><button className="quiet-button" onClick={() => void reload()} disabled={loading}>↻ <span>Đồng bộ</span></button></div></header>{!dashboardConnected && <div className="connection-banner" role="alert"><strong>Dashboard mất kết nối</strong><span>{loading ? 'Đang kết nối…' : 'Đang tự kết nối lại… Các nút hành động sẽ mở lại khi kết nối phục hồi.'}</span></div>}<main>
+    <section className="hero"><div><div className="eyebrow coral">BẢNG ĐIỀU KHIỂN CỤC BỘ</div><h1>Chọn đúng tài khoản.<br /><span>Giữ mọi phiên rõ ràng.</span></h1><p>Mỗi terminal có route riêng. Bạn có thể dùng cùng một tài khoản hoặc phân tách theo model mà không làm đổi phiên đang chạy.</p></div><dl className="summary-grid"><div><dt>{readyAccounts}</dt><dd>Tài khoản sẵn sàng</dd></div><div><dt>{state.routes.length}</dt><dd>Route khả dụng</dd></div><div><dt>{activeTerminals}</dt><dd>Terminal đang chạy</dd></div></dl></section>
+    <section className="status-rail" aria-label="Trạng thái hệ thống"><div><span className="status-symbol safe">✓</span><p><strong>Cô lập project</strong><small>Runtime và session nằm trong claude_CLI-V</small></p></div><div><span className="status-symbol off">↛</span><p><strong>Fallback đang tắt</strong><small>Không tự đổi tài khoản khi hết quota</small></p></div><div><span className={`status-symbol ${updateCandidates ? 'warn' : 'safe'}`}>{updateCandidates || '✓'}</span><p><strong>{updateCandidates ? `${updateCandidates} candidate cập nhật` : 'Chưa có candidate mới'}</strong><small>Chỉ review, không tự merge</small></p></div></section>
+    <section className="launch-deck"><div className="launch-copy"><div className="section-icon" aria-hidden="true">›_</div><div><div className="eyebrow">PHIÊN MỚI</div><h2>Mở một terminal Claude</h2><p>Route chỉ được áp dụng cho terminal này.</p></div></div><div className="launch-controls"><label><span>TÊN SESSION <em>TÙY CHỌN</em></span><input value={sessionName} maxLength={80} placeholder="Ví dụ: sửa website buổi sáng" onChange={(event) => setSessionName(event.target.value)} /></label><label className="route-picker-label"><span>TÀI KHOẢN / MODEL</span><RoutePicker routes={state.routes} value={selectedRoute} onChange={setSelectedRoute} disabled={!state.routes.length || busy !== null} /></label><button className="primary-button" disabled={!dashboardConnected || !selected || busy !== null} onClick={() => void action('/api/launch', { routeId: selected?.id, name: sessionName }, `Đã mở terminal với ${selected?.model}.`, `Đang chuẩn bị ${selected?.model}; terminal sẽ xuất hiện ngay và Claude tiếp tục kết nối an toàn…`)}><span>＋</span> Mở terminal</button></div></section>
+    <section className="section-block"><div className="section-heading"><div><div className="eyebrow">TÀI KHOẢN & HẠN MỨC</div><h2>Tình trạng hiện tại</h2></div><button className="quiet-button" disabled={!dashboardConnected || busy !== null || !readyAccounts} onClick={() => void action('/api/usage/refresh-all', {}, 'Đã làm mới các hạn mức có thể đọc.')}>↻ <span>Làm mới tất cả</span></button></div><p className="section-note">Dashboard tự đồng bộ mỗi 5 phút. Hạn mức được giữ theo đúng tên bucket của nhà cung cấp; dữ liệu không được công bố sẽ hiển thị “chưa xác định”, không được ước lượng.</p><div className="account-toolbar"><div className="segmented" role="group" aria-label="Lọc loại tài khoản">{([['all', 'Tất cả'], ['codex', 'Codex'], ['google', 'Google'], ['api', 'API']] as const).map(([kind, label]) => <button type="button" aria-pressed={accountKind === kind} className={accountKind === kind ? 'active' : ''} key={kind} onClick={() => setAccountKind(kind)}>{label}<span>{kind === 'all' ? state.accounts.length : state.accounts.filter((account) => account.kind === kind).length}</span></button>)}</div><label className="account-search"><span aria-hidden="true">⌕</span><input value={accountQuery} placeholder="Tìm tài khoản hoặc model…" onChange={(event) => setAccountQuery(event.target.value)} /></label></div><div className="account-grid">{!visibleAccounts.length && <div className="account-empty"><strong>Không có tài khoản phù hợp</strong><span>Đổi bộ lọc hoặc từ khóa tìm kiếm.</span></div>}{visibleAccounts.map((account) => <AccountCard key={account.id} account={account} busy={busy !== null} connected={dashboardConnected} onRefresh={(accountId) => void action('/api/usage/refresh', { accountId }, `Đã làm mới ${account.label}.`)} onResume={(target) => void (target.kind === 'codex' ? action('/api/accounts/codex/resume', { resumeKey: target.resumeKey }, `Đã mở cửa sổ hoàn tất ${target.label}.`) : action('/api/accounts/google', { slot: target.id.replace('google:', '') }, `Đã mở lại đăng nhập ${target.label}.`))} onOpenQuota={(target) => void action('/api/providers/quota/open', { providerKey: target.providerKey }, `Đã mở trang quota của ${target.label}.`) } onDelete={(target) => void deleteAccount(target)} />)}</div></section>
+    <section className="management-grid"><article className="manage-card"><div className="manage-head"><span className="badge openai">C</span><div><h3>Thêm tài khoản Codex</h3><p>Đăng nhập chính thức bằng trình duyệt và 2FA.</p></div></div><div className="button-row"><button disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/codex', { plan: 'free' }, 'Đã mở cửa sổ đăng nhập Codex Free.')}>＋ Codex Free</button><button disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/codex', { plan: 'plus' }, 'Đã mở cửa sổ đăng nhập Codex Plus.')}>＋ Codex Plus</button></div></article><article className="manage-card"><div className="manage-head"><span className="badge google">G</span><div><h3>Thêm Google AI Pro</h3><p>Google giữ mật khẩu và 2FA; email chỉ là gợi ý cho account chooser.</p></div></div><input value={googleLoginHint} placeholder="ten-tai-khoan@gmail.com (tùy chọn)" onChange={(event) => setGoogleLoginHint(event.target.value)} /><div className="button-stack"><button className="wide-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/accounts/google', { loginHint: googleLoginHint }, 'Đã mở đăng nhập cho slot Google kế tiếp.')}>＋ Thêm tài khoản Google</button><button className="wide-button secondary" disabled={!dashboardConnected || busy !== null || !state.accounts.some((account) => account.kind === 'google' && account.status === 'ready')} onClick={() => void action('/api/google/models/refresh-all', {}, 'Đã đồng bộ model Google từ catalog hiện tại.')}>↻ Đồng bộ model Google</button></div></article><article className="manage-card compact"><div className="manage-head"><span className="badge api">⌘</span><div><h3>API endpoint</h3><p>Key chỉ nằm trong setting.json bị Git bỏ qua.</p></div></div><button className="wide-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/settings/open', {}, 'Đã mở setting.json.')}>Mở setting.json</button></article></section>
+    <section className="terminal-section"><div className="section-heading"><div><div className="eyebrow">SESSION CỤC BỘ</div><h2>Mở lại công việc cũ</h2></div></div><p className="section-note">Session nằm trong <code>.runtime/claude-home</code> và không được đưa lên Git. Chọn route mới nếu muốn đổi model khi mở lại.</p><div className="terminal-table">{state.sessions.length === 0 ? <div className="table-empty">Chưa có session Claude nào trong dự án.</div> : state.sessions.slice(0, 20).map((session) => <div className="terminal-row session-row" key={session.id}><span className="terminal-state ended" /><strong>{session.name}</strong><span>{session.model || session.routeName}</span><span>{session.migrated ? 'Đã nhập từ cấu hình cũ' : 'Session mới'}</span><time>{new Date(session.lastOpenedAt).toLocaleString('vi-VN')}</time><label className="session-route-choice"><span>Mở lại bằng</span><select value={resumeRoutes[session.id] || ''} aria-label={`Mở lại bằng ${session.name}`} disabled={!dashboardConnected || busy !== null || !state.routes.length} onChange={(event) => setResumeRoutes((current) => ({ ...current, [session.id]: event.target.value }))}><option value="" disabled>Chọn route</option>{state.routes.map((route) => <option key={route.id} value={route.id}>{route.name}</option>)}</select></label><div className="session-actions"><button disabled={!dashboardConnected || busy !== null || !resumeRoutes[session.id]} onClick={() => void action('/api/sessions/resume', { sessionId: session.id, routeId: resumeRoutes[session.id] }, `Đã mở lại ${session.name}.`)}>Mở lại</button><button className="session-delete-button" disabled={!dashboardConnected || busy !== null} onClick={() => void deleteSession(session)}>Xóa</button></div></div>)}</div></section>
+    <section className="terminal-section update-section"><div className="section-heading"><div><div className="eyebrow">CẬP NHẬT CÓ KIỂM SOÁT</div><h2>Chỉ kiểm tra, không tự merge</h2></div><button className="quiet-button" disabled={!dashboardConnected || busy !== null} onClick={() => void action('/api/updates/check', {}, 'Đã kiểm tra bản phát hành mới; không có gì được tự cập nhật.')}>↻ <span>Kiểm tra cập nhật</span></button></div><p className="section-note">Cập nhật project gần nhất: {state.updates.lastProjectUpdateAt ? new Date(state.updates.lastProjectUpdateAt).toLocaleString('vi-VN') : 'chưa xác định'}. Lần kiểm tra mạng: {state.updates.checkedAt ? new Date(state.updates.checkedAt).toLocaleString('vi-VN') : 'chưa kiểm tra'}.</p><div className="update-grid">{state.updates.components.map((component) => <article className="update-card" key={component.id}><div><strong>{component.label}</strong><small>{component.source}</small></div><span className={`update-status ${component.status}`} title={component.errorMessage || undefined}>{component.status === 'available' ? 'Có bản mới' : component.status === 'current' ? 'Đang mới nhất' : component.status === 'error' ? 'Lỗi kiểm tra' : 'Chưa kiểm tra'}</span>{component.errorMessage && <p className="update-error-note" title={component.errorMessage}>{component.errorMessage}</p>}<dl><div><dt>Đang dùng</dt><dd>{component.localVersion}</dd></div><div><dt>Mới nhất</dt><dd>{component.latestVersion || '—'}</dd></div><div><dt>Đã duyệt/build</dt><dd>{component.lastUpdatedAt || '—'}</dd></div></dl></article>)}</div></section>
+    <section className="terminal-section"><div className="section-heading"><div><div className="eyebrow">PHIÊN ĐANG CHẠY</div><h2>Terminal gần đây</h2></div><button className="quiet-button" disabled={!dashboardConnected || busy !== null || !state.terminals.some((terminal) => !terminal.running)} onClick={() => void clearClosedTerminals()}>Xóa mục đã đóng</button></div><div className="terminal-table">{state.terminals.length === 0 ? <div className="table-empty">Chưa có terminal nào được mở từ dashboard.</div> : state.terminals.map((terminal) => <div className="terminal-row" key={`${terminal.pid}-${terminal.startedAt}`}><span className={`terminal-state ${terminal.running ? 'live' : 'ended'}`} /><strong>{terminal.routeName}</strong><span>{terminal.model}</span><span>PID {terminal.pid}</span><time>{new Date(terminal.startedAt).toLocaleString('vi-VN')}</time><em>{terminal.running ? 'Đang chạy' : 'Đã đóng'}</em></div>)}</div></section>
+  </main><footer className="app-footer"><span>Claude {state.services.claudeVersion} · CCR {state.services.routerVersion}</span><span>127.0.0.1:18320 · Không gửi token ra frontend · Fallback tự động mặc định tắt</span></footer>{loading && <div className="loading-bar"><span /></div>}{notice && <button className={`toast ${notice.tone}`} onClick={() => setNotice(null)}>{notice.tone === 'info' && <i className="toast-spinner" aria-hidden="true" />}{notice.text}<span>×</span></button>}</div>;
 }
-
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

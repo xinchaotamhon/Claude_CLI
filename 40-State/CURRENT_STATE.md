@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: claude-2.1.250-and-cliproxy-7.2.144-upgrade
+verified_by: google-runtime-routes-dashboard-startup-ui
 status: active
 ---
 
@@ -31,6 +31,15 @@ status: active
   authenticated loopback RPC, preserving account providers. The former
   command-line launcher is retained only as
   `tools\RUN_CLAUDE_TECHNICAL.bat` for bounded rollback/diagnostics.
+- `DASHBOARD.bat` now exits immediately after starting the verified dashboard
+  starter hidden. It no longer leaves an empty owner console; real startup
+  failures are retained only in ignored
+  `.runtime/dashboard/startup-error.log` and opened for diagnosis.
+- The control-room UI has a compact token-based hierarchy, grouped searchable
+  route palette and progressive disclosure for long model catalogs. The route
+  palette supports `Ctrl/Cmd+K`, arrows, Enter, Escape, click-outside close and
+  focus return. Pattern references are Fluent UI and Carbon only; no UI
+  framework, external asset or runtime was added.
 - Dashboard terminal dispatch now uses a hidden, bounded dispatcher to create
   exactly one visible PowerShell terminal. The browser receives success only
   after that terminal writes a project-local lifecycle acknowledgement; model
@@ -87,10 +96,24 @@ status: active
   observed zero CCR-named artifacts and zero CCR/loopback markers in Codex
   `config.toml`; no provider/model request was made by this gate run.
 - Google onboarding no longer throws when a new slot has zero auth files, and
-  current-user-only ACL setup is idempotent on a previously created empty slot
-  without requesting owner/audit privileges. A live retry reached the official
-  Google chooser and waited on `127.0.0.1:51121`; final account authorization
-  is still an owner/browser action and is not claimed complete here.
+  current-user-only ACL setup is idempotent on a previously created empty slot.
+  The owner re-authenticated `google_pro_1`; the dashboard now observes 24
+  sanitized catalog models and four separate Gemini/Claude-GPT quota windows.
+  Thirteen catalog entries intersect the pinned CLIProxyAPI `7.2.144-local.1`
+  model registry and are exposed as launch routes. A bounded owner-profile
+  readiness proof verified `gemini-3.7-flash-high` on the slot's exact
+  loopback port `18401` without sending a model request. First real inference
+  remains an owner action and is not claimed here.
+- Google does not use CCR. Each account uses one hidden, hash-verified local
+  CLIProxyAPI process on deterministic ports `18401` through `18450`; Claude
+  receives the selected model and common project-local session home through
+  process-scoped environment only. Removing a Google account first verifies
+  and stops only its recorded proxy, then moves the account/cache to recoverable
+  project-local trash. Automatic fallback remains disabled.
+- All 22 enabled smoke gates passed after the Google runtime, hidden bootstrap,
+  grouped route palette and metadata-contract updates in owner-profile run
+  `20260828T084103Z-4ba632f2`. The gate run made no provider/model request and
+  retained project/external-App isolation checks.
 - The dashboard exposes explicit release checks for Claude, CCR, Codex and
   CLIProxyAPI plus local reviewed/build dates. Network is used only when the
   owner presses the button; no source fetch, merge or replacement occurs.
