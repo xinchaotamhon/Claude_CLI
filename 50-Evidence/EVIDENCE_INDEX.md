@@ -1,5 +1,8 @@
 # Evidence Index
 
+- [2026-08-28 Google interactive launch print-mode repair](2026-08-28-google-interactive-launch-print-mode-repair.md):
+  exact PowerShell pipeline root cause, minimal stream-preserving repair,
+  dashboard proofs for Claude/Gemini routes, one real Gemini `OK` and 22/22 gates.
 - [2026-08-28 Google harness 429 containment and dark control-room redesign](2026-08-28-google-harness-429-and-dark-ui.md):
   real Claude-to-Google 429/cooldown diagnosis, bounded retries, visible failed
   terminals, Impeccable/OpenDesign pattern adoption, browser QA and 22/22 gates.

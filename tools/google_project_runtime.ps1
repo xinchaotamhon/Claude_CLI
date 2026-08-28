@@ -28,6 +28,7 @@ $ModelManifestPath = Join-Path $ProjectRoot 'router_challenger\google-runtime-mo
 $TemplatePath = Join-Path $ProjectRoot 'router_challenger\account-config.template.yaml'
 $SettingPath = Join-Path $ProjectRoot 'setting.json'
 $ActionsRoot = [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot '.runtime\dashboard\actions'))
+$script:ClaudeExitCode = 1
 
 function Assert-ProjectChild {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -371,8 +372,8 @@ function Start-Claude {
         Write-Host ("Launching Claude: Google {0} [{1}] -> local port {2}" -f $State.Number, $Model, $State.Port) -ForegroundColor Green
         Write-LaunchStatus
         & $ClaudeBinary @Arguments
-        $ExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
-        return $ExitCode
+        $script:ClaudeExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        return
     }
     finally {
         $env:ANTHROPIC_AUTH_TOKEN = ''
@@ -422,7 +423,10 @@ try {
     Assert-SupportedModel -Value $Model
     $Process = Start-VerifiedProxy -State $State -ClientKey $ClientKey
     [void]$Process
-    exit (Start-Claude -State $State -ClientKey $ClientKey)
+    # Keep the interactive native process on the console. Capturing this function
+    # inside `exit (...)` redirects Claude's streams and makes it enter print mode.
+    Start-Claude -State $State -ClientKey $ClientKey
+    exit $script:ClaudeExitCode
 }
 catch {
     Write-Error ("Project-local Google runtime failed: " + $_.Exception.Message)

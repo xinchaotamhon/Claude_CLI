@@ -88,11 +88,15 @@ def main() -> int:
         "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
         "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
         "--prompt-suggestions",
+        "$script:ClaudeExitCode",
+        "exit $script:ClaudeExitCode",
         "-WindowStyle Hidden",
         "without sending a model request",
     ):
         if marker not in runtime:
             return fail(f"Google runtime is missing isolation/launch marker: {marker}")
+    if "exit (Start-Claude" in runtime or "return $ExitCode" in runtime:
+        return fail("Google runtime captures the interactive Claude process into a PowerShell pipeline")
     if '"models"' not in runtime_manifest or '"binary_sha256"' not in runtime_manifest:
         return fail("Google runtime compatibility manifest is incomplete")
 

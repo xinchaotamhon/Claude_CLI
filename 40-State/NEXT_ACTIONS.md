@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: google-runtime-routes-dashboard-startup-ui
+verified_by: google-interactive-launch-print-mode-repair
 status: active
 ---
 
@@ -15,12 +15,12 @@ status: active
    are active, the dashboard must show a pending account; close them and click
    **Hoàn tất nhập tài khoản**. Confirm actual routes: Free must not receive Sol;
    Plus may retain Sol/Terra/Luna only after bounded checks pass.
-3. **Retry Google only after its cooldown/reset.** `google_pro_1` exposes 13
-   launch routes from a 24-model catalog, but current real requests return 429
-   for several Gemini models. The launcher now fails visibly within bounded
-   retries and keeps the error terminal open. Do not repeatedly hammer the
-   account; wait for provider reset/cooldown or add another authorized Google
-   account, then send one short normal prompt before a full tool-loop proof.
+3. **Use Google normally, but keep provider failures bounded.** `google_pro_1`
+   exposes 13 launch routes from a 24-model catalog. After the print-mode repair,
+   `gemini-3.7-flash-high` returned exact `OK` in one bounded real request.
+   Earlier 429/cooldown observations remain valid historical evidence, so do not
+   repeatedly hammer a route if the provider starts rejecting it; wait for reset
+   or use another account you have explicitly authorized.
    If a catalog model is absent from the route palette, treat it as unsupported
    by the pinned runtime—not as a reason to hard-code or relabel it.
 4. **Promote new Google models through the pinned runtime manifest.** Catalog
@@ -28,8 +28,9 @@ status: active
    `router_challenger/google-runtime-models.json`. On a future CLIProxyAPI
    update, review source/model registry, rebuild reproducibly, run offline and
    loopback gates, then update the manifest. Keep `Gemini` and `Claude / GPT`
-   quota branches separate. The first real model/tool-loop proof is still an
-   owner action and should be recorded without credentials or transcript data.
+   quota branches separate. One minimal real inference is proved; a real
+   multi-turn/tool-loop proof remains an owner action and should be recorded
+   without credentials or transcript data.
 5. **Finish owner-visible resume proof.** Dispatcher/PID acknowledgement,
    transcript filtering and a full Kiro Opus 5 Claude request are proved. Open
    one named interactive session, close it, then choose another route under

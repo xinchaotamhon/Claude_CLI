@@ -6,6 +6,35 @@ status: active
 
 # Known Failures
 
+## challenger.google-interactive-launch-captured-as-print — fixed 2026-08-28
+
+- Symptom: every Google dashboard route printed its selected model/loopback port
+  and then exited with `Input must be provided ... when using --print` before
+  the owner could type. Both Gemini and Claude-family model names were affected.
+- Impact: completed Google OAuth, catalog, quota and local proxy readiness all
+  appeared healthy while no Google route could be used in the Claude harness.
+- Reproduction: invoke the native Claude process from a PowerShell function and
+  evaluate that function inside `exit (...)`; a dummy closed loopback endpoint
+  reproduces the exact print-mode error without reading credentials or sending a
+  provider request.
+- Raw evidence: sanitized model names, lifecycle state, process liveness, exact
+  error category, timing and gate outcomes are retained in
+  `50-Evidence/2026-08-28-google-interactive-launch-print-mode-repair.md`. No
+  credential, account identifier or transcript content is retained.
+- Cause: proved. `exit (Start-Claude ...)` captured the function/native output
+  in a PowerShell pipeline. Claude interpreted the captured stream as print mode
+  and required a one-shot prompt.
+- Failed approach: a separate Windows console mechanism was piloted, then
+  rejected as unnecessary after the existing dispatcher reached
+  `claude_starting` with the pipeline repair alone.
+- Disposition: fixed. Claude is invoked by a standalone function statement and
+  its exit status is carried in a script-local integer. Dashboard launches for
+  Claude and Gemini model families remained interactive; one bounded Gemini
+  request returned exact `OK`.
+- Regression gates: `claude.dashboard-account-management` rejects the captured
+  invocation markers; all 22 smoke gates passed in
+  `20260828T103224Z-756f1b17`.
+
 ## ccr.source-test-external-codex-takeover — fixed/contained 2026-08-28
 
 - Symptom: Codex App's account menu again displayed **Claude Code Router** after

@@ -1,6 +1,6 @@
 ---
 last_verified: 2026-08-28
-verified_by: google-runtime-routes-dashboard-startup-ui
+verified_by: google-interactive-launch-print-mode-repair
 status: active
 ---
 
@@ -44,6 +44,11 @@ status: active
   exactly one visible PowerShell terminal. The browser receives success only
   after that terminal writes a project-local lifecycle acknowledgement; model
   launches wait for the router wrapper's later `claude_starting` signal.
+- Google interactive launch no longer evaluates `Start-Claude` inside
+  `exit (...)`. That PowerShell capture forced Claude into print mode before any
+  model request. The native process now remains attached to the console and
+  passes its exit status through a script-local integer; the existing one-window
+  dispatcher remains unchanged.
 - A mutex-guarded project-local supervisor restarts only `dashboard/server.mjs`
   after an unexpected exit. The ignored browser bootstrap token persists in
   `.runtime/dashboard/dashboard-session.json` for at most 30 days, so an
@@ -102,8 +107,9 @@ status: active
   Thirteen catalog entries intersect the pinned CLIProxyAPI `7.2.144-local.1`
   model registry and are exposed as launch routes. A bounded owner-profile
   readiness proof verified `gemini-3.7-flash-high` on the slot's exact
-  loopback port `18401` without sending a model request. First real inference
-  remains an owner action and is not claimed here.
+  loopback port `18401`. After the interactive stream repair, one bounded real
+  inference through that route returned exact output `OK` in 15 seconds with
+  one output token. This does not prove future availability or tool-loop quality.
 - Google does not use CCR. Each account uses one hidden, hash-verified local
   CLIProxyAPI process on deterministic ports `18401` through `18450`; Claude
   receives the selected model and common project-local session home through
@@ -114,6 +120,9 @@ status: active
   grouped route palette and metadata-contract updates in owner-profile run
   `20260828T084103Z-4ba632f2`. The gate run made no provider/model request and
   retained project/external-App isolation checks.
+- All 22 enabled smoke gates passed after the Google interactive-launch repair
+  in owner-profile run `20260828T103224Z-756f1b17`. The gate run made no model
+  request; the separate bounded Gemini proof is recorded in evidence.
 - The dashboard exposes explicit release checks for Claude, CCR, Codex and
   CLIProxyAPI plus local reviewed/build dates. Network is used only when the
   owner presses the button; no source fetch, merge or replacement occurs.

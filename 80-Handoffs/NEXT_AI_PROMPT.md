@@ -26,6 +26,9 @@ the secret in output.
   CLIProxyAPI `7.2.144-local.1` process on deterministic loopback ports
   `18401` through `18450`. A route exists only in the intersection of the
   slot's sanitized live catalog and the tracked pinned-runtime manifest.
+- Google runtime must call `Start-Claude` as a standalone statement. Never put
+  the interactive function inside `exit (...)` or another captured PowerShell
+  expression; doing so forces Claude into print mode before inference.
 - Exact route ID launch opens one separately acknowledged visible terminal.
   Dashboard success requires `terminal_ready` and, for a model launch,
   `claude_starting`. Existing terminals retain their own process-local route.
@@ -55,8 +58,9 @@ the secret in output.
   redirect, listener and runtime endpoints use `127.0.0.1`. The authenticated
   `google_pro_1` slot exposed 24 sanitized catalog models, 13 launchable runtime
   intersections and four quota windows across the separately preserved
-  `gemini_models` and `claude_gpt_models` groups. A bounded registry proof
-  exposed `gemini-3.7-flash-high` on port `18401` without a model request.
+  `gemini_models` and `claude_gpt_models` groups. A bounded live proof through
+  `gemini-3.7-flash-high` on port `18401` returned exact `OK` in 15 seconds;
+  this proves one request, not future quota or tool-loop quality.
 - API providers have no generic subscription-quota adapter. Never relabel local
   proxy counts as provider quota.
 - Automatic fallback remains disabled. Existing policy requires finite
@@ -64,21 +68,19 @@ the secret in output.
 - EasyCLIProxyAPI remains ignored inspect-only at a pinned revision because its
   tree has no license grant and unsafe global/update paths. No source was copied.
 - Current cumulative owner-profile baseline: 22/22 pass
-  `20260828T084103Z-4ba632f2`. Focused dashboard/account gates also pass in
-  `20260828T082346Z-556b8c64`. Kiro `claude-opus-5` has a bounded full
+  `20260828T103224Z-756f1b17`. Kiro `claude-opus-5` has a bounded full
   Claude CLI -> CCR -> provider smoke with exact output `OK`; this proves one
   request, not provider identity, privacy or future availability.
 - Current focused evidence is
-  `50-Evidence/2026-08-28-google-runtime-routes-dashboard-startup-ui.md`.
+  `50-Evidence/2026-08-28-google-interactive-launch-print-mode-repair.md`.
 
 ## Allowed Next Work
 
 1. Let the owner use dashboard buttons to add remaining Codex Free, Codex Plus
    and Google accounts. Do not request credentials in chat/terminal.
-2. Let the owner choose one of the 13 proved Google routes and send the first
-   normal model/tool-loop prompt. Record only sanitized outcome metadata; route
-   promotion already depends on catalog/runtime intersection and must not be
-   expanded from screenshot labels.
+2. Let the owner run a normal multi-turn/tool-loop prompt on one of the 13
+   Google routes. One minimal inference is already proved. Record only sanitized
+   outcome metadata; do not expand routes from screenshot labels.
 3. Prove owner-visible cross-route resume, then parallel terminals with same
    and different account routes.
 4. Improve quota refresh/reauth degradation without making quota a hard launch
